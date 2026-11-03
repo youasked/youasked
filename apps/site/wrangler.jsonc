@@ -2,5 +2,9 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "youasked",
   "compatibility_date": "2026-10-01",
+  "routes": [
+    { "pattern": "youasked.dev", "custom_domain": true },
+    { "pattern": "www.youasked.dev", "custom_domain": true }
+  ],
   "assets": { "directory": "./dist", "not_found_handling": "single-page-application" }
 }

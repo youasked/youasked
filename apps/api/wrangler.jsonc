@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "youasked-api",
   "main": "src/index.ts",
+  "routes": [{ "pattern": "api.youasked.dev", "custom_domain": true }],
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
   // Weekly digest to connected Telegram chats: Mondays 01:00 UTC (09:00 Singapore).

@@ -5,6 +5,36 @@ export type Env = {
   TELEGRAM_API?: string;
   /** Screenshots attached to requests. */
   UPLOADS: R2Bucket;
+
+  /** Public URLs. Defaults: https://youasked.dev, https://app.youasked.dev, https://api.youasked.dev */
+  SITE_URL?: string;
+  DASHBOARD_URL?: string;
+  API_URL?: string;
+
+  /** Sign-in. Each provider is only offered when its secrets are set. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+
+  /** Billing. */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+
+  /** The shared @youasked_bot that apps connect to with one tap (apps can still bring their own bot). */
+  YOUASKED_BOT_TOKEN?: string;
+  YOUASKED_BOT_SECRET?: string;
+
+  /** Encrypts stored third-party tokens (GitHub, Linear, own Telegram bots). 32 random bytes, base64. */
+  TOKEN_ENC_KEY?: string;
+
+  /** Cloudflare bindings for AI features and email. Optional so local tests run without them. */
+  AI?: Ai;
+  VECTORIZE?: VectorizeIndex;
+  EMAIL?: SendEmail;
+
+  /** Heard elsewhere (social listening) data source. */
+  SCRAPECREATORS_API_KEY?: string;
 };
 
 export type AppRow = {
@@ -15,6 +45,8 @@ export type AppRow = {
   watermark: number;
   require_signature: number;
   allowed_origins: string | null;
+  workspace_id: string | null;
+  claim_token: string | null;
 };
 
 export type UserRow = {
