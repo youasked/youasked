@@ -4,14 +4,42 @@
   "description": "Add YouAsked feature requests to your app in one command: npx youasked init",
   "license": "MIT",
   "type": "module",
-  "bin": { "youasked": "./bin/youasked.js" },
-  "files": ["bin", "src", "README.md"],
-  "engines": { "node": ">=18" },
+  "bin": {
+    "youasked": "./bin/youasked.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "typescript": "^5.9.3"
+  },
+  "author": "Aden Teo",
+  "homepage": "https://youasked.adenteo.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youasked/youasked.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/youasked/youasked/issues"
+  },
+  "keywords": [
+    "feature-requests",
+    "feedback",
+    "cli",
+    "roadmap"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

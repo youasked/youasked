@@ -2,7 +2,7 @@
 
 > Feature requests that live inside your app, reach the developer on their phone, and tell everyone who asked the moment it ships. Built for apps made with AI coding agents.
 
-YouAsked is in beta. The React package and API are live; the npm packages (`@youasked/react`, `youasked` CLI, `@youasked/mcp`) are being published.
+YouAsked is in beta. Packages on npm: `@youasked/react` (widget), `youasked` (setup CLI) and `@youasked/mcp` (agent tools).
 
 ## Docs for agents
 - [Install guide](https://youasked.adenteo.workers.dev/install.md): step by step for React and Next.js, entry points, signing users, theming.

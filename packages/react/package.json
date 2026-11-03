@@ -20,12 +20,14 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "playground": "esbuild playground/main.tsx --bundle --splitting --format=esm --jsx=automatic --entry-names=bundle --outdir=playground/out"
+    "playground": "esbuild playground/main.tsx --bundle --splitting --format=esm --jsx=automatic --entry-names=bundle --outdir=playground/out",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -39,5 +41,27 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^5.9.3"
+  },
+  "author": "Aden Teo",
+  "homepage": "https://youasked.adenteo.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youasked/youasked.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/youasked/youasked/issues"
+  },
+  "keywords": [
+    "react",
+    "nextjs",
+    "feature-requests",
+    "feedback",
+    "widget",
+    "roadmap",
+    "changelog"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

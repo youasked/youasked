@@ -4,10 +4,18 @@
   "description": "MCP server for YouAsked: let your coding agent read feature requests, reply, and ship them.",
   "license": "MIT",
   "type": "module",
-  "bin": { "youasked-mcp": "./dist/index.js" },
+  "bin": {
+    "youasked-mcp": "./dist/index.js"
+  },
   "main": "./dist/index.js",
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=18" },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -20,5 +28,25 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "typescript": "^5.9.3"
+  },
+  "author": "Aden Teo",
+  "homepage": "https://youasked.adenteo.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youasked/youasked.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/youasked/youasked/issues"
+  },
+  "keywords": [
+    "mcp",
+    "feature-requests",
+    "feedback",
+    "claude-code",
+    "codex"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -2,7 +2,7 @@
 
 YouAsked adds feature requests to a React app: people ask and vote inside the app, the team hears about it on their phone, and everyone who asked is told when it ships.
 
-> Beta: the npm packages are being published. If `npm i @youasked/react` fails, ask the YouAsked team for the tarball.
+> Beta: free while in beta. Packages: `@youasked/react`, `youasked` (CLI) and `@youasked/mcp`.
 
 ## 1. Set up
 
