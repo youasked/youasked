@@ -56,6 +56,9 @@ export type AppRow = {
   moderation?: "off" | "approve";
   /** 1 skips test mode (set by hand for the Demo app and our own site). */
   always_live?: number;
+  slug: string | null;
+  public_board: number;
+  description: string | null;
 };
 
 export type UserRow = {

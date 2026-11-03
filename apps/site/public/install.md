@@ -2,7 +2,7 @@
 
 YouAsked adds feature requests to a React app: people ask and vote inside the app, the team hears about it on their phone, and everyone who asked is told when it ships.
 
-> Beta: free while in beta. Packages: `@youasked/react`, `youasked` (CLI) and `@youasked/mcp`.
+> Beta. Until a plan is active the app runs in test mode and answers only from localhost, so you can install and try it for free; plans and the 14-day money-back guarantee are at https://youasked.dev/pricing. Packages: `@youasked/react`, `youasked` (CLI) and `@youasked/mcp`.
 
 ## 1. Set up
 
@@ -87,7 +87,7 @@ It reads shadcn tokens (`--primary`, `--background`, `--radius`…) on its own. 
 
 ## 6. Hear about requests and ship them
 
-- **Dashboard:** https://youasked-api.adenteo.workers.dev/admin (paste the secret key).
+- **Dashboard:** https://app.youasked.dev (sign in).
 - **Telegram / Slack / Discord:** connect from the dashboard. Telegram cards have Planned, Shipped, Reply and Merge buttons; replying to a card answers the requester in the app.
 - **GitHub:** add the webhook shown in the dashboard. Then `closes YA-12` in a commit on the default branch, or in a merged pull request, marks YA-12 shipped and tells everyone who asked.
 - **Agents:** `claude mcp add youasked -e YOUASKED_SECRET_KEY=ya_sec_… -- npx -y @youasked/mcp` gives your agent tools to list, read, reply to and ship requests.

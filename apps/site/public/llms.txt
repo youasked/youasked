@@ -2,12 +2,13 @@
 
 > Feature requests that live inside your app, reach the developer on their phone, and tell everyone who asked the moment it ships. Built for apps made with AI coding agents.
 
-YouAsked is in beta. Packages on npm: `@youasked/react` (widget), `youasked` (setup CLI) and `@youasked/mcp` (agent tools).
+YouAsked is in beta. Plans are Solo, Pro and Studio (flat price, unlimited end users and votes; founding prices for the first 100 workspaces). There is no free tier: until a plan is active an app runs in test mode and answers only from localhost, and every plan has a 14-day money-back guarantee. Packages on npm: `@youasked/react` (widget), `youasked` (setup CLI) and `@youasked/mcp` (agent tools).
 
 ## Docs for agents
-- [Install guide](https://youasked.adenteo.workers.dev/install.md): step by step for React and Next.js, entry points, signing users, theming.
-- [Claude Code skill](https://youasked.adenteo.workers.dev/skill.md): drop into .claude/skills/youasked/SKILL.md.
-- [This page as Markdown](https://youasked.adenteo.workers.dev/index.md)
+- [Install guide](https://youasked.dev/install.md): step by step for React and Next.js, entry points, signing users, theming.
+- [Claude Code skill](https://youasked.dev/skill.md): drop into .claude/skills/youasked/SKILL.md.
+- [Pricing](https://youasked.dev/pricing), [docs](https://youasked.dev/docs), [MCP server](https://youasked.dev/mcp), [alternatives](https://youasked.dev/alternatives)
+- [This page as Markdown](https://youasked.dev/index.md)
 
 ## What it does
 - Entry points: `<AskBar />`, `<FeatureCard />`, `<RequestButton variant="pill|icon|row" />`, a floating launcher (`trigger="floating"`), `<FeatureBoard />` for a whole page, and `useYouAsked().open({ view: "new", draft })` from any button.
@@ -19,4 +20,6 @@ YouAsked is in beta. Packages on npm: `@youasked/react` (widget), `youasked` (se
 ## Key facts
 - Plain upvotes. Users are anonymous or identified by an ID the app signs with its secret key (HMAC-SHA256).
 - Matches the host app: shadcn tokens automatically, or the `appearance` prop.
-- API: https://youasked-api.adenteo.workers.dev
+- Public boards: an app can publish its requests, roadmap and changelog at https://youasked.dev/<slug>, and every shipped request has a share page at /<slug>/shipped/<n>.
+- Self-hosting: the server is source-available (FSL-1.1-MIT); packages are MIT.
+- API: https://api.youasked.dev

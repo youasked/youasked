@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AGENT_PROMPT, INSTALL_CMD, MCP_CMD, SITE } from "./content";
+import { LANDING_FAQ, type Faq } from "./faq";
 import { Logo, LogoRow } from "./Logos";
 import { Check, CopyButton, CopyIcon, Mark, Reveal, useCopied } from "./ui";
 
@@ -21,16 +22,17 @@ export function Nav() {
   return (
     <nav className="nav" data-scrolled={scrolled || undefined} data-dark={dark || undefined} aria-label="Main">
       <div className="wrap nav-in">
-        <a className="brand" href="#top">
+        <a className="brand" href="/">
           <Mark className="brand-mark" />
           YouAsked
           <span className="pill-beta">Beta</span>
         </a>
         <div className="nav-links">
-          <a href="#how">How it works</a>
-          <a href="#entry-points">Entry points</a>
-          <a href="#agents">For agents</a>
-          <a href="#pricing">Pricing</a>
+          <a href="/#how">How it works</a>
+          <a href="/#entry-points">Entry points</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/docs">Docs</a>
+          <a href="/alternatives">Alternatives</a>
         </div>
         <div className="nav-cta">
           <a className="btn btn-glass" href="/llms.txt">
@@ -106,7 +108,7 @@ export function Agents() {
   );
 }
 
-function CodeBox({ label, text, copyLabel, shell }: { label: string; text: string; copyLabel?: string; shell?: boolean }) {
+export function CodeBox({ label, text, copyLabel, shell }: { label: string; text: string; copyLabel?: string; shell?: boolean }) {
   return (
     <div className="codebox">
       <div className="codebox-bar">
@@ -121,81 +123,27 @@ function CodeBox({ label, text, copyLabel, shell }: { label: string; text: strin
   );
 }
 
-const PLANS = [
-  { name: "Free", price: "$0", per: "", items: ["1 app", "Every entry point", "Telegram, GitHub and Slack", "Small “Feedback by YouAsked” line"] },
-  { name: "Maker", price: "$15", per: "/month", items: ["Up to 5 apps", "No YouAsked branding", "Weekly digest", "Agent tools (MCP)"] },
-  { name: "Studio", price: "$39", per: "/month", items: ["Unlimited apps", "Team members", "Priority support", "Everything in Maker"] },
-];
-
-export function Pricing() {
+export function FaqList({ items }: { items: Faq[] }) {
   return (
-    <section className="section" id="pricing">
-      <div className="wrap">
-        <Reveal className="section-head">
-          <h2 className="h2">One price for all your apps.</h2>
-          <p className="lede">No per-seat or per-user pricing. Ship as many side projects as you like.</p>
-        </Reveal>
-        <Reveal className="prices">
-          {PLANS.map((p) => (
-            <div className="price" key={p.name}>
-              <span className="name">{p.name}</span>
-              <span className="amt">
-                {p.price}
-                {p.per && <small>{p.per}</small>}
-              </span>
-              <ul>
-                {p.items.map((i) => (
-                  <li key={i}>
-                    <Check size={18} />
-                    {i}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </Reveal>
-        <div className="beta-note">
-          <i /> Everything is free while YouAsked is in beta.
-        </div>
-      </div>
-    </section>
+    <div className="faq">
+      {items.map((x) => (
+        <details key={x.q}>
+          <summary>{x.q}</summary>
+          <p>{x.a}</p>
+        </details>
+      ))}
+    </div>
   );
 }
 
-const QUESTIONS = [
-  {
-    q: "Can a request make an AI change my code?",
-    a: "No. Requests are treated as text people wrote, never as instructions. Nothing changes in your code unless you, or an agent you started, decides to build it, and nothing ships without your commit.",
-  },
-  {
-    q: "What do you get about my users?",
-    a: "Only what you pass. Sign a user ID on your server and that's all that leaves your app. Email and name are optional, and anonymous visitors work too.",
-  },
-  {
-    q: "Which platforms does it support?",
-    a: "React and Next.js today. React Native, Swift and Flutter are next, all on the same API.",
-  },
-  {
-    q: "Do I have to use Telegram?",
-    a: "No. Telegram gives you buttons to act on requests. Slack and Discord get a message for each request, and the web dashboard works anywhere.",
-  },
-];
-
-export function Faq() {
+export function FaqSection() {
   return (
     <section className="section" id="faq" style={{ paddingTop: 0 }}>
       <div className="narrow">
         <Reveal className="section-head">
           <h2 className="h2">Questions</h2>
         </Reveal>
-        <div className="faq">
-          {QUESTIONS.map((x) => (
-            <details key={x.q}>
-              <summary>{x.q}</summary>
-              <p>{x.a}</p>
-            </details>
-          ))}
-        </div>
+        <FaqList items={LANDING_FAQ} />
       </div>
     </section>
   );
@@ -216,17 +164,88 @@ export function Final() {
             {copied ? "Copied. Paste it into your agent" : "Copy the setup prompt"}
           </button>
         </div>
-        <div className="foot">
-          <span>
-            YouAsked · <a href={SITE}>{SITE.replace("https://", "")}</a>
-          </span>
-          <nav aria-label="Footer">
-            <a href="/llms.txt">llms.txt</a>
-            <a href="/install.md">install.md</a>
-            <a href="/skill.md">skill.md</a>
-            <a href="/index.md">Markdown</a>
-          </nav>
-        </div>
+        <SiteFoot />
+      </div>
+    </footer>
+  );
+}
+
+const FOOT_GROUPS: { title: string; links: [string, string][] }[] = [
+  {
+    title: "Product",
+    links: [
+      ["How it works", "/#how"],
+      ["Entry points", "/#entry-points"],
+      ["Pricing", "/pricing"],
+      ["Docs", "/docs"],
+      ["MCP server", "/mcp"],
+      ["Changelog", "/changelog"],
+      ["Privacy policy", "/privacy"],
+      ["Terms of service", "/terms"],
+    ],
+  },
+  {
+    title: "Compare",
+    links: [
+      ["All alternatives", "/alternatives"],
+      ["Canny alternative", "/alternatives/canny"],
+      ["YouAsked vs Featurebase", "/vs/featurebase"],
+    ],
+  },
+  {
+    title: "For agents",
+    links: [
+      ["llms.txt", "/llms.txt"],
+      ["install.md", "/install.md"],
+      ["skill.md", "/skill.md"],
+      ["This site as Markdown", "/index.md"],
+    ],
+  },
+  {
+    title: "Open source",
+    links: [
+      ["GitHub", "https://github.com/youasked/youasked"],
+      ["@youasked/react on npm", "https://www.npmjs.com/package/@youasked/react"],
+      ["@youasked/mcp on npm", "https://www.npmjs.com/package/@youasked/mcp"],
+    ],
+  },
+];
+
+/** Every page of the site, so crawlers and people can reach any of them from any page. */
+export function SiteFoot() {
+  return (
+    <div className="foot">
+      <div className="foot-brand">
+        <span className="foot-name">
+          YouAsked
+        </span>
+        <p>Feature requests inside your app, and a note to everyone who asked when you ship.</p>
+        <span>
+          <a href={SITE}>{SITE.replace("https://", "")}</a>
+        </span>
+      </div>
+      <nav className="foot-cols" aria-label="Footer">
+        {FOOT_GROUPS.map((g) => (
+          <div key={g.title}>
+            <h3>{g.title}</h3>
+            {g.links.map(([name, href]) => (
+              <a key={href} href={href}>
+                {name}
+              </a>
+            ))}
+          </div>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+/** The footer on subpages. */
+export function SubFooter() {
+  return (
+    <footer className="night sub-foot">
+      <div className="wrap">
+        <SiteFoot />
       </div>
     </footer>
   );

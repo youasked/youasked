@@ -358,19 +358,6 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .works { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 56px; color: var(--night-muted); font-weight: 600; font-size: 15px; align-items: center; justify-content: center; }
 .works span { color: #c9cfe3; }
 
-/* ---------- pricing */
-.prices { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
-.price { padding: 36px 32px 8px 0; display: flex; flex-direction: column; gap: 14px; }
-.price + .price { padding-left: 32px; border-left: 1px solid var(--line); }
-.price .name { font: 600 20px var(--display); letter-spacing: -0.015em; }
-.price .amt { font: 600 52px/1 var(--display); letter-spacing: -0.04em; }
-.price .amt small { font: 500 16px var(--body); color: var(--muted); letter-spacing: 0; margin-left: 4px; }
-.price ul { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; gap: 9px; color: var(--ink-2); font-size: 16px; }
-.price li { display: flex; gap: 10px; align-items: flex-start; }
-.price li svg { width: 18px; height: 18px; color: var(--live); flex: none; margin-top: 4px; }
-.beta-note { display: inline-flex; align-items: center; gap: 10px; margin-top: 28px; padding: 10px 18px; border-radius: 999px; background: #fff; box-shadow: 0 1px 0 var(--line); font-weight: 600; }
-.beta-note i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15); }
-@media (max-width: 860px) { .prices { grid-template-columns: 1fr; } .price + .price { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); } .price { padding-right: 0; } }
 
 /* ---------- faq */
 .faq { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
@@ -387,10 +374,6 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .final .sky-dark::after { content: ""; position: absolute; inset: 0; background: radial-gradient(30% 30% at 50% 100%, rgba(255, 224, 102, 0.4), transparent 70%); }
 .final-title { font-size: clamp(56px, 10vw, 140px); text-align: center; }
 .final-actions { display: flex; gap: 12px; justify-content: center; margin-top: 40px; flex-wrap: wrap; }
-.foot { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-top: clamp(80px, 10vw, 140px); padding-top: 24px; border-top: 1px solid var(--night-line); color: var(--night-muted); font-size: 14.5px; }
-.foot a { text-decoration: none; color: var(--night-muted); }
-.foot a:hover { color: #fff; }
-.foot nav { display: flex; gap: 22px; flex-wrap: wrap; }
 
 /* reveal on scroll */
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }

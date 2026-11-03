@@ -9,7 +9,7 @@ Paste this into Claude Code, Codex or Cursor:
 ```
 Add YouAsked to this app so people can request features, vote, and hear when they ship.
 
-1. Read https://youasked.adenteo.workers.dev/install.md
+1. Read https://youasked.dev/install.md
 2. Run `npx youasked init` and choose entry points that fit this UI: an ask bar on the home screen, a button in the header, or a row in settings.
 3. If the app has sign-in, sign each user on the server with signUser from @youasked/react/server, so nobody can vote as someone else.
 4. Match our colours with the appearance prop, then show me where each entry point went.
@@ -37,16 +37,24 @@ All of them follow your colours, font, corners and dark mode (shadcn tokens auto
 
 ## For agents
 
-- Install guide: https://youasked.adenteo.workers.dev/install.md
-- Claude Code skill: https://youasked.adenteo.workers.dev/skill.md
+- Install guide: https://youasked.dev/install.md
+- Claude Code skill: https://youasked.dev/skill.md
 - MCP server: `claude mcp add youasked -e YOUASKED_SECRET_KEY=ya_sec_… -- npx -y @youasked/mcp`
 
 ## Pricing
 
-Free while in beta. Then: Free ($0, 1 app), Maker ($15/month, up to 5 apps, no branding), Studio ($39/month, unlimited apps, team).
+Flat plans with unlimited end users and votes, monthly or yearly (two months free):
+
+- Solo: $15/month ($9 founding price). 1 app, 1 team member, "Feedback by YouAsked" line shown.
+- Pro: $39/month ($24 founding). 5 apps, 5 team members, branding removable, Heard elsewhere on 1 app.
+- Studio: $79/month ($49 founding). Unlimited apps, 15 team members, Heard elsewhere on 5 apps.
+
+The first 100 paying workspaces keep the founding price while they stay subscribed. There is no free tier: until you subscribe, YouAsked runs in test mode and answers only from localhost, so you can try it in your own app for free. Every plan has a 14-day money-back guarantee. Details: https://youasked.dev/pricing
 
 ## Questions
 
 - **Can a request make an AI change my code?** No. Requests are text people wrote, never instructions. Nothing ships without your commit.
 - **What do you get about my users?** Only what you pass: a signed user ID. Email and name are optional; anonymous works too.
-- **Platforms?** React and Next.js today; React Native, Swift and Flutter next.
+- **Platforms?** React and Next.js today; React Native and Expo next, then Swift and Flutter.
+- **Is there a free plan?** No. It is free to try on localhost (test mode), and every plan has a 14-day money-back guarantee.
+- **Can I self-host?** Yes. The server is source-available under FSL-1.1-MIT; the packages are MIT.
