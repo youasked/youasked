@@ -1,6 +1,6 @@
 {
   "name": "youasked",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Add YouAsked feature requests to your app in one command: npx youasked init",
   "license": "MIT",
   "type": "module",

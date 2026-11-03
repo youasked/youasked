@@ -5,7 +5,7 @@ import path from "node:path";
 /**
  * @typedef {"next-app" | "next-pages" | "vite" | "remix" | "cra" | "expo" | "unknown"} Kind
  * @typedef {{
- *   cwd: string, kind: Kind, label: string, pkg: any, ts: boolean, src: boolean,
+ *   cwd: string, kind: Kind, label: string, pkg: any, ts: boolean, src: boolean, sdk: string,
  *   pm: "npm" | "pnpm" | "yarn" | "bun", envFile: string,
  *   keyVar: string, secretVar: string, apiVar: string, keyExpr: string, apiExpr: string,
  * }} Project
@@ -62,7 +62,9 @@ export function detectProject(/** @type {string} */ cwd) {
   }
 
   const vars =
-    kind === "next-app" || kind === "next-pages"
+    kind === "expo"
+      ? { envFile: ".env", keyVar: "EXPO_PUBLIC_YOUASKED_KEY", apiVar: "EXPO_PUBLIC_YOUASKED_API_URL", keyExpr: "process.env.EXPO_PUBLIC_YOUASKED_KEY", apiExpr: "process.env.EXPO_PUBLIC_YOUASKED_API_URL" }
+      : kind === "next-app" || kind === "next-pages"
       ? { envFile: ".env.local", keyVar: "NEXT_PUBLIC_YOUASKED_KEY", apiVar: "NEXT_PUBLIC_YOUASKED_API_URL", keyExpr: "process.env.NEXT_PUBLIC_YOUASKED_KEY", apiExpr: "process.env.NEXT_PUBLIC_YOUASKED_API_URL" }
       : kind === "unknown"
         ? { envFile: ".env", keyVar: "YOUASKED_KEY", apiVar: "YOUASKED_API_URL", keyExpr: "process.env.YOUASKED_KEY", apiExpr: "process.env.YOUASKED_API_URL" }
@@ -70,7 +72,9 @@ export function detectProject(/** @type {string} */ cwd) {
         ? { envFile: ".env", keyVar: "REACT_APP_YOUASKED_KEY", apiVar: "REACT_APP_YOUASKED_API_URL", keyExpr: "process.env.REACT_APP_YOUASKED_KEY", apiExpr: "process.env.REACT_APP_YOUASKED_API_URL" }
         : { envFile: ".env", keyVar: "VITE_YOUASKED_KEY", apiVar: "VITE_YOUASKED_API_URL", keyExpr: "import.meta.env.VITE_YOUASKED_KEY", apiExpr: "import.meta.env.VITE_YOUASKED_API_URL" };
 
-  return { cwd, kind, label, pkg, ts, src, pm: detectPm(cwd, pkg), secretVar: "YOUASKED_SECRET_KEY", ...vars };
+  /** The widget package for this platform. */
+  const sdk = kind === "expo" ? "@youasked/react-native" : "@youasked/react";
+  return { cwd, kind, label, pkg, ts, src, sdk, pm: detectPm(cwd, pkg), secretVar: "YOUASKED_SECRET_KEY", ...vars };
 }
 
 /** First existing file out of the candidates (relative to cwd), or null. */

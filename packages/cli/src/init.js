@@ -51,11 +51,6 @@ export async function init({ flags, cwd }) {
   }
   say(`  Found ${bold(project.label)} ${dim(`(${project.pm})`)}`);
 
-  if (project.kind === "expo") {
-    say(`\n  React Native support is coming. The widget is web-only for now, so I haven't changed anything.\n`);
-    return;
-  }
-
   /** @type {{ rel: string, status: "created" | "modified" | "unchanged" | "manual" }[]} */
   const changes = [];
   /** @type {string[]} */
@@ -120,21 +115,62 @@ export async function init({ flags, cwd }) {
     step("2. Install");
     if (flags["no-install"]) {
       say(`  ${dim("Skipped (--no-install).")} Install it yourself: ${cyan(installLine(project))}`);
-    } else if (hasDependency(project, "@youasked/react")) {
-      ok("@youasked/react is already in package.json");
+    } else if (hasDependency(project, project.sdk)) {
+      ok(`${project.sdk} is already in package.json`);
     } else {
-      const [cmd, args] = installCommand(project.pm, "@youasked/react");
+      const [cmd, args] = installCommand(project.pm, project.sdk);
       say(`  ${dim("$")} ${cmd} ${args.join(" ")}`);
       const r = spawnSync(cmd, args, { cwd, stdio: "inherit" });
-      if (r.status === 0) ok("Installed @youasked/react");
+      if (r.status === 0) ok(`Installed ${project.sdk}`);
       else {
         warn(`The install failed. Run it yourself: ${cyan(installLine(project))}`);
+      }
+    }
+    if (project.kind === "expo" && !flags["no-install"]) {
+      // Optional peers: a remembered anonymous id across restarts, and haptics on vote and ship.
+      const peers = ["@react-native-async-storage/async-storage", "expo-haptics"].filter((n) => !hasDependency(project, n));
+      if (peers.length) {
+        say(`  ${dim("$")} npx expo install ${peers.join(" ")}`);
+        const r = spawnSync("npx", ["expo", "install", ...peers], { cwd, stdio: "inherit" });
+        if (r.status === 0) ok(`Installed ${peers.join(" and ")}`);
+        else warn(`Couldn't install ${peers.join(" and ")}. Optional, but run ${cyan(`npx expo install ${peers.join(" ")}`)} for a remembered device id and haptics.`);
       }
     }
 
     // ------------------------------------------------------------ what to add
     if (project.kind === "unknown") {
       printManual(project, publicKey, manual);
+    } else if (project.kind === "expo") {
+      step("3. Where should people ask?");
+      /** @type {string[]} */
+      const entries = await ask.multi(
+        "Entry points",
+        [
+          { key: "settings", label: "Settings row", hint: "a row in your settings or profile screen" },
+          { key: "icon", label: "Header button", hint: "a round icon in a screen header" },
+          { key: "card", label: "Feature card", hint: "top requests with vote buttons, for a home screen" },
+          { key: "askbar", label: "Ask bar", hint: "chat-style input for a home screen" },
+          { key: "floating", label: "Floating launcher", hint: "a chat bubble in the corner (skip it if you have a tab bar)" },
+        ],
+        ["settings", "icon"],
+      );
+      step("4. Code");
+      addExpoProvider(project, { floating: entries.includes("floating"), api: customApi, changes, manual });
+      const rnSnippets = {
+        settings: { import: "RequestButton", jsx: '<RequestButton variant="row" />', what: "settings row" },
+        icon: { import: "RequestButton", jsx: '<RequestButton variant="icon" />', what: "header button" },
+        card: { import: "FeatureCard", jsx: "<FeatureCard />", what: "feature card" },
+        askbar: { import: "AskBar", jsx: "<AskBar />", what: "ask bar" },
+      };
+      for (const key of /** @type {const} */ (["settings", "icon", "card", "askbar"])) {
+        if (entries.includes(key)) {
+          const sn = rnSnippets[key];
+          manual.push(`Put the ${sn.what} where it fits your screens:\n\nimport { ${sn.import} } from "@youasked/react-native";\n\n${sn.jsx}`);
+        }
+      }
+      manual.push(
+        `If people sign in, sign their id on your server (never in the app) and pass it in, so nobody can vote as someone else:\n\n// server: signUser(process.env.YOUASKED_SECRET_KEY, user.id) from "@youasked/react/server"\n<YouAsked appKey={…} user={{ id: userId }} signature={signature} ready={loaded}>`,
+      );
     } else {
       step("3. Where should people ask?");
       /** @type {Entry[]} */
@@ -206,7 +242,11 @@ export async function init({ flags, cwd }) {
       });
     }
     say(`\n${bold("Next")}`);
-    say(`  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`);
+    say(
+      project.kind === "expo"
+        ? `  1. Start the app (${cyan("npx expo start")}), open an entry point, add a request and vote on it. Dev builds count as test mode.`
+        : `  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`,
+    );
     if (claimUrl) {
       say(`  2. Try it now on localhost. To go live, claim it: ${cyan(claimUrl)}`);
       say(`     ${dim("Until it's claimed and on a plan, the widget only answers on localhost.")}`);
@@ -226,7 +266,7 @@ export async function init({ flags, cwd }) {
 }
 
 function installLine(/** @type {Project} */ p) {
-  const [cmd, args] = installCommand(p.pm, "@youasked/react");
+  const [cmd, args] = installCommand(p.pm, p.sdk);
   return `${cmd} ${args.join(" ")}`;
 }
 
@@ -391,6 +431,31 @@ function wireProvider(/** @type {Project} */ p, { entries, identity, api, change
     return false;
   }
   return true;
+}
+
+/** Expo: a FeatureRequests wrapper the root layout uses. Editing the root layout is left to the developer, since layouts vary too much to edit safely. */
+function addExpoProvider(/** @type {Project} */ p, { floating, api, changes, manual }) {
+  const dir = exists(path.join(p.cwd, "src")) ? "src/components" : "components";
+  const rel = `${dir}/FeatureRequests.${p.ts ? "tsx" : "jsx"}`;
+  const props = [`appKey={${p.keyExpr}${p.ts ? "!" : ""}}`, `trigger="${floating ? "floating" : "none"}"`];
+  if (api) props.push(`apiUrl={${p.apiExpr}}`);
+  const typed = p.ts ? ": { children: React.ReactNode }" : "";
+  writeNew(
+    p.cwd,
+    rel,
+    `import { YouAsked } from "@youasked/react-native";
+
+// Feature requests: people ask and vote inside the app, and hear when what they asked for ships.
+export function FeatureRequests({ children }${typed}) {
+  return <YouAsked ${props.join(" ")}>{children}</YouAsked>;
+}
+`,
+    changes,
+  );
+  const layout = firstExisting(p.cwd, ["app/_layout.tsx", "app/_layout.jsx", "src/app/_layout.tsx", "App.tsx", "App.jsx", "App.js"]);
+  manual.push(
+    `Wrap your root ${layout ? `in ${layout}` : "component"} so every screen can open the sheet:\n\nimport { FeatureRequests } from "${layout?.startsWith("src/") ? "../components/FeatureRequests" : layout?.startsWith("app/") ? "../components/FeatureRequests" : "./components/FeatureRequests"}";\n\n<FeatureRequests>\n  {/* your navigator */}\n</FeatureRequests>`,
+  );
 }
 
 function addIdentityRoute(/** @type {Project} */ p, changes) {
