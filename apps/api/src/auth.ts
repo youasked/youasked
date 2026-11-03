@@ -228,7 +228,8 @@ auth.use("*", ...dashCors());
 const hasGoogle = (env: Env) => Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 const hasGithub = (env: Env) => Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
 
-auth.get("/providers", (c) => c.json({ google: hasGoogle(c.env), github: hasGithub(c.env), email: true }));
+// Email links are offered only once the domain can actually send (EMAIL_SIGN_IN is "off" until then).
+auth.get("/providers", (c) => c.json({ google: hasGoogle(c.env), github: hasGithub(c.env), email: c.env.EMAIL_SIGN_IN !== "off" }));
 
 const loginError = (c: Context<any>, error: string) => c.redirect(`${dashboardBase(c.env)}/login?error=${error}`, 302);
 

@@ -11,7 +11,8 @@ export type Env = {
   DASHBOARD_URL?: string;
   API_URL?: string;
 
-  /** Sign-in. Each provider is only offered when its secrets are set. */
+  /** Sign-in. Each provider is only offered when its secrets are set. "off" hides email links (until Email Sending is set up for the domain). */
+  EMAIL_SIGN_IN?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GITHUB_CLIENT_ID?: string;
