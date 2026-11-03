@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>YouAsked: Studio direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--ink:#0e0f12;--ink-2:#3b3e46;--gray:#8a8d96;--hair:#dcdde2;--paper:#f4f4f6;--accent:#5b3df5;--live:#17a34a}
+*{box-sizing:border-box;margin:0}
+html{background:var(--paper)}
+body{font:400 17px/1.55 Geist,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* nav: quiet, one action */
+nav{position:sticky;top:0;z-index:20;backdrop-filter:saturate(1.6) blur(18px);-webkit-backdrop-filter:saturate(1.6) blur(18px);background:rgba(244,244,246,.72);border-bottom:1px solid rgba(14,15,18,.06)}
+nav .wrap{display:flex;align-items:center;height:60px;gap:36px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.01em}
+.brand svg{width:22px;height:22px}
+.links{display:flex;gap:26px;font-size:14px;color:var(--ink-2)}
+.links a:hover{color:var(--ink)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:20px;font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;font:500 14.5px Geist,system-ui;border:0;cursor:pointer}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-ink:hover{background:#25272d}
+.btn-quiet{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--hair)}
+.btn-quiet:hover{background:#fff}
+
+/* hero: studio sweep, type first, product as the object */
+.hero{position:relative;padding:92px 0 0;background:radial-gradient(120% 70% at 50% 0%,#fdfdfe 0%,#f1f1f4 46%,#e4e5e9 100%);overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:multiply;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.hero-copy{text-align:center;max-width:1080px;margin:0 auto;position:relative;z-index:2}
+h1{font-weight:600;font-size:clamp(40px,4.6vw,66px);line-height:1.02;letter-spacing:-.042em}
+h1 span{display:block;color:#9a9da6}
+.lede{max-width:560px;margin:22px auto 0;font-size:19px;line-height:1.5;color:var(--ink-2)}
+.cta{display:flex;gap:12px;justify-content:center;margin-top:34px;flex-wrap:wrap}
+.fine{margin-top:16px;font:400 13px "Geist Mono",monospace;color:var(--gray)}
+
+.stage{position:relative;height:760px;margin-top:56px}
+.floor{position:absolute;left:50%;bottom:36px;width:900px;height:120px;transform:translateX(-50%);background:radial-gradient(50% 50% at 50% 50%,rgba(20,22,30,.30),rgba(20,22,30,0) 70%);filter:blur(12px)}
+
+/* the phone: titanium frame, black bezel, glass sheen */
+.iphone{--w:340px;position:absolute;width:var(--w);aspect-ratio:393/852;border-radius:calc(var(--w)*.172);padding:calc(var(--w)*.036);
+  background:linear-gradient(140deg,#f2f2f4 0%,#b9bbc1 14%,#fafafb 27%,#9a9ca3 48%,#e3e4e8 66%,#8b8e95 84%,#d6d7db 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),inset 0 0 0 2px rgba(0,0,0,.08),0 60px 110px -40px rgba(17,19,26,.55),0 26px 40px -24px rgba(17,19,26,.35)}
+.iphone::before{content:"";position:absolute;inset:calc(var(--w)*.013);border-radius:calc(var(--w)*.16);background:#060607;box-shadow:inset 0 0 0 1px #1c1d21}
+.iphone .screen{position:relative;z-index:1;width:100%;height:100%;border-radius:calc(var(--w)*.138);overflow:hidden;background:#000}
+.iphone .screen img{display:block;width:100%;height:100%;object-fit:cover}
+.iphone .island{position:absolute;z-index:3;top:2.3%;left:50%;transform:translateX(-50%);width:31%;height:3.7%;border-radius:999px;background:#000}
+.iphone .status{position:absolute;z-index:3;top:2.9%;left:9%;right:8%;display:flex;justify-content:space-between;font:600 calc(var(--w)*.044)/1 -apple-system,system-ui;color:#0d0d12}
+.iphone.dark .status{color:#fff}
+.iphone .status i{display:inline-block;width:calc(var(--w)*.07);height:calc(var(--w)*.032);border-radius:4px;border:1.5px solid currentColor;opacity:.9;vertical-align:middle}
+.iphone .glass{position:absolute;z-index:4;inset:calc(var(--w)*.036);border-radius:calc(var(--w)*.138);pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,0) 30%,rgba(255,255,255,0) 70%,rgba(255,255,255,.06) 100%)}
+.iphone .key{position:absolute;width:3px;border-radius:2px;background:linear-gradient(90deg,#8b8e95,#e7e8eb)}
+.iphone .k1{left:-3px;top:19%;height:6%}.iphone .k2{left:-3px;top:28%;height:9%}.iphone .k3{left:-3px;top:39%;height:9%}.iphone .k4{right:-3px;top:30%;height:14%}
+
+.front{left:50%;top:0;transform:translateX(-12%)}
+.back{--w:316px;left:50%;top:70px;transform:translateX(-102%) rotate(-3deg);filter:saturate(.95)}
+
+/* the notification that lands on the back phone: the "it's live" moment, rendered, not screenshotted */
+.live-note{position:absolute;z-index:6;left:50%;top:430px;transform:translateX(-118%);width:300px;padding:14px 16px;border-radius:22px;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(20px) saturate(1.8);-webkit-backdrop-filter:blur(20px) saturate(1.8);
+  box-shadow:0 20px 50px -20px rgba(17,19,26,.45),inset 0 0 0 1px rgba(255,255,255,.7);font-size:14px;line-height:1.4}
+.live-note b{font-weight:600}
+.live-note .row{display:flex;align-items:center;gap:8px;color:var(--gray);font-size:12.5px;margin-bottom:6px}
+.live-note .dot{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#7c66ff,#5b3df5);display:grid;place-items:center}
+.live-note .dot svg{width:11px;height:11px}
+.live-note .badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px;color:var(--live);font-weight:600;font-size:13px}
+
+/* moments: three close crops with hairline captions */
+.moments{padding:140px 0 120px;background:#fff}
+.moments h2{font-weight:600;font-size:clamp(32px,4vw,48px);letter-spacing:-.035em;line-height:1.05;max-width:640px}
+.moments h2 span{color:#9a9da6}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:64px}
+.tile{border-radius:28px;background:var(--paper);height:420px;position:relative;overflow:hidden}
+.tile .shot{position:absolute;left:26px;right:26px;bottom:0;height:88%;border-radius:22px 22px 0 0;overflow:hidden;background:#fff;box-shadow:0 24px 50px -26px rgba(17,19,26,.4),0 0 0 1px rgba(17,19,26,.04)}
+.tile .shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:bottom}
+.cap{border-top:1px solid var(--hair);margin-top:18px;padding-top:14px;display:flex;gap:14px}
+.cap .n{font:500 13px "Geist Mono",monospace;color:var(--gray);padding-top:2px}
+.cap h3{font-weight:600;font-size:17px;letter-spacing:-.01em}
+.cap p{color:var(--ink-2);font-size:15px;margin-top:2px}
+
+/* telegram card, drawn in HTML so it stays crisp */
+.tg{position:absolute;left:28px;right:28px;top:50%;transform:translateY(-50%);background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 18px 40px -22px rgba(17,19,26,.35);font-size:14px}
+.tg .who{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.tg .who i{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#7c66ff,#5b3df5)}
+.tg .t{font-weight:600;margin-top:8px}
+.tg .m{color:var(--gray);font-size:13px;margin-top:2px}
+.tg .b{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
+.tg .b span{background:#f0f1f4;border-radius:10px;text-align:center;padding:7px 0;font-size:12.5px;font-weight:500}
+
+footer{padding:48px 0 64px;color:var(--gray);font-size:13px;border-top:1px solid var(--hair);background:#fff}
+
+@media (max-width:820px){
+  .links{display:none}
+  .hero{padding-top:72px}
+  .lede{font-size:17px}
+  .stage{height:600px;margin-top:48px}
+  .iphone{--w:260px}.back{--w:236px;top:54px;transform:translateX(-96%) rotate(-3deg)}.front{transform:translateX(-18%)}
+  .live-note{width:240px;top:340px;transform:translateX(-104%);font-size:13px}
+  .grid3{grid-template-columns:1fr;gap:40px}
+  .tile{height:360px}
+}
+@media (max-width:480px){.fine .wide{display:none}.wrap{padding:0 18px}.nav-right .signin{display:none}.iphone{--w:228px}.back{--w:206px}.live-note{width:210px;top:300px;transform:translateX(-96%)}}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="#"><svg viewBox="0 0 24 24"><path d="M11.4 3.2c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L4.6 20.2l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.37 3.2 11.4 3.2Z" fill="#0e0f12"/><path d="m7.9 11.2 2.5 2.4 4.7-4.7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>YouAsked</a>
+  <div class="links"><a href="#">Product</a><a href="#">Docs</a><a href="#">Pricing</a><a href="#">Changelog</a></div>
+  <div class="nav-right"><a class="signin" href="#">Sign in</a><a class="btn btn-ink" href="#">Get started</a></div>
+</div></nav>
+
+<section class="hero">
+  <div class="wrap hero-copy">
+    <h1>Feature requests that feel built in.<span>And tell people when you ship.</span></h1>
+    <p class="lede">Your users ask and vote without leaving your app. You hear it in Telegram. When it ships, everyone who asked finds out, right where they asked.</p>
+    <div class="cta"><a class="btn btn-ink" href="#">Get started</a><button class="btn btn-quiet">Copy the setup prompt</button></div>
+    <p class="fine">Free on localhost.<span class="wide"> One command: npx youasked init</span></p>
+  </div>
+  <div class="stage">
+    <div class="floor"></div>
+    <div class="iphone back dark"><span class="key k1"></span><span class="key k2"></span><span class="key k3"></span><span class="key k4"></span><div class="screen"><img src="img/host-dark.png" alt="" /></div><div class="island"></div><div class="status"><span>9:41</span><span><i></i></span></div><div class="glass"></div></div>
+    <div class="iphone front"><span class="key k1"></span><span class="key k2"></span><span class="key k3"></span><span class="key k4"></span><div class="screen"><img src="img/home-light.png" alt="The YouAsked sheet open inside an app" /></div><div class="island"></div><div class="status"><span>9:41</span><span><i></i></span></div><div class="glass"></div></div>
+    <div class="live-note">
+      <div class="row"><span class="dot"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Acme · now</div>
+      <b>You asked for “Split a bill with my partner”.</b> It's live. Tap any expense and choose 50/50.
+      <div class="badge">● 15 people who asked were told</div>
+    </div>
+  </div>
+</section>
+
+<section class="moments"><div class="wrap">
+  <h2>From ask to it's live. <span>Without anyone opening a dashboard.</span></h2>
+  <div class="grid3">
+    <div>
+      <div class="tile"><div class="shot"><img src="img/compose-light.png" alt="" /></div></div>
+      <div class="cap"><span class="n">01</span><div><h3>They ask where they are</h3><p>A sheet that looks like part of your app. It finds what others already asked as they type.</p></div></div>
+    </div>
+    <div>
+      <div class="tile"><div class="tg"><div class="who"><i></i>Acme requests</div><div class="t">YA-12 · Split a bill with my partner</div><div class="m">Mei · 14 votes · “We share groceries and rent.”</div><div class="b"><span>Planned</span><span>Shipped</span><span>Reply</span></div></div></div>
+      <div class="cap"><span class="n">02</span><div><h3>You hear it on your phone</h3><p>Every request lands in Telegram, Slack or Discord with buttons to plan, reply or ship.</p></div></div>
+    </div>
+    <div>
+      <div class="tile"><div class="shot"><img src="img/shipped-light.png" alt="" /></div></div>
+      <div class="cap"><span class="n">03</span><div><h3>Everyone who asked hears it</h3><p>Write “closes YA-12” in a commit. YouAsked tells every person who asked, in your app.</p></div></div>
+    </div>
+  </div>
+</div></section>
+<footer><div class="wrap">Direction A · Studio. A design study, not the live site.</div></footer>
+</body>
+</html>

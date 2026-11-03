@@ -84,7 +84,7 @@ writeFileSync(
     .map((e) => `  <url><loc>${e.loc}</loc><lastmod>${e.lastmod}</lastmod><priority>${e.priority}</priority></url>`)
     .join("\n")}\n</urlset>\n`,
 );
-writeFileSync(new URL("robots.txt", dist), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+writeFileSync(new URL("robots.txt", dist), `User-agent: *\nAllow: /\nDisallow: /lab/\n\nSitemap: ${SITE}/sitemap.xml\n`);
 
 // The Markdown and text files may still be fetched from the old workers.dev hosts; make sure they name the new ones.
 const OLD = { "https://youasked.adenteo.workers.dev": SITE, "https://youasked-api.adenteo.workers.dev": API };
