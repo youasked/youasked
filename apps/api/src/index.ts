@@ -303,6 +303,7 @@ admin.get("/integrations", async (c) => {
       const cfg = i.config as TelegramConfig;
       out.telegram = {
         connected: Boolean(cfg.chatId),
+        mode: cfg.interactive === false ? "notify" : "interactive",
         chatTitle: cfg.chatTitle,
         botUsername: cfg.botUsername,
         link: cfg.linkCode ? `https://t.me/${cfg.botUsername}?start=${cfg.linkCode}` : null,
@@ -331,13 +332,34 @@ async function upsertIntegration(db: D1Database, appId: string, kind: string, co
   return id;
 }
 
-/** Connects a Telegram bot: points its webhook here and returns a link that ties a chat to this app. */
+/**
+ * Connects a Telegram bot: points its webhook here and returns a link that ties a chat to this app.
+ * With mode "notify" and a chatId, it only posts to that chat and leaves the bot's updates alone,
+ * for a bot that already runs something else.
+ */
 admin.put("/integrations/telegram", async (c) => {
-  const { botToken } = await c.req.json<{ botToken?: string }>();
+  const { botToken, mode, chatId } = await c.req.json<{ botToken?: string; mode?: string; chatId?: string | number }>();
   if (!botToken || !/^\d+:[\w-]{30,}$/.test(botToken)) fail(400, "bad_bot_token");
   const me = await tg(c.env, botToken, "getMe", {});
   if (!me?.ok) fail(400, "bot_token_rejected");
   const appId = c.get("app").id;
+  if (mode === "notify") {
+    if (chatId === undefined) fail(400, "chat_id_required");
+    const chat = await tg(c.env, botToken, "getChat", { chat_id: chatId });
+    if (!chat?.ok) fail(400, "chat_not_found");
+    const config: TelegramConfig = {
+      botToken,
+      botUsername: me.result.username,
+      secret: "",
+      linkCode: null,
+      chatId: String(chat.result.id),
+      chatTitle: chat.result.title ?? chat.result.first_name ?? null,
+      interactive: false,
+      dashboardUrl: `${new URL(c.req.url).origin}/admin`,
+    };
+    await upsertIntegration(c.env.DB, appId, "telegram", config);
+    return c.json({ botUsername: config.botUsername, chatTitle: config.chatTitle, mode: "notify" });
+  }
   const config: TelegramConfig = {
     botToken,
     botUsername: me.result.username,
@@ -394,7 +416,9 @@ admin.delete("/integrations/:kind", async (c) => {
   const appId = c.get("app").id;
   const kind = c.req.param("kind");
   const existing = (await loadIntegrations(c.env.DB, appId)).find((i) => i.kind === kind);
-  if (existing?.kind === "telegram") await tg(c.env, (existing.config as TelegramConfig).botToken, "deleteWebhook", {});
+  if (existing?.kind === "telegram" && (existing.config as TelegramConfig).interactive !== false) {
+    await tg(c.env, (existing.config as TelegramConfig).botToken, "deleteWebhook", {});
+  }
   await c.env.DB.prepare("DELETE FROM integrations WHERE app_id = ? AND kind = ?").bind(appId, kind).run();
   return c.json({ ok: true });
 });

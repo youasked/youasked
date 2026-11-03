@@ -131,7 +131,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   return (
     <>
       <Header
-        leading={<AppAvatar name={appName} icon={appIcon} />}
+        leading={<AppAvatar icon={appIcon} />}
         title={appName}
         subtitle="Ideas, votes and what's new"
         onClose={onClose}
@@ -486,7 +486,7 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
 }
 
 /** Team replies read as messages from the app, yours sit on the right like any chat. */
-function Message({ comment, appName, appIcon }: { comment: RequestComment; appName: string; appIcon?: string }) {
+function Message({ comment, appName, appIcon }: { comment: RequestComment; appName: string; appIcon: string | null }) {
   const when = <time dateTime={new Date(comment.createdAt).toISOString()}>{ago(comment.createdAt)}</time>;
   if (comment.mine) {
     return (
@@ -498,7 +498,7 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
   }
   return (
     <div className="ya-msg">
-      {comment.team ? <AppAvatar name={appName} icon={appIcon} size={26} /> : <span className="ya-msg-dot" aria-hidden="true" />}
+      {comment.team && appIcon ? <AppAvatar icon={appIcon} size={26} /> : null}
       <div className="ya-msg-body">
         <span className="ya-msg-meta">
           <b>{comment.team ? appName : comment.author || "Someone"}</b>

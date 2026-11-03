@@ -19,11 +19,17 @@ function useScope(className?: string, style?: CSSProperties) {
 
 /** A chat-style input bar. Tapping it opens the composer. Good at the top of a home screen or under an empty state. */
 export function AskBar({ placeholder = "Ask for a feature…", className, style }: Common & { placeholder?: string }) {
-  const { open, appName, appIcon, unseenCount } = useInternal();
+  const { open, appIcon, unseenCount } = useInternal();
   return (
     <div {...useScope(className, style)}>
       <button type="button" className="ya-askbar" onClick={() => open({ view: "new" })}>
-        <AppAvatar name={appName} icon={appIcon} size={30} />
+        {appIcon ? (
+          <AppAvatar icon={appIcon} size={30} />
+        ) : (
+          <span className="ya-askbar-glyph" aria-hidden="true">
+            <IconIdea />
+          </span>
+        )}
         <span className="ya-askbar-text">{placeholder}</span>
         {unseenCount > 0 && <span className="ya-badge">{unseenCount}</span>}
         <span className="ya-askbar-send" aria-hidden="true">

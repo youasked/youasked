@@ -58,6 +58,12 @@ export type TelegramConfig = {
   linkCode: string | null;
   chatId: string | null;
   chatTitle: string | null;
+  /**
+   * false when the bot already belongs to something else (it long-polls its own updates), so
+   * YouAsked only posts: cards link to the dashboard instead of carrying action buttons.
+   */
+  interactive?: boolean;
+  dashboardUrl?: string;
 };
 
 export type GithubConfig = { secret: string };

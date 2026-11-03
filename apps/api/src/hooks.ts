@@ -49,6 +49,8 @@ hooks.post("/telegram/:id", async (c) => {
   const integ = await loadIntegration<TelegramConfig>(c.env.DB, c.req.param("id"));
   if (!integ || integ.kind !== "telegram") return c.text("unknown", 404);
   const cfg = integ.config;
+  // Notify-only bots never point their webhook here, so nothing here should be accepted for them.
+  if (cfg.interactive === false || !cfg.secret) return c.text("unknown", 404);
   if (c.req.header("x-telegram-bot-api-secret-token") !== cfg.secret) return c.text("forbidden", 403);
   const update = await c.req.json<TgUpdate>();
   const env = c.env;

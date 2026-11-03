@@ -116,6 +116,9 @@ async function sendTelegram(env: Env, cfg: TelegramConfig, e: TeamEvent) {
       : [{ text: "💬 Reply", callback_data: `r:${e.request.id}` }];
     reply_markup = { inline_keyboard: [row] };
   }
+  if (cfg.interactive === false) {
+    reply_markup = { inline_keyboard: [[{ text: "Open dashboard", url: cfg.dashboardUrl ?? "https://youasked-api.adenteo.workers.dev/admin" }]] };
+  }
   const sent = await tg(env, cfg.botToken, "sendMessage", {
     chat_id: cfg.chatId,
     text,

@@ -56,7 +56,7 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-link{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:600;color:var(--_accent);padding:6px 8px;border-radius:10px;flex:none}
 .ya-link svg{width:15px;height:15px}
 .ya-link:hover{background:var(--_tint)}
-.ya-avatar{display:grid;place-items:center;flex:none;border-radius:30%;background:var(--_accent);color:var(--_accent-fg);font-weight:800;object-fit:cover}
+.ya-avatar{display:block;flex:none;border-radius:24%;object-fit:cover;background:var(--_surface)}
 
 /* ---------- body, lists */
 .ya-body{flex:1;min-height:0;overflow-y:auto;padding:6px 16px 18px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
@@ -130,7 +130,6 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-thread{display:flex;flex-direction:column;gap:12px;margin-top:8px}
 .ya-msg{display:flex;gap:8px;align-items:flex-end;max-width:92%}
 .ya-msg .ya-avatar{border-radius:50%;margin-bottom:2px}
-.ya-msg-dot{width:26px;height:26px;border-radius:50%;background:var(--_surface);flex:none;margin-bottom:2px}
 .ya-msg-body{display:flex;flex-direction:column;gap:3px;min-width:0}
 .ya-msg-body .ya-bubble{max-width:100%;animation:none}
 .ya-msg-out{align-self:flex-end;flex-direction:column;align-items:flex-end;gap:3px}
@@ -196,7 +195,9 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 /* ---------- inline entry points */
 .ya-askbar{display:flex;align-items:center;gap:12px;width:100%;padding:8px 8px 8px 10px;border-radius:999px;background:var(--_bg);border:1px solid var(--_border);color:var(--_muted);font-size:15.5px;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:border-color .15s,transform .12s}
 .ya-askbar:hover{border-color:color-mix(in srgb,var(--_accent) 50%,var(--_border))}
-.ya-askbar .ya-avatar{border-radius:50%}
+.ya-askbar .ya-avatar{border-radius:30%}
+.ya-askbar-glyph{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--_tint);color:var(--_accent);flex:none}
+.ya-askbar-glyph svg{width:18px;height:18px}
 .ya-askbar-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ya-askbar-send{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--_accent);color:var(--_accent-fg);flex:none}
 .ya-askbar-send svg{width:17px;height:17px}

@@ -42,7 +42,8 @@ export type InternalContext = {
   /** Spread onto any element that renders widget UI inside the host page. */
   scope: { className: string; style?: CSSProperties; "data-ya-mode"?: string };
   appName: string;
-  appIcon?: string;
+  /** The app's icon: from the appIcon prop, else the page's apple-touch-icon or a large favicon, else null. */
+  appIcon: string | null;
   title: string;
   greeting?: string;
 };

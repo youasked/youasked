@@ -157,13 +157,20 @@ export function ago(t: number): string {
   return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function AppAvatar({ name, icon, size = 36 }: { name: string; icon?: string; size?: number }) {
-  return icon ? (
-    <img className="ya-avatar" src={icon} alt="" width={size} height={size} style={{ width: size, height: size }} />
-  ) : (
-    <span className="ya-avatar" style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
-      {(name.trim()[0] ?? "?").toUpperCase()}
-    </span>
+/** The app's own icon, or nothing. A guessed letter tile looks generic, so it's never drawn. */
+export function AppAvatar({ icon, size = 36 }: { icon?: string | null; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!icon || failed) return null;
+  return (
+    <img
+      className="ya-avatar"
+      src={icon}
+      alt=""
+      width={size}
+      height={size}
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
   );
 }
 

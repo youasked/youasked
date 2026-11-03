@@ -26,8 +26,8 @@ export type YouAskedProps = {
   label?: string;
   /** Your app's name in the greeting. Defaults to the name you created the app with. */
   appName?: string;
-  /** Square image URL shown as the app's avatar. Defaults to the first letter of the name. */
-  appIcon?: string;
+  /** Square image URL for your app's icon. By default it's found from the page (apple-touch-icon or a large favicon); false hides it. */
+  appIcon?: string | false;
   /** First message on the home screen. */
   greeting?: string;
   /** Heading of the full list. */
@@ -67,6 +67,11 @@ export function YouAsked({
   const [config, setConfig] = useState<Config | null>(null);
   const tokens = useTokens(appearance, mounted);
   const openerRef = useRef<Element | null>(null);
+  const [detectedIcon, setDetectedIcon] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (appIcon === undefined) setDetectedIcon(findPageIcon());
+  }, [appIcon]);
 
   useEffect(() => {
     injectStyles();
@@ -131,11 +136,11 @@ export function YouAsked({
       markSeen,
       scope: { className: "ya-scope", style: scopeStyle, "data-ya-mode": tokens?.mode },
       appName: appName ?? config?.app.name ?? "us",
-      appIcon,
+      appIcon: appIcon === false ? null : (appIcon ?? detectedIcon),
       title,
       greeting,
     }),
-    [open, close, route, unseen.length, client, config, markSeen, scopeStyle, tokens?.mode, appName, appIcon, title, greeting],
+    [open, close, route, unseen.length, client, config, markSeen, scopeStyle, tokens?.mode, appName, appIcon, detectedIcon, title, greeting],
   );
 
   const notice = unseen.find((n) => n.kind === "shipped") ?? unseen.find((n) => n.kind === "reply");
@@ -175,6 +180,22 @@ export function YouAsked({
         )}
     </YouAskedContext.Provider>
   );
+}
+
+/**
+ * The page's app icon, if it declares one we can trust: an apple-touch-icon, or a favicon of at
+ * least 96px. Tiny or vector favicons are skipped (often a monogram that reads badly at avatar size).
+ */
+function findPageIcon(): string | null {
+  const links = Array.from(document.querySelectorAll<HTMLLinkElement>("link[rel~='icon'], link[rel~='apple-touch-icon']"));
+  const touch = links.find((l) => l.rel.includes("apple-touch-icon") && l.href);
+  if (touch) return touch.href;
+  const large = links
+    .filter((l) => l.href && !/\.svg(\?|$)/i.test(l.href) && !/\.ico(\?|$)/i.test(l.href))
+    .map((l) => ({ l, size: Math.max(0, ...(l.sizes?.value ?? "").split(/\s+/).map((v) => parseInt(v, 10) || 0)) }))
+    .filter((x) => x.size >= 96)
+    .sort((a, b) => b.size - a.size)[0];
+  return large?.l.href ?? null;
 }
 
 function useTokens(appearance: Appearance | undefined, mounted: boolean) {
