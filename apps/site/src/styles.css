@@ -441,23 +441,22 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .step-logos { margin-top: 6px; }
 .agent-logos { display: flex; gap: 8px; }
 
-/* ---------- spotlight on the real component in previews */
-.mock-app .host { opacity: 0.42; filter: saturate(0.3); transition: opacity 0.3s; }
-.mock-app:hover .host { opacity: 0.6; }
-.spot { position: relative; border-radius: 22px; padding: 6px; margin: -6px; box-shadow: 0 0 0 2px #2b4bee, 0 0 0 8px rgba(43, 75, 238, 0.14); animation: spot 2.6s ease-in-out infinite; }
-.spot-inline { display: inline-block; border-radius: 999px; padding: 3px; margin: -3px; }
-.spot-tag { position: absolute; top: -13px; right: 14px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 6px; border-radius: 999px; background: #2b4bee; color: #fff; font: 600 11.5px var(--body); letter-spacing: 0.01em; box-shadow: 0 6px 16px -6px rgba(43, 75, 238, 0.7); white-space: nowrap; }
-.spot-inline .spot-tag { top: auto; bottom: -26px; right: 50%; transform: translateX(50%); }
-.spot-mark { width: 15px; height: 15px; }
-.spot-tag .spot-mark path:first-of-type { fill: #fff; }
-.spot-tag .spot-mark path:nth-of-type(2) { stroke: #2b4bee; }
-.spot-tag .spot-mark circle { stroke: #2b4bee; }
-@keyframes spot { 50% { box-shadow: 0 0 0 2px #2b4bee, 0 0 0 12px rgba(43, 75, 238, 0.06); } }
-.preview-legend { position: relative; z-index: 1; display: flex; gap: 16px; justify-content: center; margin-top: 16px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
-.preview-legend span { display: inline-flex; align-items: center; gap: 7px; }
-.preview-legend i { width: 14px; height: 14px; border-radius: 5px; display: block; }
-.preview-legend .l-host { background: #fff; opacity: 0.55; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
-.preview-legend .l-ya { box-shadow: 0 0 0 2px #2b4bee; background: rgba(43, 75, 238, 0.12); }
+/* ---------- previews: your app is drawn as a grey wireframe, YouAsked is the only real UI */
+.mock-app .host { color: #a0a5b1; }
+.mock-app .host-box { background: transparent; box-shadow: none; border: 1.5px dashed #c8ccd6; }
+.mock-app .host .ic { background: transparent; border: 1.5px dashed #d3d6de; filter: grayscale(1); opacity: 0.55; }
+.mock-app .host .app-row { border-color: #e2e4ea; }
+.mock-app .host .k, .mock-app .host.k { color: #b0b4be; }
+.mock-app .mini-chart.host i { background: #d6d9e1; }
+.mock-app .mock-locked.host-box { color: #6c707b; }
+.mock-app .mock-locked.host-box span { color: #a0a5b1; }
+.mock-app.dark .host { color: #5d5f66; }
+.mock-app.dark .host-box { border-color: #3a3b40; }
+.preview-legend { position: relative; z-index: 1; display: flex; gap: 18px; justify-content: center; margin-top: 18px; font-size: 13.5px; color: var(--ink-2); flex-wrap: wrap; }
+.preview-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.preview-legend i { width: 18px; height: 14px; border-radius: 5px; display: block; }
+.preview-legend .l-host { border: 1.5px dashed #a0a5b1; }
+.preview-legend .l-ya { background: #fff; box-shadow: 0 2px 6px rgba(11, 16, 32, 0.18); border-top: 3px solid #5b3df5; }
 .phone-tag { position: absolute; left: 50%; transform: translateX(-50%); top: -2px; z-index: 3; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px 0 10px; border-radius: 999px; background: #0b1020; color: #fff; font: 600 13px var(--body); white-space: nowrap; box-shadow: 0 10px 24px -10px rgba(11, 16, 32, 0.6); }
 .phone-tag .spot-mark { width: 18px; height: 18px; }
 
@@ -467,8 +466,6 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .codebox pre { margin: 0; padding: 16px 20px 18px; font: 400 14px/1.7 var(--mono); color: #dfe3f3; white-space: pre-wrap; overflow-wrap: anywhere; }
 .codebox .copy-btn { position: static; flex: none; }
 @media (max-width: 600px) { .codebox pre { font-size: 13px; padding: 14px 16px 16px; } }
-.mock-fab-spot { position: absolute; right: 18px; bottom: 18px; }
-.mock-fab-spot .mock-fab { position: static; }
 .mock-locked { width: 100%; }
 .works .logo-row { justify-content: center; }
 .ai-link svg { width: 15px; height: 15px; }

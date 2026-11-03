@@ -1,16 +1,36 @@
 import { useState, type ReactNode } from "react";
 import { AskAbout, AskBar, AskForIt, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "@youasked/react";
 import { GRAIDEN_LOOK } from "./Hero";
-import { Reveal, Spot } from "./ui";
+import { Reveal } from "./ui";
 
 const ENTRIES = [
   { key: "ask", title: "Ask bar", code: "<AskBar />", desc: "Looks like a chat input. Tapping it opens the composer, ready to type." },
   { key: "card", title: "Feature card", code: "<FeatureCard />", desc: "The top requests with vote buttons, for a dashboard or home tab." },
-  { key: "buttons", title: "Buttons", code: '<RequestButton variant="icon" />', desc: "A pill, a round header icon or a settings row. Each gets a badge when something ships." },
-  { key: "context", title: "Next to a feature", code: '<AskAbout topic="charts" />', desc: "A quiet prompt beside a feature, or in an empty search. Requests arrive tagged with where they came from." },
-  { key: "launcher", title: "Launcher", code: 'trigger="floating"', desc: "A chat bubble in the corner, like a support widget. There's a real one on this page." },
+  {
+    key: "buttons",
+    title: "Buttons",
+    code: '<RequestButton variant="icon" />',
+    desc: "A pill, a round header icon or a settings row. Each gets a badge when something ships.",
+  },
+  {
+    key: "context",
+    title: "Next to a feature",
+    code: '<AskAbout topic="charts" />',
+    desc: "A quiet prompt beside a feature, or in an empty search. Requests arrive tagged with where they came from.",
+  },
+  {
+    key: "launcher",
+    title: "Launcher",
+    code: 'trigger="floating"',
+    desc: "A chat bubble in the corner, like a support widget. There's a real one on this page.",
+  },
   { key: "page", title: "Whole page", code: "<FeatureBoard />", desc: "Everything inline, for a /feedback route or its own tab." },
-  { key: "code", title: "From your code", code: "open({ draft })", desc: "Open it from any button. A locked feature can open it with the request already typed." },
+  {
+    key: "code",
+    title: "From your code",
+    code: "open({ draft })",
+    desc: "Open it from any button. A locked feature can open it with the request already typed.",
+  },
 ] as const;
 
 type Key = (typeof ENTRIES)[number]["key"];
@@ -58,34 +78,76 @@ export function Entries() {
 function codeFor(k: Key): ReactNode {
   switch (k) {
     case "ask":
-      return <>{"<AskBar "}<span className="k">placeholder</span>=<span className="s">"Ask for a feature…"</span>{" />"}</>;
+      return (
+        <>
+          {"<AskBar "}
+          <span className="k">placeholder</span>=<span className="s">"Ask for a feature…"</span>
+          {" />"}
+        </>
+      );
     case "card":
-      return <>{"<FeatureCard "}<span className="k">limit</span>={"{3}"}{" />"}</>;
+      return (
+        <>
+          {"<FeatureCard "}
+          <span className="k">limit</span>={"{3}"}
+          {" />"}
+        </>
+      );
     case "buttons":
-      return <>{"<RequestButton "}<span className="k">variant</span>=<span className="s">"pill"</span> | <span className="s">"icon"</span> | <span className="s">"row"</span>{" />"}</>;
+      return (
+        <>
+          {"<RequestButton "}
+          <span className="k">variant</span>=<span className="s">"pill"</span> | <span className="s">"icon"</span> | <span className="s">"row"</span>
+          {" />"}
+        </>
+      );
     case "context":
-      return <>{"<AskAbout "}<span className="k">topic</span>=<span className="s">"charts"</span>{" />  <AskForIt "}<span className="k">query</span>={"{search}"}{" />"}</>;
+      return (
+        <>
+          {"<AskAbout "}
+          <span className="k">topic</span>=<span className="s">"charts"</span>
+          {" />  <AskForIt "}
+          <span className="k">query</span>={"{search}"}
+          {" />"}
+        </>
+      );
     case "launcher":
-      return <>{"<YouAsked "}<span className="k">appKey</span>=<span className="s">"ya_pub_…"</span> <span className="k">trigger</span>=<span className="s">"floating"</span>{" />"}</>;
+      return (
+        <>
+          {"<YouAsked "}
+          <span className="k">appKey</span>=<span className="s">"ya_pub_…"</span> <span className="k">trigger</span>=<span className="s">"floating"</span>
+          {" />"}
+        </>
+      );
     case "page":
-      return <>{"<FeatureBoard "}<span className="k">start</span>=<span className="s">"board"</span>{" />"}</>;
+      return (
+        <>
+          {"<FeatureBoard "}
+          <span className="k">start</span>=<span className="s">"board"</span>
+          {" />"}
+        </>
+      );
     case "code":
-      return <>{"open({ "}<span className="k">view</span>: <span className="s">"new"</span>, <span className="k">draft</span>: <span className="s">"Export to Excel"</span>{" })"}</>;
+      return (
+        <>
+          {"open({ "}
+          <span className="k">view</span>: <span className="s">"new"</span>, <span className="k">draft</span>: <span className="s">"Export to Excel"</span>
+          {" })"}
+        </>
+      );
   }
 }
 
 function Preview({ k }: { k: Key }) {
   if (k === "page") {
     return (
-      <Spot label="YouAsked page">
-        <div className="mock-app" style={{ padding: 0, overflow: "hidden", height: 540 }}>
-          <FeatureBoard height="100%" className="page-board" />
-        </div>
-      </Spot>
+      <div className="mock-app" style={{ padding: 0, overflow: "hidden", height: 540 }}>
+        <FeatureBoard height="100%" className="page-board" />
+      </div>
     );
   }
   const expenses = (
-    <div className="app-card host" style={{ padding: "6px 16px" }}>
+    <div className="app-card host host-box" style={{ padding: "6px 16px" }}>
       <div className="app-row">
         <span className="ic">🛒</span>FairPrice<span className="amt">$86.40</span>
       </div>
@@ -99,85 +161,59 @@ function Preview({ k }: { k: Key }) {
       <div className="mock-top">
         <b className="host">Graiden</b>
         <div className="mock-icons">
-          {k === "buttons" && (
-            <Spot inline label="icon">
-              <RequestButton variant="icon" />
-            </Spot>
-          )}
-          <span className="mock-circle host" aria-hidden="true">
+          {k === "buttons" && <RequestButton variant="icon" />}
+          <span className="mock-circle host host-box" aria-hidden="true">
             ⟳
           </span>
         </div>
       </div>
-      {k === "ask" && (
-        <Spot>
-          <AskBar />
-        </Spot>
-      )}
-      <div className="app-card host">
+      {k === "ask" && <AskBar />}
+      <div className="app-card host host-box">
         <div className="k">This month</div>
         <div className="v">$1,284.20</div>
       </div>
-      {k === "card" && (
-        <Spot>
-          <FeatureCard />
-        </Spot>
-      )}
+      {k === "card" && <FeatureCard />}
       {k === "buttons" && (
         <>
           <div style={{ marginTop: 8 }}>
-            <Spot inline label="pill">
-              <RequestButton variant="pill" label="Suggest a feature" />
-            </Spot>
+            <RequestButton variant="pill" label="Suggest a feature" />
           </div>
           <div style={{ marginTop: 22 }}>
-            <Spot label="row">
-              <RequestButton variant="row" />
-            </Spot>
+            <RequestButton variant="row" />
           </div>
         </>
       )}
-      {k === "code" && (
-        <Spot label="Your button, opening YouAsked">
-          <LockedFeature />
-        </Spot>
-      )}
+      {k === "code" && <LockedFeature />}
       {k === "context" && (
         <>
-          <div className="app-card">
+          <div className="app-card host-box">
             <div className="k host">Spending by week</div>
             <div className="mini-chart host" aria-hidden="true">
               {[38, 64, 46, 80, 58, 92, 70].map((h, i) => (
                 <i key={i} style={{ height: `${h}%` }} />
               ))}
             </div>
-            <Spot inline label="AskAbout">
-              <AskAbout topic="charts" prompt="Want more from charts?" />
-            </Spot>
+            <AskAbout topic="charts" prompt="Want more from charts?" />
           </div>
-          <div className="app-card">
-            <div className="mock-search host">⌕ split bills</div>
+          <div className="app-card host-box">
+            <div className="mock-search host host-box">⌕ split bills</div>
             <p className="mock-empty host">No expenses match “split bills”.</p>
-            <Spot inline label="AskForIt">
-              <AskForIt query="split bills" />
-            </Spot>
+            <AskForIt query="split bills" />
           </div>
         </>
       )}
       {(k === "ask" || k === "launcher" || k === "code") && expenses}
       {k === "launcher" && (
         <>
-          <p className="mock-note">The real launcher is in the bottom corner of this page. Try it.</p>
+          <p className="mock-note host">The real launcher is in the bottom corner of this page. Try it.</p>
           <div style={{ height: 70 }} />
-          <span className="mock-fab-spot">
-            <Spot inline label="launcher">
-              <span className="mock-fab" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3.5c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L5.2 20.5l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.97 3.5 12 3.5Z" />
-                  <path d="M8.2 13.2 12 9.4l3.8 3.8" strokeWidth={2.6} />
-                </svg>
-              </span>
-            </Spot>
+          <span>
+            <span className="mock-fab" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3.5c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L5.2 20.5l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.97 3.5 12 3.5Z" />
+                <path d="M8.2 13.2 12 9.4l3.8 3.8" strokeWidth={2.6} />
+              </svg>
+            </span>
           </span>
         </>
       )}
@@ -188,7 +224,7 @@ function Preview({ k }: { k: Key }) {
 function LockedFeature() {
   const { open } = useYouAsked();
   return (
-    <button type="button" className="mock-locked" onClick={() => open({ view: "new", draft: "Export to Excel" })}>
+    <button type="button" className="mock-locked host-box" onClick={() => open({ view: "new", draft: "Export to Excel" })}>
       <div>
         Export to Excel
         <br />
@@ -198,4 +234,3 @@ function LockedFeature() {
     </button>
   );
 }
-

@@ -35,18 +35,6 @@ export const Mark = ({ className }: { className?: string }) => (
 );
 
 /** Outlines a real YouAsked component inside a mock app, so it's clear which part is ours. */
-export function Spot({ children, label = "YouAsked", inline }: { children: ReactNode; label?: string; inline?: boolean }) {
-  return (
-    <div className={inline ? "spot spot-inline" : "spot"}>
-      <span className="spot-tag">
-        <Mark className="spot-mark" />
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
-
 export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
