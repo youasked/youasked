@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from "react";
 import {
   Animated,
   Easing,
@@ -12,7 +12,6 @@ import {
   StyleSheet,
   View,
   useWindowDimensions,
-  type LayoutChangeEvent,
 } from "react-native";
 import { DragContext, useInternal } from "./context";
 import { loadSafeArea } from "./platform";
@@ -35,31 +34,39 @@ export function useInsets(): Insets {
 }
 
 /**
- * How far to lift the sheet for the keyboard, and the keyboard's height (0 when it's down). On iOS the
- * window doesn't move, so lift by the keyboard's height. On Android the window may already have shrunk
- * (adjustResize), so only lift by what's left; `baseline` is the full height measured while the
- * keyboard was down.
+ * How far to lift the sheet so it sits right on the keyboard: how much the keyboard's top edge overlaps
+ * the sheet's root, which fills the screen inside the Modal. This is how KeyboardAvoidingView works. It
+ * is right whether or not Android resized the window (edge-to-edge Android 15+ doesn't), and it never
+ * uses the keyboard's reported height, which on edge-to-edge Android doesn't match what's on screen.
  */
-function useKeyboardPad(rootHeight: number, baseline: MutableRefObject<number>): [number, number] {
-  const [kb, setKb] = useState(0);
+function useKeyboardPad(rootRef: RefObject<View | null>): number {
+  const [pad, setPad] = useState(0);
   useEffect(() => {
     const ios = Platform.OS === "ios";
     const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => {
       if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
-      setKb(e.endCoordinates.height);
+      const top = e.endCoordinates.screenY;
+      const node = rootRef.current;
+      if (!node || !(top > 0)) {
+        setPad(e.endCoordinates.height);
+        return;
+      }
+      node.measureInWindow((_x, y, _w, h) => {
+        const lift = Math.max(0, Math.round(y + h - top));
+        if (__DEV__ && !ios) console.log(`[YouAsked] keyboard top ${Math.round(top)}, sheet bottom ${Math.round(y + h)}, reported height ${Math.round(e.endCoordinates.height)}, lift ${lift}`);
+        setPad(lift);
+      });
     });
     const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", (e) => {
       if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
-      setKb(0);
+      setPad(0);
     });
     return () => {
       show.remove();
       hide.remove();
     };
-  }, []);
-  if (kb === 0) return [0, 0];
-  const shrunk = Math.max(0, baseline.current - rootHeight);
-  return [Math.max(0, kb - shrunk), kb];
+  }, [rootRef]);
+  return pad;
 }
 
 export function Sheet({
@@ -81,11 +88,8 @@ export function Sheet({
   const ty = useRef(new Animated.Value(winH)).current;
   const [mounted, setMounted] = useState(false);
   const closing = useRef(false);
-  const [rootH, setRootH] = useState(0);
-  const baseline = useRef(0);
-  const [pad, keyboard] = useKeyboardPad(rootH, baseline);
-  const keyboardRef = useRef(0);
-  keyboardRef.current = keyboard;
+  const rootRef = useRef<View>(null);
+  const pad = useKeyboardPad(rootRef);
 
   useEffect(() => {
     if (active && !mounted) {
@@ -130,20 +134,14 @@ export function Sheet({
     return {
       grab: PanResponder.create({ onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: (_, g) => downward(g), ...handlers }),
       header: PanResponder.create({
+        // Buttons in the header claim their own taps first; anywhere else on the header starts a drag.
+        onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_, g) => downward(g),
         onMoveShouldSetPanResponderCapture: (_, g) => downward(g),
         ...handlers,
       }),
     };
   }, [ty, sheetH, dismiss]);
-
-  const onLayout = (e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    setRootH(h);
-    // Only while the keyboard is down: with it up, a shrunk window would look like the full height and
-    // the sheet would lift twice, leaving a see-through gap above the keyboard on Android.
-    if (keyboardRef.current === 0) baseline.current = h;
-  };
 
   const bottomInset = pad > 0 ? 0 : insets.bottom;
 
@@ -156,7 +154,7 @@ export function Sheet({
       onRequestClose={dismiss}
       supportedOrientations={["portrait", "landscape"]}
     >
-      <View style={s.sheetRoot} onLayout={onLayout}>
+      <View style={s.sheetRoot} ref={rootRef} collapsable={false}>
         <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} accessibilityLabel="Close" accessibilityRole="button">
           <Animated.View
             style={[s.backdrop, { opacity: ty.interpolate({ inputRange: [0, sheetH], outputRange: [1, 0], extrapolate: "clamp" }) }]}

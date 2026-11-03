@@ -25,7 +25,7 @@ export function Navigator({ route, setRoute, onClose }: NavProps) {
     case "board":
       return <Board initialTab={route.tab} setRoute={setRoute} onClose={onClose} />;
     case "detail":
-      return <Detail key={route.id} id={route.id} setRoute={setRoute} onClose={onClose} />;
+      return <Detail key={route.id} id={route.id} from={route.from} setRoute={setRoute} onClose={onClose} />;
     case "mine":
       return <Mine setRoute={setRoute} onClose={onClose} />;
   }
@@ -222,7 +222,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   };
 
   const chatting = thread.length > 0;
-  const openRequest = (id: string) => setRoute({ view: "detail", id });
+  const openRequest = (id: string) => setRoute({ view: "detail", id, from: "home" });
   const asking = route.topic && route.placeholder ? route.topic : null;
   const placeholder = route.placeholder ?? "Ask for a feature…";
   const yours = news?.items.find((i) => i.mine);
@@ -530,7 +530,7 @@ function Board({
         ) : (
           <ul className="ya-list">
             {data.map((r) => (
-              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id })} />
+              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id, from: "board" })} />
             ))}
           </ul>
         )}
@@ -547,7 +547,7 @@ function Board({
 
 // ---------------------------------------------------------------- one request
 
-function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) => void; onClose?: () => void }) {
+function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "board" | "mine"; setRoute: (r: Route) => void; onClose?: () => void }) {
   const { client, config, markSeen, appName, appIcon } = useInternal();
   const { data, error, setData } = useLoad(() => client.get(id), [client, id]);
 
@@ -626,7 +626,7 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
 
   return (
     <>
-      <Header title="" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
+      <Header title="" onBack={() => setRoute({ view: from ?? "board" })} onClose={onClose} />
       <div className="ya-body">
         {error ? (
           <p className="ya-empty">{error === "not_found" ? "This request was removed." : errorText(error)}</p>
@@ -804,7 +804,7 @@ function Mine({ setRoute, onClose }: { setRoute: (r: Route) => void; onClose?: (
         ) : (
           <ul className="ya-list">
             {data.map((r) => (
-              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id })} />
+              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id, from: "mine" })} />
             ))}
           </ul>
         )}

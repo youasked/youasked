@@ -19,7 +19,8 @@ export type OpenOptions = {
 export type Route =
   | { view: "home"; draft?: string; focus?: boolean; topic?: string; placeholder?: string }
   | { view: "board"; tab?: "top" | "new" | "shipped" }
-  | { view: "detail"; id: string }
+  /** `from` is where Back goes: the list they opened it from. */
+  | { view: "detail"; id: string; from?: "home" | "board" | "mine" }
   | { view: "mine" };
 
 /** Topics that tag a request without changing how the composer talks. */

@@ -39,7 +39,7 @@ export function Navigator({ route, setRoute, onClose }: NavProps) {
       ) : route.view === "board" ? (
         <Board initialTab={route.tab} setRoute={setRoute} onClose={onClose} />
       ) : route.view === "detail" ? (
-        <Detail id={route.id} setRoute={setRoute} onClose={onClose} />
+        <Detail id={route.id} from={route.from} setRoute={setRoute} onClose={onClose} />
       ) : (
         <Mine setRoute={setRoute} onClose={onClose} />
       )}
@@ -287,7 +287,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   };
 
   const chatting = thread.length > 0;
-  const openRequest = (id: string) => setRoute({ view: "detail", id });
+  const openRequest = (id: string) => setRoute({ view: "detail", id, from: "home" });
   const asking = route.topic && route.placeholder ? route.topic : null;
   const placeholder = route.placeholder ?? "Ask for a feature…";
   const yours = news?.items.find((i) => i.mine);
@@ -581,7 +581,7 @@ function Board({
           contentContainerStyle={[s.bodyContent, s.list, data.length === 0 && { flexGrow: 1 }]}
           data={data}
           keyExtractor={(r) => r.id}
-          renderItem={({ item }) => <RequestRow client={client} request={item} onOpen={() => setRoute({ view: "detail", id: item.id })} />}
+          renderItem={({ item }) => <RequestRow client={client} request={item} onOpen={() => setRoute({ view: "detail", id: item.id, from: "board" })} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.muted} />}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -601,7 +601,7 @@ function Board({
 
 // ---------------------------------------------------------------- one request
 
-function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) => void; onClose?: () => void }) {
+function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "board" | "mine"; setRoute: (r: Route) => void; onClose?: () => void }) {
   const { client, config, markSeen, appName, appIcon, styles: s, theme } = useInternal();
   const { data, error, setData } = useLoad(() => client.get(id), [client, id]);
 
@@ -689,7 +689,7 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
 
   return (
     <>
-      <Header title="" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
+      <Header title="" onBack={() => setRoute({ view: from ?? "board" })} onClose={onClose} />
       <ScrollView
         ref={scrollRef}
         style={s.body}
@@ -872,7 +872,7 @@ function Mine({ setRoute, onClose }: { setRoute: (r: Route) => void; onClose?: (
           contentContainerStyle={[s.bodyContent, s.list, data.length === 0 && { flexGrow: 1 }]}
           data={data}
           keyExtractor={(r) => r.id}
-          renderItem={({ item }) => <RequestRow client={client} request={item} onOpen={() => setRoute({ view: "detail", id: item.id })} />}
+          renderItem={({ item }) => <RequestRow client={client} request={item} onOpen={() => setRoute({ view: "detail", id: item.id, from: "mine" })} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.muted} />}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={<Empty title="Nothing yet">Requests you post or vote on show up here, with their status.</Empty>}
