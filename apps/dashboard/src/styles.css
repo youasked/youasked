@@ -28,8 +28,8 @@
   --btn-ink: #0b1020;
   --btn-ink-hover: #1a2238;
 
-  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
-  --body: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --display: Switzer, ui-sans-serif, system-ui, sans-serif;
+  --body: Switzer, ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --side: 252px;
@@ -336,7 +336,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 
 /* ---------- sign in */
 .signin { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background:
-    radial-gradient(60vw 40vw at 85% -10%, color-mix(in srgb, var(--butter) 22%, transparent), transparent 70%),
+    radial-gradient(60vw 40vw at 85% -10%, color-mix(in srgb, var(--cobalt, #2b4bee) 26%, transparent), transparent 70%),
     var(--bg); }
 .signin-card { width: min(400px, 100%); display: grid; gap: 12px; animation: enter 0.5s var(--ease); }
 .signin-mark { width: 44px; height: 44px; margin-bottom: 8px; }

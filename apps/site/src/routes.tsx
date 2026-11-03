@@ -5,6 +5,7 @@ import { AlternativesPage, CANNY_FAQ, CannyPage, FEATUREBASE_FAQ, FeaturebasePag
 import { ChangelogPage, ENTRIES } from "./ChangelogPage";
 import { DocsPage } from "./Docs";
 import { Home } from "./Home";
+import { HomeV3 } from "./v3/HomeV3";
 import { PrivacyPage, TermsPage } from "./Legal";
 import { MCP_FAQ, McpPage } from "./McpPage";
 import { NotFoundPage } from "./NotFound";
@@ -25,6 +26,8 @@ export type Route = {
   hidden?: boolean;
   /** Priority hint for the sitemap. */
   priority?: number;
+  /** The page brings its own nav and footer. */
+  bare?: boolean;
 };
 
 export const ROUTES: Route[] = [
@@ -32,10 +35,19 @@ export const ROUTES: Route[] = [
     path: "/",
     title: "YouAsked: in-app feature requests that tell users when you ship",
     description:
-      "Feature requests inside your React app. Users ask and vote, you hear it on Telegram, Slack or Discord, and everyone who asked is told when you ship.",
-    component: Home,
+      "Feature requests inside your React and React Native apps. Users ask and vote, you hear it on Telegram, Slack or Discord, and everyone who asked is told when you ship.",
+    component: HomeV3,
     faq: LANDING_FAQ,
     priority: 1,
+    bare: true,
+  },
+  {
+    // The previous homepage, kept for comparison.
+    path: "/lab/classic",
+    title: "YouAsked (previous homepage)",
+    description: "The previous YouAsked homepage.",
+    component: Home,
+    hidden: true,
   },
   {
     path: "/pricing",

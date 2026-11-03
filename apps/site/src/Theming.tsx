@@ -11,7 +11,7 @@ const ACCENTS = [
 ];
 
 const FONTS = [
-  { name: "Sans", value: '"Instrument Sans", system-ui, sans-serif' },
+  { name: "Sans", value: 'Switzer, system-ui, sans-serif' },
   { name: "Rounded", value: 'ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif' },
   { name: "Serif", value: 'Georgia, "Times New Roman", serif' },
 ];

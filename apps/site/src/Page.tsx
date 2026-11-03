@@ -23,7 +23,7 @@ export function crumbsFor(path: string) {
   return CRUMBS[path] ?? [];
 }
 
-export function PageHead({ eyebrow, title, lede, path, children }: { eyebrow?: string; title: string; lede?: ReactNode; path?: string; children?: ReactNode }) {
+export function PageHead({ title, lede, path, children }: { /** Not shown; kept so pages can name their section. */ eyebrow?: string; title: string; lede?: ReactNode; path?: string; children?: ReactNode }) {
   const crumbs = path ? crumbsFor(path) : [];
   return (
     <header className="page-hero">
@@ -39,7 +39,6 @@ export function PageHead({ eyebrow, title, lede, path, children }: { eyebrow?: s
             ))}
           </nav>
         )}
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1 className="h2 page-title">{title}</h1>
         {lede && <p className="lede page-lede">{lede}</p>}
         {children}

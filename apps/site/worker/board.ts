@@ -25,7 +25,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const STATUS: Record<Req["status"], string> = { open: "Open", planned: "Planned", in_progress: "In progress", shipped: "Shipped" };
 
 const CSS = `
-:root{--ink:#0b1020;--ink2:#283048;--muted:#5b6380;--paper:#f6f7fb;--card:#fff;--line:rgba(11,16,32,.09);--cobalt:#2b4bee;--live:#16a34a;--live-bg:#e5f7ec;--amber:#a16207;--amber-bg:#fdf3d0;--blue-bg:#e6ebff;--grey-bg:#eceff6;--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,sans-serif}
+:root{--ink:#0b1020;--ink2:#283048;--muted:#5b6380;--paper:#f6f7fb;--card:#fff;--line:rgba(11,16,32,.09);--cobalt:#2b4bee;--live:#16a34a;--live-bg:#e5f7ec;--amber:#a16207;--amber-bg:#fdf3d0;--blue-bg:#e6ebff;--grey-bg:#eceff6;--display:Switzer,ui-sans-serif,system-ui,sans-serif;--body:Switzer,ui-sans-serif,system-ui,-apple-system,sans-serif}
 @media(prefers-color-scheme:dark){:root{--ink:#eef1fa;--ink2:#c9cfe3;--muted:#8f97b2;--paper:#05070d;--card:#0c1121;--line:rgba(255,255,255,.09);--cobalt:#8ea2ff;--live:#3fd07f;--live-bg:rgba(63,208,127,.14);--amber:#ffd45e;--amber-bg:rgba(255,224,102,.14);--blue-bg:rgba(142,162,255,.16);--grey-bg:rgba(255,255,255,.08)}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
@@ -78,7 +78,7 @@ a.row:hover{box-shadow:inset 0 0 0 1px var(--cobalt)}
 @media(max-width:720px){.cols{grid-template-columns:1fr}.entry{grid-template-columns:1fr}.row{gap:12px}.badge{display:none}}
 `;
 
-const MARK = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="g" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#6d84ff"/><stop offset="1" stop-color="#2b4bee"/></linearGradient></defs><path d="M11.4 3.2c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L4.6 20.2l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.37 3.2 11.4 3.2Z" fill="url(#g)"/><path d="m7.9 11.2 2.5 2.4 4.7-4.7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19.4" cy="4.4" r="2.6" fill="#ffe066"/></svg>`;
+const MARK = `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 6h32a12 12 0 0 1 12 12v22a12 12 0 0 1-12 12H30L16 62V52a12 12 0 0 1-12-12V18A12 12 0 0 1 16 6Z" fill="#2b4bee"/><path d="M21 37 32 26l11 11" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export type Page = {
   site: string;
@@ -117,9 +117,8 @@ ${p.noindex ? '<meta name="robots" content="noindex">' : ""}
 <meta name="theme-color" content="#0b1020">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
 <style>${CSS}</style>
 ${p.jsonLd.map((d) => `<script type="application/ld+json">${ldJson(d)}</script>`).join("\n")}
 </head>

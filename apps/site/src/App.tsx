@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { YouAsked } from "@youasked/react";
 import { API, SITE_KEY } from "./content";
-import { Nav, SubFooter } from "./Sections";
+import { SiteFooter, SiteNav } from "./v3/HomeV3";
 import { routeFor } from "./routes";
 
 // The site runs YouAsked on itself: the launcher in the corner is a real board for YouAsked.
@@ -13,7 +13,7 @@ const SITE_LOOK = {
   surface: "#f1f3f9",
   border: "#e4e7f0",
   radius: 16,
-  fontFamily: '"Instrument Sans", system-ui, sans-serif',
+  fontFamily: 'Switzer, system-ui, sans-serif',
   mode: "light" as const,
 };
 
@@ -41,15 +41,21 @@ export function Site({ path }: { path: string }) {
       greeting="Hey! What should YouAsked do next?"
       label={wide ? "Ask us" : undefined}
     >
-      <Nav />
-      {route.path === "/" ? (
+      {route.bare ? null : (
+        <div className="v3 v3-chrome">
+          <SiteNav />
+        </div>
+      )}
+      {route.path === "/" || route.bare ? (
         <Page />
       ) : (
         <>
           <main>
             <Page />
           </main>
-          <SubFooter />
+          <div className="v3 v3-chrome">
+            <SiteFooter />
+          </div>
         </>
       )}
     </YouAsked>
