@@ -1,28 +1,11 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import {
-  createClient,
-  YouAskedError,
-  type Client,
-  type Config,
-  type FeatureRequest,
-  type Notice,
-  type RequestComment,
-  type Status,
-  type YouAskedUser,
-} from "./client";
+import { createClient, type Config, type Notice, type YouAskedUser } from "./client";
+import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
+import { IconCheck, IconClose, IconIdea } from "./icons";
 import { injectStyles } from "./styles";
 import { resolveTokens, tokenStyle, type Appearance } from "./theme";
+import { Navigator } from "./views";
 
 export const DEFAULT_API_URL = "https://youasked-api.adenteo.workers.dev";
 
@@ -36,54 +19,24 @@ export type YouAskedProps = {
   /** Set false while you're still fetching the signature; the widget waits instead of acting anonymously. */
   ready?: boolean;
   appearance?: Appearance;
-  /** "floating" shows a button in the corner; "none" lets you open it yourself with useYouAsked() or openYouAsked(). */
+  /** "floating" adds a chat-style launcher in the corner. "none" if you use the inline entry points or your own buttons. */
   trigger?: "floating" | "none";
   position?: "bottom-right" | "bottom-left";
-  /** Text on the floating button. */
+  /** Text next to the launcher icon. Leave empty for an icon-only bubble. */
   label?: string;
-  /** Heading of the panel. */
+  /** Your app's name in the greeting. Defaults to the name you created the app with. */
+  appName?: string;
+  /** Square image URL shown as the app's avatar. Defaults to the first letter of the name. */
+  appIcon?: string;
+  /** First message on the home screen. */
+  greeting?: string;
+  /** Heading of the full list. */
   title?: string;
-  /** Distance in px from the bottom edge for the button and toast, e.g. to clear a tab bar. Default 20. */
+  /** Distance in px from the bottom edge for the launcher, toast and desktop panel, e.g. to clear a tab bar. */
   offset?: number;
   apiUrl?: string;
   children?: ReactNode;
 };
-
-type Route =
-  | { view: "board" }
-  | { view: "new"; draft?: string }
-  | { view: "detail"; id: string; justPosted?: boolean }
-  | { view: "mine" };
-
-export type OpenOptions = { view?: "board" | "new" | "mine"; requestId?: string; draft?: string };
-
-type ContextValue = {
-  open: (options?: OpenOptions) => void;
-  close: () => void;
-  isOpen: boolean;
-  /** Shipped requests this person asked for or voted on that they haven't seen yet. */
-  unseenCount: number;
-};
-
-const YouAskedContext = createContext<ContextValue | null>(null);
-
-export function useYouAsked(): ContextValue {
-  const ctx = useContext(YouAskedContext);
-  if (!ctx) throw new Error("useYouAsked must be used inside <YouAsked>…</YouAsked>");
-  return ctx;
-}
-
-/** Opens the panel from anywhere, even outside React. */
-export function openYouAsked(options?: OpenOptions) {
-  window.dispatchEvent(new CustomEvent("youasked:open", { detail: options ?? {} }));
-}
-
-function toRoute(o: OpenOptions = {}): Route {
-  if (o.requestId) return { view: "detail", id: o.requestId };
-  if (o.view === "new") return { view: "new", draft: o.draft };
-  if (o.view === "mine") return { view: "mine" };
-  return { view: "board" };
-}
 
 export function YouAsked({
   appKey,
@@ -93,7 +46,10 @@ export function YouAsked({
   appearance,
   trigger = "floating",
   position = "bottom-right",
-  label = "Feedback",
+  label,
+  appName,
+  appIcon,
+  greeting,
   title = "Feature requests",
   offset,
   apiUrl = DEFAULT_API_URL,
@@ -136,8 +92,7 @@ export function YouAsked({
 
   const close = useCallback(() => {
     setRoute(null);
-    const opener = openerRef.current as HTMLElement | null;
-    opener?.focus?.();
+    (openerRef.current as HTMLElement | null)?.focus?.({ preventScroll: true });
   }, []);
 
   useEffect(() => {
@@ -155,10 +110,32 @@ export function YouAsked({
     [client],
   );
 
+  const scopeStyle = useMemo(
+    () =>
+      ({
+        ...(tokens ? tokenStyle(tokens) : {}),
+        ...(offset !== undefined ? { "--ya-offset": `${offset}px` } : {}),
+      }) as CSSProperties,
+    [tokens, offset],
+  );
+
   const unseen = config?.unseen ?? [];
-  const value = useMemo(
-    () => ({ open, close, isOpen: route !== null, unseenCount: unseen.length }),
-    [open, close, route, unseen.length],
+  const value = useMemo<InternalContext>(
+    () => ({
+      open,
+      close,
+      isOpen: route !== null,
+      unseenCount: unseen.length,
+      client,
+      config,
+      markSeen,
+      scope: { className: "ya-scope", style: scopeStyle, "data-ya-mode": tokens?.mode },
+      appName: appName ?? config?.app.name ?? "us",
+      appIcon,
+      title,
+      greeting,
+    }),
+    [open, close, route, unseen.length, client, config, markSeen, scopeStyle, tokens?.mode, appName, appIcon, title, greeting],
   );
 
   const notice = unseen.find((n) => n.kind === "shipped");
@@ -168,22 +145,15 @@ export function YouAsked({
       {children}
       {mounted &&
         createPortal(
-          <div
-            className="ya-scope"
-            data-ya-mode={tokens?.mode}
-            style={
-              {
-                ...(tokens ? tokenStyle(tokens) : {}),
-                ...(offset !== undefined ? { "--ya-offset": `${offset}px` } : {}),
-              } as CSSProperties
-            }
-          >
-            {trigger === "floating" && route === null && (
-              <button type="button" className="ya-fab" data-pos={position} onClick={() => open()} aria-label={label}>
-                <IconSpark />
-                {label}
-                {unseen.length > 0 && <span className="ya-dot" aria-hidden="true" />}
-              </button>
+          <div className="ya-scope" data-ya-mode={tokens?.mode} style={scopeStyle}>
+            {trigger === "floating" && (
+              <Launcher
+                position={position}
+                label={label}
+                isOpen={route !== null}
+                badge={unseen.length > 0}
+                onClick={() => (route ? close() : open())}
+              />
             )}
             {notice && route === null && (
               <ShippedToast
@@ -198,15 +168,7 @@ export function YouAsked({
               />
             )}
             {route && (
-              <Panel
-                client={client}
-                config={config}
-                route={route}
-                setRoute={setRoute}
-                title={title}
-                onClose={close}
-                onSeen={markSeen}
-              />
+              <Panel route={route} setRoute={setRoute} onClose={close} position={position} hasLauncher={trigger === "floating"} />
             )}
           </div>,
           document.body,
@@ -236,71 +198,135 @@ function useTokens(appearance: Appearance | undefined, mounted: boolean) {
   return tokens;
 }
 
-// ---------------------------------------------------------------- panel
+function useMedia(query: string) {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const on = () => setMatches(m.matches);
+    on();
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, [query]);
+  return matches;
+}
 
-type PanelProps = {
-  client: Client;
-  config: Config | null;
+// ---------------------------------------------------------------- panel: bottom sheet on phones, corner panel on desktop
+
+function Panel({
+  route,
+  setRoute,
+  onClose,
+  position,
+  hasLauncher,
+}: {
   route: Route;
   setRoute: (r: Route) => void;
-  title: string;
   onClose: () => void;
-  onSeen: (ids: string[]) => void;
-};
-
-function Panel({ client, config, route, setRoute, title, onClose, onSeen }: PanelProps) {
+  position: string;
+  hasLauncher: boolean;
+}) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const isSheet = useMedia("(max-width: 639px)");
+  const reduceMotion = useMedia("(prefers-reduced-motion: reduce)");
+  const drag = useRef<{ startY: number; lastY: number; lastT: number; v: number; dy: number } | null>(null);
+
+  const requestClose = useCallback(() => {
+    if (reduceMotion) return onClose();
+    setClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose, reduceMotion]);
 
   useEffect(() => {
+    if (!isSheet) return;
     const html = document.documentElement;
     const previous = html.style.overflow;
     html.style.overflow = "hidden";
-    panelRef.current?.focus();
     return () => {
       html.style.overflow = previous;
     };
+  }, [isSheet]);
+
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        requestClose();
       }
       if (e.key === "Tab" && panelRef.current) trapFocus(e, panelRef.current);
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  }, [requestClose]);
 
-  // Opening a request someone was notified about counts as seeing it.
-  useEffect(() => {
-    if (route.view !== "detail" || !config) return;
-    onSeen(config.unseen.filter((n) => n.requestId === route.id).map((n) => n.id));
-  }, [route, config, onSeen]);
+  // Swipe down on the handle or header to dismiss, like a native sheet.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isSheet || e.button !== 0) return;
+    const target = e.target as Element;
+    if (!target.closest(".ya-grab-zone, .ya-head") || target.closest("button, input, textarea, a")) return;
+    const panel = panelRef.current!;
+    drag.current = { startY: e.clientY, lastY: e.clientY, lastT: performance.now(), v: 0, dy: 0 };
+    panel.setPointerCapture(e.pointerId);
+    panel.style.transition = "none";
+    panel.style.animation = "none";
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const panel = panelRef.current!;
+    const raw = e.clientY - d.startY;
+    const dy = raw < 0 ? Math.max(-18, raw * 0.2) : raw;
+    const now = performance.now();
+    d.v = (e.clientY - d.lastY) / Math.max(1, now - d.lastT);
+    d.lastY = e.clientY;
+    d.lastT = now;
+    d.dy = dy;
+    panel.style.transform = `translateY(${dy}px)`;
+    if (backdropRef.current) backdropRef.current.style.opacity = String(1 - Math.max(0, dy) / panel.offsetHeight);
+  };
+  const onPointerUp = () => {
+    const d = drag.current;
+    if (!d) return;
+    drag.current = null;
+    const panel = panelRef.current!;
+    const backdrop = backdropRef.current;
+    const h = panel.offsetHeight;
+    panel.style.transition = "transform .3s cubic-bezier(.2,.9,.3,1)";
+    if (backdrop) backdrop.style.transition = "opacity .3s";
+    if (d.dy > h * 0.25 || d.v > 0.5) {
+      panel.style.transform = `translateY(${h}px)`;
+      if (backdrop) backdrop.style.opacity = "0";
+      setTimeout(onClose, 260);
+    } else {
+      panel.style.transform = "";
+      if (backdrop) backdrop.style.opacity = "";
+    }
+  };
 
   return (
-    <div className="ya-overlay">
-      <div className="ya-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="ya-panel" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={panelRef}>
-        <div className="ya-grab" aria-hidden="true" />
-        {route.view === "board" && (
-          <Board client={client} config={config} title={title} setRoute={setRoute} onClose={onClose} />
-        )}
-        {route.view === "new" && (
-          <NewRequest client={client} draft={route.draft} setRoute={setRoute} onClose={onClose} />
-        )}
-        {route.view === "detail" && (
-          <Detail
-            key={route.id}
-            client={client}
-            id={route.id}
-            justPosted={route.justPosted}
-            setRoute={setRoute}
-            onClose={onClose}
-          />
-        )}
-        {route.view === "mine" && <Mine client={client} setRoute={setRoute} onClose={onClose} />}
+    <div className="ya-overlay" data-pos={position} data-launcher={hasLauncher || undefined} data-closing={closing || undefined}>
+      <div className="ya-backdrop" ref={backdropRef} onClick={requestClose} aria-hidden="true" />
+      <div
+        className="ya-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Feature requests"
+        tabIndex={-1}
+        ref={panelRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <div className="ya-grab-zone" aria-hidden="true">
+          <div className="ya-grab" />
+        </div>
+        <Navigator route={route} setRoute={setRoute} onClose={requestClose} />
       </div>
     </div>
   );
@@ -322,493 +348,33 @@ function trapFocus(e: KeyboardEvent, root: HTMLElement) {
   }
 }
 
-function Header({
-  title,
-  onBack,
-  onClose,
-  right,
+function Launcher({
+  position,
+  label,
+  isOpen,
+  badge,
+  onClick,
 }: {
-  title: string;
-  onBack?: () => void;
-  onClose: () => void;
-  right?: ReactNode;
+  position: string;
+  label?: string;
+  isOpen: boolean;
+  badge: boolean;
+  onClick: () => void;
 }) {
-  return (
-    <div className={onBack ? "ya-head ya-head-back" : "ya-head"}>
-      {onBack && (
-        <button type="button" className="ya-icon-btn" onClick={onBack} aria-label="Back">
-          <IconBack />
-        </button>
-      )}
-      <h2 className="ya-h">{title}</h2>
-      {right}
-      <button type="button" className="ya-icon-btn" onClick={onClose} aria-label="Close">
-        <IconClose />
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- votes
-
-function useVote(client: Client, initial: FeatureRequest) {
-  const [state, setState] = useState({ voted: initial.voted, votes: initial.votes });
-  const busy = useRef(false);
-  useEffect(() => setState({ voted: initial.voted, votes: initial.votes }), [initial.voted, initial.votes]);
-  const toggle = useCallback(async () => {
-    if (busy.current) return;
-    busy.current = true;
-    const before = state;
-    setState({ voted: !before.voted, votes: before.votes + (before.voted ? -1 : 1) });
-    try {
-      setState(await client.vote(initial.id));
-    } catch {
-      setState(before);
-    } finally {
-      busy.current = false;
-    }
-  }, [client, initial.id, state]);
-  return { ...state, toggle };
-}
-
-function VoteButton({ client, request }: { client: Client; request: FeatureRequest }) {
-  const { voted, votes, toggle } = useVote(client, request);
   return (
     <button
       type="button"
-      className="ya-vote"
-      aria-pressed={voted}
-      aria-label={`${voted ? "Remove vote" : "Upvote"}: ${request.title}. ${votes} ${votes === 1 ? "vote" : "votes"}`}
-      onClick={toggle}
+      className={label && !isOpen ? "ya-fab ya-fab-label" : "ya-fab"}
+      data-pos={position}
+      data-open={isOpen || undefined}
+      onClick={onClick}
+      aria-label={isOpen ? "Close feature requests" : label || "Feature requests"}
+      aria-expanded={isOpen}
     >
-      <IconUp />
-      {votes}
+      <span className="ya-fab-icon">{isOpen ? <IconClose /> : <IconIdea />}</span>
+      {label && !isOpen && <span>{label}</span>}
+      {badge && !isOpen && <span className="ya-dot" aria-hidden="true" />}
     </button>
-  );
-}
-
-const STATUS_LABEL: Record<Status, string> = {
-  open: "Open",
-  planned: "Planned",
-  in_progress: "In progress",
-  shipped: "Shipped",
-  declined: "Not planned",
-};
-
-function StatusPill({ status }: { status: Status }) {
-  return (
-    <span className="ya-pill" data-s={status}>
-      {status === "shipped" && <IconCheck />}
-      {STATUS_LABEL[status]}
-    </span>
-  );
-}
-
-function RequestRow({ client, request, onOpen }: { client: Client; request: FeatureRequest; onOpen: () => void }) {
-  return (
-    <li className="ya-row">
-      <VoteButton client={client} request={request} />
-      <button type="button" className="ya-row-main" onClick={onOpen}>
-        <span className="ya-row-title">{request.title}</span>
-        <span className="ya-meta">
-          {request.status !== "open" && <StatusPill status={request.status} />}
-          {request.comments > 0 && (
-            <span>
-              <IconChat />
-              {request.comments}
-            </span>
-          )}
-          {request.mine && <span>You asked</span>}
-        </span>
-      </button>
-    </li>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div className="ya-list" aria-label="Loading" role="status">
-      <div className="ya-skel" />
-      <div className="ya-skel" />
-      <div className="ya-skel" />
-    </div>
-  );
-}
-
-function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    setData(null);
-    setError(null);
-    load()
-      .then((d) => alive && setData(d))
-      .catch((e: unknown) => alive && setError(e instanceof YouAskedError ? e.code : "network"));
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return { data, error, setData };
-}
-
-function errorText(code: string | null): string {
-  switch (code) {
-    case "signature_required":
-    case "bad_signature":
-      return "We couldn't confirm who you are. Refresh the page and try again.";
-    case "slow_down":
-      return "That's a lot of requests in an hour. Try again a bit later.";
-    case "title_too_short":
-      return "Add a few more words so others know what you mean.";
-    case "network":
-      return "Couldn't reach the server. Check your connection and try again.";
-    default:
-      return "Something went wrong. Try again.";
-  }
-}
-
-// ---------------------------------------------------------------- views
-
-const TABS = [
-  { key: "top", label: "Top", sort: "top", status: "active" },
-  { key: "new", label: "New", sort: "new", status: "active" },
-  { key: "shipped", label: "Shipped", sort: "new", status: "shipped" },
-] as const;
-
-function Board({
-  client,
-  config,
-  title,
-  setRoute,
-  onClose,
-}: {
-  client: Client;
-  config: Config | null;
-  title: string;
-  setRoute: (r: Route) => void;
-  onClose: () => void;
-}) {
-  const [tab, setTab] = useState<(typeof TABS)[number]>(TABS[0]);
-  const { data, error } = useLoad(() => client.list(tab.sort, tab.status), [client, tab.key]);
-
-  return (
-    <>
-      <Header
-        title={title}
-        onClose={onClose}
-        right={
-          <button type="button" className="ya-link" onClick={() => setRoute({ view: "mine" })}>
-            Yours
-          </button>
-        }
-      />
-      <div className="ya-tabs" role="tablist" aria-label="Sort requests">
-        {TABS.map((t) => (
-          <button key={t.key} type="button" role="tab" className="ya-tab" aria-selected={tab.key === t.key} onClick={() => setTab(t)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div className="ya-body">
-        {error ? (
-          <p className="ya-empty">{errorText(error)}</p>
-        ) : !data ? (
-          <Skeleton />
-        ) : data.length === 0 ? (
-          <div className="ya-empty">
-            <b>{tab.key === "shipped" ? "Nothing shipped yet" : "No requests yet"}</b>
-            {tab.key === "shipped" ? "Requests show up here once they're live." : "Tell us what you'd like next. Others can vote on it."}
-          </div>
-        ) : (
-          <ul className="ya-list">
-            {data.map((r) => (
-              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id })} />
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="ya-foot">
-        <button type="button" className="ya-btn" onClick={() => setRoute({ view: "new" })}>
-          <IconPlus />
-          Request a feature
-        </button>
-        {config?.watermark && <p className="ya-mark">Feedback by YouAsked</p>}
-      </div>
-    </>
-  );
-}
-
-function NewRequest({
-  client,
-  draft,
-  setRoute,
-  onClose,
-}: {
-  client: Client;
-  draft?: string;
-  setRoute: (r: Route) => void;
-  onClose: () => void;
-}) {
-  const [title, setTitle] = useState(draft ?? "");
-  const [body, setBody] = useState("");
-  const [similar, setSimilar] = useState<FeatureRequest[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    titleRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const q = title.trim();
-    if (q.length < 4) {
-      setSimilar([]);
-      return;
-    }
-    let alive = true;
-    const t = setTimeout(() => {
-      client
-        .similar(q)
-        .then((r) => alive && setSimilar(r))
-        .catch(() => {});
-    }, 350);
-    return () => {
-      alive = false;
-      clearTimeout(t);
-    };
-  }, [client, title]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (title.trim().length < 3 || sending) return;
-    setSending(true);
-    setError(null);
-    try {
-      const created = await client.create(title, body);
-      setRoute({ view: "detail", id: created.id, justPosted: true });
-    } catch (err) {
-      setError(errorText(err instanceof YouAskedError ? err.code : "network"));
-      setSending(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} style={{ display: "contents" }}>
-      <Header title="Request a feature" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
-      <div className="ya-body">
-        <label className="ya-label" htmlFor="ya-title">
-          What should we build?
-        </label>
-        <input
-          id="ya-title"
-          ref={titleRef}
-          className="ya-field"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Dark mode for charts"
-          maxLength={120}
-          autoComplete="off"
-        />
-        {similar.length > 0 && (
-          <div className="ya-similar" aria-live="polite">
-            <p className="ya-similar-h">Someone may have asked already. Vote instead?</p>
-            <ul className="ya-list">
-              {similar.map((r) => (
-                <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id })} />
-              ))}
-            </ul>
-          </div>
-        )}
-        <label className="ya-label" htmlFor="ya-body">
-          Anything else? <span className="ya-text-muted">(optional)</span>
-        </label>
-        <textarea
-          id="ya-body"
-          className="ya-field"
-          rows={5}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="What would it help you do?"
-          maxLength={2000}
-        />
-        {error && (
-          <p className="ya-error" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
-      <div className="ya-foot">
-        <button type="submit" className="ya-btn" disabled={title.trim().length < 3 || sending}>
-          {sending ? "Posting…" : "Post request"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function Detail({
-  client,
-  id,
-  justPosted,
-  setRoute,
-  onClose,
-}: {
-  client: Client;
-  id: string;
-  justPosted?: boolean;
-  setRoute: (r: Route) => void;
-  onClose: () => void;
-}) {
-  const { data, error, setData } = useLoad(() => client.get(id), [client, id]);
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const [replyError, setReplyError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (data?.redirect) setRoute({ view: "detail", id: data.redirect });
-  }, [data?.redirect, setRoute]);
-
-  const request = data?.request;
-  const comments = data?.comments ?? [];
-
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reply.trim() || sending || !request) return;
-    setSending(true);
-    setReplyError(null);
-    try {
-      const c = await client.comment(request.id, reply);
-      setData({ ...data, comments: [...comments, c], request: { ...request, comments: request.comments + 1 } });
-      setReply("");
-    } catch (err) {
-      setReplyError(errorText(err instanceof YouAskedError ? err.code : "network"));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <>
-      <Header title="" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
-      <div className="ya-body">
-        {error ? (
-          <p className="ya-empty">{error === "not_found" ? "This request was removed." : errorText(error)}</p>
-        ) : !request ? (
-          <Skeleton />
-        ) : (
-          <>
-            {request.status !== "open" && <StatusPill status={request.status} />}
-            <h3 className="ya-detail-title">{request.title}</h3>
-            {request.body && <p className="ya-text">{request.body}</p>}
-            <BigVote client={client} request={request} />
-            {justPosted && (
-              <div className="ya-callout" data-tone="info">
-                <IconBell />
-                <span>
-                  <b>Posted.</b> We'll let you know right here when it ships. Votes from others help it move up.
-                </span>
-              </div>
-            )}
-            {request.status === "shipped" && (
-              <div className="ya-callout" data-tone="success">
-                <IconCheck />
-                <span>
-                  <b>It's live.</b>
-                  {request.shipNote ? ` ${request.shipNote}` : " Thanks for asking."}
-                </span>
-              </div>
-            )}
-            <p className="ya-section-h">{comments.length ? `Comments (${comments.length})` : "Comments"}</p>
-            {comments.length === 0 ? (
-              <p className="ya-text ya-text-muted">No comments yet.</p>
-            ) : (
-              comments.map((c) => <CommentItem key={c.id} comment={c} />)
-            )}
-          </>
-        )}
-      </div>
-      {request && (
-        <form className="ya-compose" onSubmit={send}>
-          <textarea
-            className="ya-field"
-            rows={1}
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Add a comment"
-            aria-label="Add a comment"
-            maxLength={1000}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-              }
-            }}
-          />
-          <button type="submit" className="ya-btn ya-btn-sm" disabled={!reply.trim() || sending}>
-            Send
-          </button>
-          {replyError && <span className="ya-sr" role="alert">{replyError}</span>}
-        </form>
-      )}
-    </>
-  );
-}
-
-function BigVote({ client, request }: { client: Client; request: FeatureRequest }) {
-  const { voted, votes, toggle } = useVote(client, request);
-  return (
-    <button type="button" className="ya-bigvote" aria-pressed={voted} onClick={toggle}>
-      <IconUp />
-      {voted ? "Voted" : "Upvote"} · {votes}
-    </button>
-  );
-}
-
-function CommentItem({ comment }: { comment: RequestComment }) {
-  return (
-    <div className="ya-comment">
-      <div className="ya-comment-who">
-        {comment.team ? <span className="ya-team">Team</span> : <span>{comment.mine ? "You" : comment.author || "Someone"}</span>}
-        <time dateTime={new Date(comment.createdAt).toISOString()}>{ago(comment.createdAt)}</time>
-      </div>
-      <p className="ya-text">{comment.body}</p>
-    </div>
-  );
-}
-
-function Mine({ client, setRoute, onClose }: { client: Client; setRoute: (r: Route) => void; onClose: () => void }) {
-  const { data, error } = useLoad(() => client.mine(), [client]);
-  return (
-    <>
-      <Header title="Your requests" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
-      <div className="ya-body">
-        {error ? (
-          <p className="ya-empty">{errorText(error)}</p>
-        ) : !data ? (
-          <Skeleton />
-        ) : data.length === 0 ? (
-          <div className="ya-empty">
-            <b>Nothing yet</b>
-            Requests you post or vote on show up here, with their status.
-          </div>
-        ) : (
-          <ul className="ya-list">
-            {data.map((r) => (
-              <RequestRow key={r.id} client={client} request={r} onOpen={() => setRoute({ view: "detail", id: r.id })} />
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="ya-foot">
-        <button type="button" className="ya-btn" onClick={() => setRoute({ view: "new" })}>
-          <IconPlus />
-          Request a feature
-        </button>
-      </div>
-    </>
   );
 }
 
@@ -850,67 +416,3 @@ function ShippedToast({
     </div>
   );
 }
-
-function ago(t: number): string {
-  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-  if (s < 60) return "just now";
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.round(h / 24);
-  if (d < 30) return `${d}d ago`;
-  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-// ---------------------------------------------------------------- icons
-
-const svg = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2.2,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true,
-};
-const IconUp = () => (
-  <svg {...svg} strokeWidth={2.6}>
-    <path d="m6 15 6-6 6 6" />
-  </svg>
-);
-const IconClose = () => (
-  <svg {...svg} width={20} height={20}>
-    <path d="M18 6 6 18M6 6l12 12" />
-  </svg>
-);
-const IconBack = () => (
-  <svg {...svg} width={20} height={20}>
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
-const IconPlus = () => (
-  <svg {...svg}>
-    <path d="M12 5v14M5 12h14" />
-  </svg>
-);
-const IconCheck = () => (
-  <svg {...svg} width={13} height={13} strokeWidth={3}>
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
-);
-const IconChat = () => (
-  <svg {...svg}>
-    <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
-  </svg>
-);
-const IconBell = () => (
-  <svg {...svg}>
-    <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-  </svg>
-);
-const IconSpark = () => (
-  <svg {...svg}>
-    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z" />
-  </svg>
-);

@@ -6,15 +6,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root { --bg:#f2f2f7; --surface-1:#fff; --surface-2:#f2f2f7; --hairline:#e5e5ea; --text-1:#000; --text-2:#6c6c70; --accent:#5b3df5; }
-  .dark { --bg:#000; --surface-1:#1c1c1e; --surface-2:#2c2c2e; --hairline:#2c2c2e; --text-1:#fff; --text-2:#98989f; --accent:#9b87f5; }
+  .dark { --bg:#000; --surface-1:#1c1c1e; --surface-2:#2c2c2e; --hairline:#2c2c2e; --text-1:#fff; --text-2:#98989f; --accent:#9b87f5; color-scheme: dark; }
   body { margin:0; background:var(--bg); color:var(--text-1); font-family:"Plus Jakarta Sans", system-ui, sans-serif; }
-  .app { max-width: 480px; margin: 0 auto; padding: 16px; }
-  header { display:flex; justify-content:space-between; align-items:center; padding: 8px 0 16px; font-size: 20px; }
-  header button, .menu { font:inherit; font-size:15px; background:var(--surface-1); color:var(--text-1); border:1px solid var(--hairline); border-radius:12px; padding:10px 14px; cursor:pointer; }
-  .card { background:var(--surface-1); border-radius:20px; padding:18px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; }
-  .muted { color:var(--text-2); margin:0; } .big { font-size: 34px; font-weight: 800; margin: 0; }
-  .menu { text-align:left; display:flex; justify-content:space-between; }
-  .badge { background: var(--accent); color:#fff; border-radius: 999px; padding: 0 8px; font-size: 13px; }
+  .app { max-width: 480px; margin: 0 auto; padding: 12px 16px 120px; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; justify-content:space-between; align-items:center; padding: 6px 0 4px; font-size: 22px; }
+  .hdr-actions { display:flex; gap:8px; align-items:center; }
+  .ghost, .fake-row { font:inherit; font-size:14px; background:var(--surface-1); color:var(--text-1); border:1px solid var(--hairline); border-radius:12px; padding:9px 13px; cursor:pointer; }
+  .card { background:var(--surface-1); border-radius:20px; padding:18px; }
+  .muted { color:var(--text-2); margin:0; } .big { font-size: 34px; font-weight: 800; margin: 2px 0 0; }
+  .label { margin: 14px 0 -4px; font-size: 13px; font-weight: 700; color: var(--text-2); display:flex; gap:8px; align-items:center; }
+  .label span { width:20px; height:20px; border-radius:50%; background: var(--text-1); color: var(--bg); display:grid; place-items:center; font-size:11px; }
+  .settings { background:var(--surface-1); border-radius:20px; padding:4px; display:flex; flex-direction:column; gap:2px; }
+  .fake-row { border:0; text-align:left; padding:14px; color: var(--text-2); background: transparent; }
+  .foot { color: var(--text-2); font-size: 13px; text-align:center; }
 </style>
 </head>
 <body><div id="root"></div><script type="module" src="./bundle.js"></script></body>
