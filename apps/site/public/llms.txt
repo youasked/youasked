@@ -1,0 +1,22 @@
+# YouAsked
+
+> Feature requests that live inside your app, reach the developer on their phone, and tell everyone who asked the moment it ships. Built for apps made with AI coding agents.
+
+YouAsked is in beta. The React package and API are live; the npm packages (`@youasked/react`, `youasked` CLI, `@youasked/mcp`) are being published.
+
+## Docs for agents
+- [Install guide](https://youasked.adenteo.workers.dev/install.md): step by step for React and Next.js, entry points, signing users, theming.
+- [Claude Code skill](https://youasked.adenteo.workers.dev/skill.md): drop into .claude/skills/youasked/SKILL.md.
+- [This page as Markdown](https://youasked.adenteo.workers.dev/index.md)
+
+## What it does
+- Entry points: `<AskBar />`, `<FeatureCard />`, `<RequestButton variant="pill|icon|row" />`, a floating launcher (`trigger="floating"`), `<FeatureBoard />` for a whole page, and `useYouAsked().open({ view: "new", draft })` from any button.
+- A chat-style sheet: users type a request, see similar ones to vote on instead, and get a reply bubble when it's posted.
+- The team gets each request in Telegram (with buttons), Slack or Discord, and replies reach the requester in the app.
+- Requests have numbers (YA-12). "closes YA-12" in a commit or merged pull request marks it shipped and tells everyone who asked.
+- Agents can list, read, reply to and ship requests through the MCP server.
+
+## Key facts
+- Plain upvotes. Users are anonymous or identified by an ID the app signs with its secret key (HMAC-SHA256).
+- Matches the host app: shadcn tokens automatically, or the `appearance` prop.
+- API: https://youasked-api.adenteo.workers.dev
