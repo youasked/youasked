@@ -12,6 +12,8 @@ export type RequestSummary = {
   status: Status;
   votes: number;
   comments: number;
+  /** Times the ask was also found elsewhere (Reddit, App Store reviews). */
+  elsewhere?: number;
   shipNote: string | null;
   createdAt: number;
   updatedAt?: number;
@@ -66,6 +68,7 @@ export function createApi(secretKey: string, baseUrl = DEFAULT_API) {
         status,
         ...(shipNote === undefined ? {} : { shipNote }),
       }),
+    build: (id: string) => call<{ prompt: string; issueUrl?: string; refined?: boolean }>("POST", `/requests/${id}/build`),
     merge: (id: string, into: string) => call<{ ok: true }>("POST", `/requests/${id}/merge`, { into }),
   };
 }

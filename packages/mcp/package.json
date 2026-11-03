@@ -1,6 +1,6 @@
 {
   "name": "@youasked/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for YouAsked: let your coding agent read feature requests, reply, and ship them.",
   "license": "MIT",
   "type": "module",

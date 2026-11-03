@@ -1,0 +1,9 @@
+{
+  // Local test config: same worker, fake AI, no custom domain. See test/README in the report.
+  "name": "youasked-api-test",
+  "main": "dev-entry.ts",
+  "compatibility_date": "2026-10-01",
+  "triggers": { "crons": ["0 1 * * 1", "30 2 * * *"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "youasked", "database_id": "local", "migrations_dir": "../migrations" }],
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }]
+}

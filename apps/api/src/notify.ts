@@ -63,11 +63,16 @@ export async function tg(env: Env, token: string, method: string, body: unknown)
 }
 
 /** Like tg(), for methods that upload a file. */
-async function tgUpload(env: Env, token: string, method: string, form: FormData): Promise<any> {
+export async function tgUpload(env: Env, token: string, method: string, form: FormData): Promise<any> {
   const res = await fetch(`${env.TELEGRAM_API ?? "https://api.telegram.org"}/bot${token}/${method}`, { method: "POST", body: form });
   const data = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: unknown; description?: string };
   if (!data.ok) console.error("telegram", method, data.description);
   return data;
+}
+
+/** The token to call Telegram with: the shared bot's for shared chats, the app's own otherwise. */
+export function botTokenFor(env: Env, cfg: TelegramConfig): string | null {
+  return (cfg.shared ? env.YOUASKED_BOT_TOKEN : cfg.botToken) || null;
 }
 
 type Button = { text: string; callback_data: string };
@@ -98,6 +103,8 @@ export function requestCard(
   lines.push(`<i>${meta.join(" · ")}</i>`);
   const where = contextLine(r);
   if (where) lines.push(`📍 ${esc(clip(where, 120))}`);
+  if (r.source) lines.push(`🌐 Found on ${r.source === "reddit" ? "Reddit" : "the App Store"}`);
+  if (r.elsewhere_count) lines.push(`🌐 Also asked elsewhere ×${r.elsewhere_count}`);
   if (extra.earlyAccess) lines.push(`🙋 ${extra.earlyAccess} want early access`);
   if (extra.similar) {
     lines.push(`\n🔁 Looks like ${ref(extra.similar)} “${esc(clip(extra.similar.title, 80))}” (${extra.similar.vote_count} votes)`);
@@ -108,10 +115,12 @@ export function requestCard(
     .filter((s) => s !== r.status)
     .map((s) => ({ text: s === "planned" ? "📌 Planned" : s === "in_progress" ? "🛠 In progress" : "✅ Shipped", callback_data: `s:${r.id}:${s}` }));
   const second: Button[] = [{ text: "💬 Reply", callback_data: `r:${r.id}` }];
-  if (extra.similar) second.push({ text: `🔀 Merge into ${ref(extra.similar)}`, callback_data: `m:${r.id}:${extra.similar.id}` });
-  if (r.status === "shipped") second.push({ text: "✏️ Ship note", callback_data: `n:${r.id}` });
-  else if (r.status !== "declined") second.push({ text: "🚫 Decline", callback_data: `s:${r.id}:declined` });
-  return { text: lines.join("\n"), reply_markup: { inline_keyboard: [statusRow, second].filter((row) => row.length) } };
+  if (r.status !== "shipped" && r.status !== "declined") second.push({ text: "🛠 Build it", callback_data: `b:${r.id}` });
+  const third: Button[] = [];
+  if (extra.similar) third.push({ text: `🔀 Merge into ${ref(extra.similar)}`, callback_data: `m:${r.id}:${extra.similar.id}` });
+  if (r.status === "shipped") third.push({ text: "✏️ Ship note", callback_data: `n:${r.id}` });
+  else if (r.status !== "declined") third.push({ text: "🚫 Decline", callback_data: `s:${r.id}:declined` });
+  return { text: lines.join("\n"), reply_markup: { inline_keyboard: [statusRow, second, third].filter((row) => row.length) } };
 }
 
 async function rememberMessage(env: Env, chatId: string, messageId: number | undefined, requestId: string, action = "card") {
@@ -124,7 +133,8 @@ async function rememberMessage(env: Env, chatId: string, messageId: number | und
 }
 
 async function sendTelegram(env: Env, cfg: TelegramConfig, e: TeamEvent) {
-  if (!cfg.chatId) return;
+  const token = botTokenFor(env, cfg);
+  if (!cfg.chatId || !token) return;
   let text: string;
   let reply_markup: unknown;
   let photo: Attachment | undefined;
@@ -166,10 +176,10 @@ async function sendTelegram(env: Env, cfg: TelegramConfig, e: TeamEvent) {
     form.set("caption", text);
     form.set("parse_mode", "HTML");
     form.set("reply_markup", JSON.stringify(reply_markup));
-    sent = await tgUpload(env, cfg.botToken, "sendPhoto", form);
+    sent = await tgUpload(env, token, "sendPhoto", form);
   }
   if (!sent?.ok) {
-    sent = await tg(env, cfg.botToken, "sendMessage", {
+    sent = await tg(env, token, "sendMessage", {
       chat_id: cfg.chatId,
       text,
       parse_mode: "HTML",

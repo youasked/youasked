@@ -4,6 +4,9 @@ import { HTTPException } from "hono/http-exception";
 import { addTeamComment, loadRequestById, mergeRequests, setStatus } from "./actions";
 import { adminPage } from "./admin-page";
 import agent from "./agent";
+import build from "./build";
+import listening, { runListening } from "./listening";
+import { telegramConnect } from "./telegram-bot";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
@@ -24,6 +27,9 @@ import {
 
 type Vars = { app: AppRow; user: UserRow | null };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
+
+/** Must match the daily trigger in wrangler.jsonc. */
+const DAILY_CRON = "30 2 * * *";
 
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
@@ -51,6 +57,8 @@ function publicRequest(r: RequestRow & { voted?: number; author_name?: string | 
     shipNote: r.ship_note,
     shippedAt: r.shipped_at,
     context: parseContext(r.context),
+    ...(r.source ? { source: r.source, sourceUrl: r.source_url } : {}),
+    ...(r.elsewhere_count ? { elsewhere: r.elsewhere_count } : {}),
     creditName: creditName(r),
     createdAt: r.created_at,
     voted: Boolean(r.voted),
@@ -372,14 +380,15 @@ admin.get("/integrations", async (c) => {
       const cfg = i.config as TelegramConfig;
       out.telegram = {
         connected: Boolean(cfg.chatId),
-        mode: cfg.interactive === false ? "notify" : "interactive",
+        mode: cfg.shared ? "shared" : cfg.interactive === false ? "notify" : "interactive",
         chatTitle: cfg.chatTitle,
         botUsername: cfg.botUsername,
         link: cfg.linkCode ? `https://t.me/${cfg.botUsername}?start=${cfg.linkCode}` : null,
         groupLink: cfg.linkCode ? `https://t.me/${cfg.botUsername}?startgroup=${cfg.linkCode}` : null,
       };
     } else if (i.kind === "github") {
-      out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: (i.config as GithubConfig).secret };
+      const gc = i.config as GithubConfig;
+      out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: gc.secret, repo: gc.repo ?? null, tokenConnected: Boolean(gc.tokenEnc) };
     } else if (i.kind === "webhook") {
       out.webhook = i.config;
     }
@@ -494,6 +503,9 @@ admin.delete("/integrations/:kind", async (c) => {
 
 app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }));
 app.route("/v1/admin", agent);
+app.route("/v1/admin", build);
+app.route("/v1/admin", telegramConnect);
+app.route("/v1/admin", listening);
 app.route("/v1/admin", admin);
 
 // ---------------------------------------------------------------- public (widget, publishable key)
@@ -863,7 +875,8 @@ app.route("/v1", pub);
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(sendDigests(env));
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Two triggers (see wrangler.jsonc): the daily Heard elsewhere scan, and the weekly digest.
+    ctx.waitUntil(event.cron === DAILY_CRON ? runListening(env) : sendDigests(env));
   },
 };
