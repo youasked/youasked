@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AskBar, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "@youasked/react";
-import { API, DEMO_KEY } from "./content";
+import { AskAbout, AskBar, AskForIt, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "@youasked/react";
 import { GRAIDEN_LOOK } from "./Hero";
 import { Reveal } from "./ui";
 
@@ -8,6 +7,7 @@ const ENTRIES = [
   { key: "ask", title: "Ask bar", code: "<AskBar />", desc: "Looks like a chat input. Tapping it opens the composer, ready to type." },
   { key: "card", title: "Feature card", code: "<FeatureCard />", desc: "The top requests with vote buttons, for a dashboard or home tab." },
   { key: "buttons", title: "Buttons", code: '<RequestButton variant="icon" />', desc: "A pill, a round header icon or a settings row. Each gets a badge when something ships." },
+  { key: "context", title: "Next to a feature", code: '<AskAbout topic="charts" />', desc: "A quiet prompt beside a feature, or in an empty search. Requests arrive tagged with where they came from." },
   { key: "launcher", title: "Launcher", code: 'trigger="floating"', desc: "A chat bubble in the corner, like a support widget. There's a real one on this page." },
   { key: "page", title: "Whole page", code: "<FeatureBoard />", desc: "Everything inline, for a /feedback route or its own tab." },
   { key: "code", title: "From your code", code: "open({ draft })", desc: "Open it from any button. A locked feature can open it with the request already typed." },
@@ -22,7 +22,7 @@ export function Entries() {
     <section className="section" id="entry-points">
       <div className="wrap">
         <Reveal className="section-head">
-          <h2 className="h2">Six ways in. All of them feel built in.</h2>
+          <h2 className="h2">Pick a way in. They all feel built in.</h2>
           <p className="lede">Pick the ones that fit your app. They all open the same sheet, in your colours, your font and your dark mode.</p>
         </Reveal>
         <div className="entries">
@@ -36,7 +36,7 @@ export function Entries() {
             ))}
           </div>
           <div className="entry-frame">
-            <YouAsked appKey={DEMO_KEY} apiUrl={API} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
+            <YouAsked demo cards={false} offset={84} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
               <Preview k={key} />
             </YouAsked>
             <div className="code-chip">{codeFor(entry.key)}</div>
@@ -55,6 +55,8 @@ function codeFor(k: Key): ReactNode {
       return <>{"<FeatureCard "}<span className="k">limit</span>={"{3}"}{" />"}</>;
     case "buttons":
       return <>{"<RequestButton "}<span className="k">variant</span>=<span className="s">"pill"</span> | <span className="s">"icon"</span> | <span className="s">"row"</span>{" />"}</>;
+    case "context":
+      return <>{"<AskAbout "}<span className="k">topic</span>=<span className="s">"charts"</span>{" />  <AskForIt "}<span className="k">query</span>={"{search}"}{" />"}</>;
     case "launcher":
       return <>{"<YouAsked "}<span className="k">appKey</span>=<span className="s">"ya_pub_…"</span> <span className="k">trigger</span>=<span className="s">"floating"</span>{" />"}</>;
     case "page":
@@ -98,6 +100,24 @@ function Preview({ k }: { k: Key }) {
         </>
       )}
       {k === "code" && <LockedFeature />}
+      {k === "context" && (
+        <>
+          <div className="app-card">
+            <div className="k">Spending by week</div>
+            <div className="mini-chart" aria-hidden="true">
+              {[38, 64, 46, 80, 58, 92, 70].map((h, i) => (
+                <i key={i} style={{ height: `${h}%` }} />
+              ))}
+            </div>
+            <AskAbout topic="charts" prompt="Want more from charts?" />
+          </div>
+          <div className="app-card">
+            <div className="mock-search">⌕ split bills</div>
+            <p className="mock-empty">No expenses match “split bills”.</p>
+            <AskForIt query="split bills" />
+          </div>
+        </>
+      )}
       {(k === "ask" || k === "launcher" || k === "code") && (
         <div className="app-card" style={{ padding: "6px 16px" }}>
           <div className="app-row">

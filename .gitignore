@@ -7,3 +7,4 @@ dist
 packages/react/playground/keys.json
 packages/react/playground/bundle.js
 packages/react/playground/out
+.claude/worktrees

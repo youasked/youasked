@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { FeatureBoard, YouAsked } from "@youasked/react";
-import { AGENT_PROMPT, API, DEMO_KEY, INSTALL_CMD } from "./content";
+import { AGENT_PROMPT, INSTALL_CMD } from "./content";
 import { Check, CopyIcon, reducedMotion, useCopied } from "./ui";
 
 gsap.registerPlugin(MotionPathPlugin);
@@ -185,7 +185,7 @@ function HeroStage() {
                 <i />
               </span>
             </div>
-            <YouAsked appKey={DEMO_KEY} apiUrl={API} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
+            <YouAsked demo cards={false} offset={84} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
               <FeatureBoard height="100%" className="phone-board" />
             </YouAsked>
             <div className="live-toast" aria-hidden="true">

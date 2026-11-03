@@ -41,6 +41,8 @@ export type YouAskedProps = {
   title?: string;
   /** Distance in px from the bottom edge for the launcher, toast and desktop panel, e.g. to clear a tab bar. */
   offset?: number;
+  /** Show the corner card for replies, shipped requests and what's new. Turn off for previews embedded in a page. */
+  cards?: boolean;
   apiUrl?: string;
   children?: ReactNode;
 };
@@ -64,6 +66,7 @@ function coveredBy(news: WhatsNew | null, n: Notice): boolean {
 export function YouAsked({
   appKey = "",
   demo = false,
+  cards = true,
   user,
   signature,
   ready = true,
@@ -241,7 +244,7 @@ export function YouAsked({
                 onClick={() => (route ? close() : open())}
               />
             )}
-            {!notice && whatsNewToast && whatsNew && route === null && (
+            {cards && !notice && whatsNewToast && whatsNew && route === null && (
               <WhatsNewToast
                 news={whatsNew}
                 position={position}
@@ -250,7 +253,7 @@ export function YouAsked({
                 onDismiss={dismissWhatsNew}
               />
             )}
-            {notice && route === null && (
+            {cards && notice && route === null && (
               <ShippedToast
                 notice={notice}
                 position={position}

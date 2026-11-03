@@ -5,7 +5,7 @@ import { Check, SendIcon, reducedMotion } from "./ui";
 const STEPS = [
   {
     title: "They ask, right where they are.",
-    body: "An ask bar, a button or a quiet prompt next to a feature opens a sheet that feels like part of your app. As they type, it finds what others already asked, so one vote replaces ten duplicates.",
+    body: "An ask bar, a button or a quiet prompt next to a feature opens a sheet that feels like part of your app. They can circle the part of the screen they mean. As they type, it finds what others already asked, so one vote replaces ten duplicates.",
   },
   {
     title: "You hear it on your phone.",

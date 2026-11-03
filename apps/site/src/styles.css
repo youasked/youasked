@@ -425,3 +425,7 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
   .story-mobile-stage .float-card { transform: scale(0.86); }
 }
 .final { padding-bottom: 96px; }
+.mini-chart { display: flex; align-items: flex-end; gap: 8px; height: 90px; margin: 12px 0 10px; }
+.mini-chart i { flex: 1; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, #8f7bff, #5b3df5); display: block; }
+.mock-search { background: #f2f2f7; border-radius: 12px; padding: 10px 12px; font-size: 15px; color: #000; }
+.mock-empty { margin: 14px 0 6px; color: #6c6c70; font-size: 14.5px; }

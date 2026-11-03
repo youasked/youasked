@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AskBar, FeatureCard, YouAsked } from "@youasked/react";
-import { API, DEMO_KEY } from "./content";
 import { Reveal } from "./ui";
 
 const ACCENTS = [
@@ -99,7 +98,7 @@ export function Theming() {
           </div>
         </Reveal>
         <div className="entry-frame" style={{ minHeight: 600 }}>
-          <YouAsked appKey={DEMO_KEY} apiUrl={API} trigger="none" appearance={appearance} appName="Graiden" appIcon={false}>
+          <YouAsked demo cards={false} offset={84} trigger="none" appearance={appearance} appName="Graiden" appIcon={false}>
             <div className={dark ? "mock-app dark" : "mock-app"} style={{ fontFamily: font.value }}>
               <div className="mock-top">
                 <b style={{ fontFamily: font.value }}>Graiden</b>
