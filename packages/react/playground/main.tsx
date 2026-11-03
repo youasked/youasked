@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AskBar, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "../src";
+import { AskAbout, AskBar, AskForIt, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "../src";
 import keys from "./keys.json";
 
 const params = new URLSearchParams(location.search);
 const graidenLook = params.get("look") !== "default";
+// ?user=<id>&sig=<hmac> signs in as someone else; ?demo=1 runs with no server.
+const who = params.get("user") ? { id: params.get("user")!, name: params.get("name") ?? params.get("user")! } : keys.sig ? { id: "you", name: "You" } : null;
+const sig = params.get("sig") ?? keys.sig ?? null;
 const appearance = graidenLook
   ? { accent: "var(--accent)", background: "var(--surface-1)", foreground: "var(--text-1)", muted: "var(--text-2)", surface: "var(--surface-2)", border: "var(--hairline)", radius: 16 }
   : undefined;
@@ -19,6 +23,7 @@ function Label({ n, children }: { n: string; children: string }) {
 
 function Home() {
   const { open } = useYouAsked();
+  const [q, setQ] = useState("export to excel");
   return (
     <div className="app">
       <header>
@@ -38,7 +43,18 @@ function Home() {
       </section>
       <Label n="2">Feature card</Label>
       <FeatureCard />
-      <Label n="3">Buttons: pill · icon (top right) · settings row</Label>
+      <Label n="3">Ask about a feature · empty search</Label>
+      <section className="card">
+        <p className="muted">Spending by category</p>
+        <p className="big">Charts</p>
+        <AskAbout topic="charts" prompt="Want more from charts?" />
+      </section>
+      <section className="card search">
+        <input placeholder="Search expenses" value={q} onChange={(e) => setQ(e.target.value)} />
+        <p className="muted">No expenses match “{q}”.</p>
+        <AskForIt query={q} />
+      </section>
+      <Label n="4">Buttons: pill · icon (top right) · settings row</Label>
       <div className="row">
         <RequestButton variant="pill" label="Suggest a feature" />
       </div>
@@ -48,9 +64,9 @@ function Home() {
           Locked feature → opens with a draft
         </button>
       </div>
-      <Label n="4">Embedded page</Label>
+      <Label n="5">Embedded page</Label>
       <FeatureBoard height={600} />
-      <p className="foot">5 · The launcher bubble is bottom-right.</p>
+      <p className="foot">6 · The launcher bubble is bottom-right.</p>
     </div>
   );
 }
@@ -58,10 +74,11 @@ function Home() {
 function Root() {
   return (
     <YouAsked
+      demo={params.get("demo") === "1"}
       appKey={keys.publicKey}
       apiUrl={keys.apiUrl ?? "http://localhost:8833"}
-      user={keys.sig ? { id: "you", name: "You" } : null}
-      signature={keys.sig ?? null}
+      user={who}
+      signature={sig}
       trigger={params.get("launcher") === "0" ? "none" : "floating"}
       appearance={appearance}
     >

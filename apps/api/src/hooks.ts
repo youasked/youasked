@@ -41,7 +41,7 @@ type TgUpdate = {
   callback_query?: {
     id: string;
     data?: string;
-    message?: { message_id: number; chat: { id: number } };
+    message?: { message_id: number; chat: { id: number }; photo?: unknown[] };
   };
 };
 
@@ -115,13 +115,15 @@ hooks.post("/telegram/:id", async (c) => {
     // Refresh the card so it shows where the request stands now.
     const fresh = await loadRequestById(env.DB, integ.app_id, r.id);
     if (fresh && cq.message && action !== "u") {
-      const card = requestCard(fresh, integ.app_name);
-      await tg(env, cfg.botToken, "editMessageText", {
+      const early = await env.DB.prepare("SELECT COUNT(*) AS n FROM early_access WHERE request_id = ?").bind(fresh.id).first<{ n: number }>();
+      const isPhoto = Boolean(cq.message.photo);
+      const card = requestCard(fresh, integ.app_name, { earlyAccess: early?.n ?? 0, photo: isPhoto });
+      // A card with a screenshot is a photo message, whose text is its caption.
+      await tg(env, cfg.botToken, isPhoto ? "editMessageCaption" : "editMessageText", {
         chat_id: cfg.chatId,
         message_id: cq.message.message_id,
-        text: card.text,
+        ...(isPhoto ? { caption: card.text } : { text: card.text, disable_web_page_preview: true }),
         parse_mode: "HTML",
-        disable_web_page_preview: true,
         reply_markup: card.reply_markup,
       });
     }

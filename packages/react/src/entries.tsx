@@ -159,6 +159,48 @@ export function RequestButton({
   );
 }
 
+/**
+ * A quiet line next to a feature: "Want more from charts?". Opens the composer already about that
+ * topic, and the request is saved with it so you can see which feature people are asking about.
+ */
+export function AskAbout({
+  topic,
+  prompt,
+  className,
+  style,
+}: Common & { topic: string; prompt?: string }) {
+  const { open } = useInternal();
+  return (
+    <span {...useScope(className, style)}>
+      <button type="button" className="ya-askabout" onClick={() => open({ view: "new", topic })}>
+        <IconBulb />
+        {prompt ?? `Want more from ${topic}?`}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * For an empty search: "Can't find “export”? Ask for it". Opens the composer with the search as the
+ * draft, tagged as a search so you can tell what people looked for and didn't find.
+ */
+export function AskForIt({ query, className, style }: Common & { query: string }) {
+  const { open } = useInternal();
+  const q = query.trim();
+  const shown = q.length > 40 ? `${q.slice(0, 39).trimEnd()}…` : q;
+  return (
+    <span {...useScope(className, style)}>
+      <button type="button" className="ya-askforit" onClick={() => open({ view: "new", draft: q, topic: "search" })}>
+        <span>{shown ? `Can't find “${shown}”?` : "Can't find it?"}</span>
+        <b>
+          Ask for it
+          <IconChevron />
+        </b>
+      </button>
+    </span>
+  );
+}
+
 /** The whole experience inline, for a /feedback page or a tab. */
 export function FeatureBoard({
   start = "home",

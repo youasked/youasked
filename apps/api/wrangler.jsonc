@@ -13,5 +13,8 @@
       "database_id": "b16d8e4a-66d5-4df2-a48a-d743d63e1dea",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  // Screenshots attached to requests. Create the bucket once with `wrangler r2 bucket create youasked-uploads`;
+  // `wrangler dev` simulates it locally without that.
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }]
 }
