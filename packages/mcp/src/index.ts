@@ -14,7 +14,7 @@ if (!secretKey.startsWith("ya_sec_")) {
 }
 const api = createApi(secretKey, process.env.YOUASKED_API_URL || DEFAULT_API);
 
-const server = new McpServer({ name: "youasked", version: "0.1.0" });
+const server = new McpServer({ name: "youasked", version: "0.2.0" });
 
 // ---------------------------------------------------------------- helpers
 
@@ -105,6 +105,69 @@ server.registerTool(
         ...comments.map((c) => `- ${c.team ? "[team]" : (c.author ?? "someone")} (${day(c.createdAt)}): ${c.body.replace(/\n+/g, " ")}`),
       ];
       return out.filter((l, i) => l !== "" || out[i - 1] !== "").join("\n");
+    }),
+);
+
+/** Higher is better to build next: votes first, then asks found elsewhere, planned work, fresh asks and active conversations. */
+function buildScore(r: RequestSummary, nowMs: number) {
+  const ageDays = Math.max(0, (nowMs - r.createdAt) / 86_400_000);
+  const recency = 2 * Math.max(0, 1 - ageDays / 30);
+  return r.votes + 0.5 * (r.elsewhere ?? 0) + (r.status === "planned" ? 2 : 0) + recency + Math.min(r.comments, 5) * 0.2;
+}
+
+function whyBuild(r: RequestSummary, nowMs: number) {
+  const days = Math.floor((nowMs - r.createdAt) / 86_400_000);
+  const parts = [plural(r.votes, "vote")];
+  if (r.elsewhere) parts.push(`also asked elsewhere ${plural(r.elsewhere, "time")}`);
+  if (r.comments) parts.push(plural(r.comments, "comment"));
+  parts.push(r.status === "planned" ? "already planned" : "still open");
+  parts.push(days <= 0 ? "asked today" : `asked ${plural(days, "day")} ago`);
+  return parts.join(", ");
+}
+
+server.registerTool(
+  "next_request",
+  {
+    title: "What to build next",
+    description:
+      "The single best request to build next, with a short reason. Ranks open and planned requests by votes (plus asks found elsewhere, recency and discussion) " +
+      "and skips anything already in progress. Then call build_prompt on it, build it, and commit with \"closes YA-n\".",
+    inputSchema: { count: z.number().int().min(1).max(5).default(1).describe("How many candidates to return, best first.") },
+    annotations: { readOnlyHint: true },
+  },
+  ({ count }) =>
+    run(async () => {
+      const { requests } = await api.list("all");
+      const nowMs = Date.now();
+      const rows = requests
+        .filter((r) => r.status === "open" || r.status === "planned")
+        .sort((a, b) => buildScore(b, nowMs) - buildScore(a, nowMs));
+      if (!rows.length) return "Nothing to build: no open or planned requests (anything left is in progress, shipped or declined).";
+      const top = rows.slice(0, count);
+      return [
+        ...top.map((r, i) => `${count > 1 ? `${i + 1}. ` : ""}${ref(r.number)}: ${r.title}\n   Why: ${whyBuild(r, nowMs)}.`),
+        "",
+        `Next: build_prompt for ${ref(top[0].number)}, or get_request to read it in full.`,
+      ].join("\n");
+    }),
+);
+
+server.registerTool(
+  "build_prompt",
+  {
+    title: "Get a build prompt for a request",
+    description:
+      "A ready-to-use prompt for building a request: the ask, how many people voted, what users said in their own words, screenshots, where it came from, related requests, " +
+      "acceptance criteria, and the \"closes YA-n\" commit line. If the app connected a GitHub token, it also opens (or reuses) a GitHub issue with the same text and returns its link. " +
+      "Follow the returned prompt, then commit with \"closes YA-n\" so everyone who asked is told.",
+    inputSchema: { request: requestRef },
+    annotations: { readOnlyHint: false, idempotentHint: true },
+  },
+  ({ request }) =>
+    run(async () => {
+      const r = await resolve(api, request);
+      const { prompt, issueUrl } = await api.build(r.id);
+      return `${prompt}${issueUrl ? `\n\n---\nGitHub issue: ${issueUrl}` : ""}`;
     }),
 );
 

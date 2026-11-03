@@ -6,7 +6,8 @@
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
   // Weekly digest to connected Telegram chats: Mondays 01:00 UTC (09:00 Singapore).
-  "triggers": { "crons": ["0 1 * * 1"] },
+  // Daily Heard elsewhere scan: 02:30 UTC (10:30 Singapore). Keep in step with DAILY_CRON in src/index.ts.
+  "triggers": { "crons": ["0 1 * * 1", "30 2 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
@@ -21,6 +22,7 @@
   // Duplicate catching by meaning. Create the index once (384 dims, cosine) with:
   //   wrangler vectorize create youasked-requests --dimensions=384 --metric=cosine
   // Both bindings are optional in code; without them the API falls back to word matching.
+  // Workers AI: embeddings for duplicates, Heard elsewhere triage, build prompts and digest summaries.
   "ai": { "binding": "AI" },
   "vectorize": [{ "binding": "VECTORIZE", "index_name": "youasked-requests" }],
   // Cloudflare Email Sending (sign-in links, invites). hello@youasked.dev must be onboarded under

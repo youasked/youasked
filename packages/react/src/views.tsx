@@ -646,6 +646,21 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
                 <span className="ya-switch" aria-hidden="true" />
               </button>
             )}
+            {request.source && (
+              <p className="ya-note">
+                Also asked{" "}
+                {request.sourceUrl ? (
+                  <a href={request.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    {request.source === "reddit" ? "on Reddit" : "in App Store reviews"}
+                  </a>
+                ) : request.source === "reddit" ? (
+                  "on Reddit"
+                ) : (
+                  "in App Store reviews"
+                )}
+                .
+              </p>
+            )}
             {request.mine && request.status !== "shipped" && (
               <p className="ya-note">You asked for this. We'll tell you here when it ships.</p>
             )}

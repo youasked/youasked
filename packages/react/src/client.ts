@@ -13,6 +13,9 @@ export type FeatureRequest = {
   shippedAt: number | null;
   /** Where it was asked from: the page path and/or a topic like "charts". */
   context: { path?: string; topic?: string } | null;
+  /** Set when the team found this ask elsewhere ("reddit" or "appstore") and added it. */
+  source?: string;
+  sourceUrl?: string | null;
   /** First name of the person who asked, when they opted in to being thanked and it has shipped. */
   creditName: string | null;
   createdAt: number;

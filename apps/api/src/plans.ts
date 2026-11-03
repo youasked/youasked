@@ -36,6 +36,20 @@ export const lookupKey = (plan: Plan, interval: Interval, founding: boolean) =>
 /** Apps a workspace can hold before it has paid (they only answer on localhost). */
 export const TEST_MODE_APPS = 3;
 
+/** Test mode is for trying it out: the first this-many people of an unpaid app can use it. */
+export const TEST_MODE_USERS = 25;
+
+/**
+ * A client in development: a page on a local origin, or a React Native dev build (native fetch sends
+ * no Origin, so the SDK sends x-youasked-dev: 1 when __DEV__). The header can be faked, which is why
+ * test mode also caps the number of people (TEST_MODE_USERS).
+ */
+export function isDevClient(headers: { get(name: string): string | null }): boolean {
+  const origin = headers.get("origin");
+  if (origin) return isLocalOrigin(origin);
+  return headers.get("x-youasked-dev") === "1";
+}
+
 /** Subscription states that keep an app live. past_due keeps working while Stripe retries the card. */
 const LIVE_STATUSES = ["active", "trialing", "past_due"];
 

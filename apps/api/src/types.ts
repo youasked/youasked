@@ -35,6 +35,12 @@ export type Env = {
 
   /** Heard elsewhere (social listening) data source. */
   SCRAPECREATORS_API_KEY?: string;
+  /** Workers AI model for classifying and summarising; the default is set in ai.ts. */
+  AI_MODEL?: string;
+  /** Overridable in tests; default https://api.github.com */
+  GITHUB_API?: string;
+  /** Test only: serve listening sources from fixtures at this base URL instead of the real services. */
+  LISTENING_FIXTURES?: string;
 };
 
 export type AppRow = {
@@ -87,6 +93,13 @@ export type RequestRow = {
   context: string | null;
   /** 1 when the author asked to be thanked by first name when it ships. */
   credit: number;
+  /** GitHub issue opened by "Build it". */
+  issue_url: string | null;
+  /** "reddit" | "appstore" when the request was approved from Heard elsewhere. */
+  source: string | null;
+  source_url: string | null;
+  /** Mentions found outside the widget (Heard elsewhere), counted like quiet votes. */
+  elsewhere_count: number;
   created_at: number;
   updated_at: number;
 };
@@ -122,8 +135,15 @@ export type TelegramConfig = {
    */
   interactive?: boolean;
   dashboardUrl?: string;
+  /** true when the chat is bound through the shared @youasked_bot; botToken is then empty. */
+  shared?: boolean;
 };
 
-export type GithubConfig = { secret: string };
+export type GithubConfig = {
+  secret: string;
+  /** "owner/name" and the AES-GCM encrypted token that can open issues there (see crypto.ts). */
+  repo?: string;
+  tokenEnc?: string;
+};
 
 export type WebhookConfig = { url: string; format: "slack" | "discord" | "json" };

@@ -8,7 +8,10 @@ import agent from "./agent";
 import auth, { dashboardBase } from "./auth";
 import { stripeHook } from "./billing";
 import { createDash } from "./dash";
-import { entitlements, isLocalOrigin } from "./plans";
+import { TEST_MODE_USERS, entitlements, isDevClient } from "./plans";
+import build from "./build";
+import listening, { runListening } from "./listening";
+import { telegramConnect } from "./telegram-bot";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, verifySignature } from "./lib";
@@ -33,6 +36,9 @@ import {
 
 type Vars = { app: AppRow; user: UserRow | null; mode: "test" | "live" };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
+
+/** Must match the daily trigger in wrangler.jsonc. */
+const DAILY_CRON = "30 2 * * *";
 
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
@@ -75,6 +81,8 @@ function publicRequest(r: RequestRow & { voted?: number; author_name?: string | 
     shipNote: r.ship_note,
     shippedAt: r.shipped_at,
     context: parseContext(r.context),
+    ...(r.source ? { source: r.source, sourceUrl: r.source_url } : {}),
+    ...(r.elsewhere_count ? { elsewhere: r.elsewhere_count } : {}),
     creditName: creditName(r),
     createdAt: r.created_at,
     voted: Boolean(r.voted),
@@ -395,14 +403,15 @@ admin.get("/integrations", async (c) => {
       const cfg = i.config as TelegramConfig;
       out.telegram = {
         connected: Boolean(cfg.chatId),
-        mode: cfg.interactive === false ? "notify" : "interactive",
+        mode: cfg.shared ? "shared" : cfg.interactive === false ? "notify" : "interactive",
         chatTitle: cfg.chatTitle,
         botUsername: cfg.botUsername,
         link: cfg.linkCode ? `https://t.me/${cfg.botUsername}?start=${cfg.linkCode}` : null,
         groupLink: cfg.linkCode ? `https://t.me/${cfg.botUsername}?startgroup=${cfg.linkCode}` : null,
       };
     } else if (i.kind === "github") {
-      out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: (i.config as GithubConfig).secret };
+      const gc = i.config as GithubConfig;
+      out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: gc.secret, repo: gc.repo ?? null, tokenConnected: Boolean(gc.tokenEnc) };
     } else if (i.kind === "webhook") {
       out.webhook = i.config;
     }
@@ -519,6 +528,9 @@ app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "cont
 app.route("/v1/admin", agent);
 app.route("/v1/admin", quality({ announce: announceNew }));
 app.route("/v1", unsubscribe);
+app.route("/v1/admin", build);
+app.route("/v1/admin", telegramConnect);
+app.route("/v1/admin", listening);
 app.route("/v1/admin", admin);
 
 // The dashboard's door into the admin routes above, authenticated by session instead of secret key.
@@ -551,7 +563,7 @@ pub.use(
   "*",
   cors({
     origin: (origin) => origin || "*",
-    allowHeaders: ["content-type", "x-youasked-key", "x-youasked-user", "x-youasked-sig", "x-youasked-anon"],
+    allowHeaders: ["content-type", "x-youasked-key", "x-youasked-user", "x-youasked-sig", "x-youasked-anon", "x-youasked-dev", "x-youasked-platform"],
     allowMethods: ["GET", "POST"],
     maxAge: 86400,
   }),
@@ -566,17 +578,21 @@ pub.use("*", async (c, next) => {
     const origin = c.req.header("origin");
     if (origin && !(JSON.parse(row.allowed_origins) as string[]).includes(origin)) fail(403, "origin_not_allowed");
   }
-  // Test mode: until the workspace is on a paid plan, the app only answers from localhost.
-  const origin = c.req.header("origin");
+  // Test mode: until the workspace is on a paid plan, the app only answers development clients
+  // (localhost, React Native dev builds), and only for its first TEST_MODE_USERS people.
   const live = row.always_live ? true : (await entitlements(c.env, row)).live;
-  if (!live && !isLocalOrigin(origin)) {
-    fail(402, "test_mode", {
-      message: `This app is in test mode. It works on localhost until it's on a paid plan: ${dashboardBase(c.env)}`,
-    });
-  }
+  const testModeMessage = `This app is in test mode. It works on localhost and in dev builds until it's on a paid plan: ${dashboardBase(c.env)}`;
+  if (!live && !isDevClient(c.req.raw.headers)) fail(402, "test_mode", { message: testModeMessage });
   c.set("app", row);
   c.set("mode", live ? "live" : "test");
-  c.set("user", await resolveUser(c.env.DB, row, c.req.raw.headers));
+  const user = await resolveUser(c.env.DB, row, c.req.raw.headers);
+  if (!live && user) {
+    const earlier = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE app_id = ? AND created_at < ?")
+      .bind(row.id, user.created_at)
+      .first<{ n: number }>();
+    if ((earlier?.n ?? 0) >= TEST_MODE_USERS) fail(402, "test_mode", { message: testModeMessage });
+  }
+  c.set("user", user);
   await next();
 });
 
@@ -886,7 +902,8 @@ app.route("/v1", pub);
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(sendDigests(env));
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Two triggers (see wrangler.jsonc): the daily Heard elsewhere scan, and the weekly digest.
+    ctx.waitUntil(event.cron === DAILY_CRON ? runListening(env) : sendDigests(env));
   },
 };
