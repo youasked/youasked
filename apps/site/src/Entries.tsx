@@ -56,7 +56,7 @@ export function Entries() {
             ))}
           </div>
           <div className="entry-frame">
-            <YouAsked demo cards={false} offset={84} trigger="none" appearance={APP_LOOK} appName="Your App" appIcon={false}>
+            <YouAsked demo cards={false} offset={84} trigger="none" appearance={APP_LOOK} appName="Acme" appIcon={false}>
               <Preview k={key} />
             </YouAsked>
             <div className="code-chip">{codeFor(entry.key)}</div>
@@ -159,7 +159,7 @@ function Preview({ k }: { k: Key }) {
   return (
     <div className="mock-app">
       <div className="mock-top">
-        <b className="host">Your App</b>
+        <b className="host">Acme</b>
         <div className="mock-icons">
           {k === "buttons" && <RequestButton variant="icon" />}
           <span className="mock-circle host host-box" aria-hidden="true">

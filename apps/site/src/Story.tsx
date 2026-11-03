@@ -156,7 +156,7 @@ function AppHome() {
   return (
     <div className="app">
       <div className="app-head">
-        <b>Your App</b>
+        <b>Acme</b>
       </div>
       <div className="app-body">
         <div className="app-card">
@@ -204,10 +204,10 @@ function SceneAsk({ active }: { active: boolean }) {
         <AppHome />
         <div className="chat-sheet">
           <div className="grab" />
-          <div className="ch-head">Your App<span>Ideas, votes and what's new</span>
+          <div className="ch-head">Acme<span>Ideas, votes and what's new</span>
           </div>
           <div className="chat-msgs">
-            <div className="bub in">Hey! What would make Your App better for you?</div>
+            <div className="bub in">Hey! What would make Acme better for you?</div>
             <div className="bub in s1-reply">
               Added your vote to <b>Split a bill with my partner</b>. We'll tell you right here when it ships.
             </div>
@@ -252,14 +252,14 @@ function SceneHear({ active }: { active: boolean }) {
         <div className="tg-head">
           <span className="tg-ava">G</span>
           <div>
-            <div className="tg-name">Your App requests</div>
+            <div className="tg-name">Acme requests</div>
             <div className="tg-sub">bot</div>
           </div>
         </div>
         <div className="tg-body" style={{ minHeight: 420 }}>
           <div className="s2-card">
             <div className="tg-msg">
-              💡 New request · <b>Your App</b> · YA-12<span className="s2-status" />
+              💡 New request · <b>Acme</b> · YA-12<span className="s2-status" />
               <br />
               <b>Split a bill with my partner</b>
               <br />

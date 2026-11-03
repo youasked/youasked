@@ -28,7 +28,7 @@ export type DemoClient = Client & {
   onNotice: (fn: (n: Notice) => void) => () => void;
 };
 
-export function createDemoClient(appName = "Your App"): DemoClient {
+export function createDemoClient(appName = "Acme"): DemoClient {
   const t0 = Date.now();
   let seq = 100;
   const listeners = new Set<(n: Notice) => void>();

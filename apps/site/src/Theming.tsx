@@ -98,11 +98,11 @@ export function Theming() {
           </div>
         </Reveal>
         <div className="entry-frame" style={{ minHeight: 600 }}>
-          <YouAsked demo cards={false} offset={84} trigger="none" appearance={appearance} appName="Your App" appIcon={false}>
+          <YouAsked demo cards={false} offset={84} trigger="none" appearance={appearance} appName="Acme" appIcon={false}>
             <div className={dark ? "mock-app dark" : "mock-app"} style={{ fontFamily: font.value }}>
               <div className="mock-top">
                 <b className="host" style={{ fontFamily: font.value }}>
-                  Your App
+                  Acme
                 </b>
               </div>
               <AskBar />
