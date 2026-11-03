@@ -78,6 +78,8 @@ export type RequestDetail = {
   attachments?: Attachment[];
   /** Whether this person asked to try it before it ships. */
   earlyAccess?: boolean;
+  /** The person wrote it and nobody else has joined in yet, so they can take it back. */
+  canDelete?: boolean;
   redirect?: string;
 };
 
@@ -138,9 +140,9 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
     return h;
   }
 
-  async function call<T>(path: string, body?: unknown, raw?: Blob): Promise<T> {
+  async function call<T>(path: string, body?: unknown, raw?: Blob, method?: "DELETE"): Promise<T> {
     const res = await fetch(base + path, {
-      method: body === undefined && !raw ? "GET" : "POST",
+      method: method ?? (body === undefined && !raw ? "GET" : "POST"),
       headers: raw ? { ...headers(false), "content-type": raw.type } : headers(body !== undefined),
       body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
@@ -162,6 +164,7 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
         attachments: d.attachments ?? [],
       })),
     upload: (image: Blob) => call<Attachment>("/uploads", undefined, image),
+    remove: (id: string) => call<{ ok: true }>(`/requests/${encodeURIComponent(id)}`, undefined, undefined, "DELETE"),
     earlyAccess: (id: string) => call<{ earlyAccess: boolean }>(`/requests/${encodeURIComponent(id)}/early-access`, {}),
     whatsNewSeen: () => call<{ ok: true }>("/whats-new/seen", {}),
     vote: (id: string) => call<{ voted: boolean; votes: number }>(`/requests/${encodeURIComponent(id)}/vote`, {}),

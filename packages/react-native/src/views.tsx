@@ -628,7 +628,24 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
   const [replyError, setReplyError] = useState<string | null>(null);
   const [voted, setVoted] = useState<boolean | null>(null);
   const [early, setEarly] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  const remove = async () => {
+    if (!data?.request || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await client.remove(data.request.id);
+      haptic.light();
+      setRoute({ view: "mine" });
+    } catch (err) {
+      setDeleteError(errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined));
+      setDeleting(false);
+    }
+  };
   useEffect(() => setEarly(Boolean(data?.earlyAccess)), [data?.earlyAccess]);
 
   const toggleEarly = async () => {
@@ -728,6 +745,25 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
             {request.mine && request.status !== "shipped" && (
               <T style={s.note}>You asked for this. We'll tell you here when it ships.</T>
             )}
+            {data?.canDelete &&
+              (confirmDelete ? (
+                <View style={s.deleteRow}>
+                  <T style={s.note}>Delete this request? This can't be undone.</T>
+                  <View style={s.deleteActions}>
+                    <Tap onPress={remove} disabled={deleting} accessibilityRole="button">
+                      <T style={[s.deleteLink, s.deleteDanger]}>{deleting ? "Deleting…" : "Delete"}</T>
+                    </Tap>
+                    <Tap onPress={() => setConfirmDelete(false)} disabled={deleting} accessibilityRole="button">
+                      <T style={s.deleteLink}>Keep it</T>
+                    </Tap>
+                  </View>
+                </View>
+              ) : (
+                <Tap onPress={() => setConfirmDelete(true)} accessibilityRole="button" style={s.deleteRow}>
+                  <T style={[s.deleteLink, s.deleteQuiet]}>Delete my request</T>
+                </Tap>
+              ))}
+            {deleteError && <T style={s.note}>{deleteError}</T>}
             {request.status === "shipped" && (
               <View style={s.callout}>
                 <GreenDot size={20} />

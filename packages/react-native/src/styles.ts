@@ -85,6 +85,11 @@ export function makeStyles(t: Theme) {
     shippedWhen: { fontSize: 12.5, color: t.muted },
     shippedDot: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: mix(t.green, t.bg, 0.16) },
     note: { fontSize: 13.5, color: t.muted, marginTop: 10, lineHeight: 19 },
+    deleteRow: { marginTop: 10 },
+    deleteActions: { flexDirection: "row", gap: 16, marginTop: 6 },
+    deleteLink: { fontSize: 14, fontWeight: "600", color: t.accent, paddingVertical: 4 },
+    deleteQuiet: { color: t.muted, fontWeight: "500" },
+    deleteDanger: { color: "#e5484d" },
 
     // ---- composer
     composerWrap: { paddingTop: 8, paddingHorizontal: 12, paddingBottom: 10, backgroundColor: t.bg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },

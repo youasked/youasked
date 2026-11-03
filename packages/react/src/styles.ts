@@ -57,6 +57,9 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-link{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:600;color:var(--_accent);padding:6px 8px;border-radius:10px;flex:none}
 .ya-link svg{width:15px;height:15px}
 .ya-link:hover{background:var(--_tint)}
+.ya-delete-row{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.ya-link-quiet{color:var(--_muted);font-weight:500;padding-left:0}
+.ya-link-danger{color:#e5484d}
 .ya-avatar{display:block;flex:none;border-radius:24%;object-fit:cover;background:var(--_surface)}
 
 /* ---------- body, lists */

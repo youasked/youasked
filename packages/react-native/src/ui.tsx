@@ -86,7 +86,8 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   return { data, error, setData, refresh, refreshing };
 }
 
-export function errorText(code: string | null): string {
+export function errorText(code: string | null, detail?: string): string {
+  if (detail) return detail;
   switch (code) {
     case "signature_required":
     case "bad_signature":

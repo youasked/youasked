@@ -573,6 +573,22 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
   const [voted, setVoted] = useState<boolean | null>(null);
   const [early, setEarly] = useState(false);
   useEffect(() => setEarly(Boolean(data?.earlyAccess)), [data?.earlyAccess]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const remove = async () => {
+    if (!data?.request || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await client.remove(data.request.id);
+      setRoute({ view: "mine" });
+    } catch (err) {
+      setDeleteError(errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined));
+      setDeleting(false);
+    }
+  };
 
   const toggleEarly = async () => {
     if (!data?.request) return;
@@ -663,6 +679,29 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
             )}
             {request.mine && request.status !== "shipped" && (
               <p className="ya-note">You asked for this. We'll tell you here when it ships.</p>
+            )}
+            {data?.canDelete &&
+              (confirmDelete ? (
+                <p className="ya-note ya-delete-row">
+                  Delete this request? This can't be undone.
+                  <button type="button" className="ya-link ya-link-danger" onClick={remove} disabled={deleting}>
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                  <button type="button" className="ya-link" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                    Keep it
+                  </button>
+                </p>
+              ) : (
+                <p className="ya-note ya-delete-row">
+                  <button type="button" className="ya-link ya-link-quiet" onClick={() => setConfirmDelete(true)}>
+                    Delete my request
+                  </button>
+                </p>
+              ))}
+            {deleteError && (
+              <p className="ya-note" role="alert">
+                {deleteError}
+              </p>
             )}
             {request.status === "shipped" && (
               <div className="ya-callout" data-tone="success">

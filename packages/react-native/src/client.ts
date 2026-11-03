@@ -78,13 +78,19 @@ export type RequestDetail = {
   attachments?: Attachment[];
   /** Whether this person asked to try it before it ships. */
   earlyAccess?: boolean;
+  /** The person wrote it and nobody else has joined in yet, so they can take it back. */
+  canDelete?: boolean;
   redirect?: string;
 };
 
 export type YouAskedUser = { id: string | number; email?: string | null; name?: string | null };
 
 export class YouAskedError extends Error {
-  constructor(public code: string) {
+  constructor(
+    public code: string,
+    /** A ready-to-show sentence from the server, when it sent one (spam, rate limits, delete). */
+    public detail?: string,
+  ) {
     super(code);
   }
 }
@@ -137,13 +143,13 @@ export function createClient({ appKey, apiUrl, user, signature, getAnon }: Clien
     return h;
   }
 
-  async function call<T>(path: string, body?: unknown, raw?: Blob): Promise<T> {
+  async function call<T>(path: string, body?: unknown, raw?: Blob, method?: "DELETE"): Promise<T> {
     const h = await headers(body !== undefined && !raw);
     if (raw) h["content-type"] = raw.type || "image/png";
     let res: Response;
     try {
       res = await fetch(base + path, {
-        method: body === undefined && !raw ? "GET" : "POST",
+        method: method ?? (body === undefined && !raw ? "GET" : "POST"),
         headers: h,
         body: (raw ?? (body === undefined ? undefined : JSON.stringify(body))) as never,
       });
@@ -153,7 +159,7 @@ export function createClient({ appKey, apiUrl, user, signature, getAnon }: Clien
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       const code = (data as { error?: string }).error;
-      throw new YouAskedError(res.status === 402 && code === "test_mode" ? "test_mode" : (code ?? `http_${res.status}`));
+      throw new YouAskedError(res.status === 402 && code === "test_mode" ? "test_mode" : (code ?? `http_${res.status}`), (data as { message?: string }).message);
     }
     return data as T;
   }
@@ -171,6 +177,7 @@ export function createClient({ appKey, apiUrl, user, signature, getAnon }: Clien
         attachments: d.attachments ?? [],
       })),
     upload: (image: Blob) => call<Attachment>("/uploads", undefined, image),
+    remove: (id: string) => call<{ ok: true }>(`/requests/${encodeURIComponent(id)}`, undefined, undefined, "DELETE"),
     earlyAccess: (id: string) => call<{ earlyAccess: boolean }>(`/requests/${encodeURIComponent(id)}/early-access`, {}),
     whatsNewSeen: () => call<{ ok: true }>("/whats-new/seen", {}),
     vote: (id: string) => call<{ voted: boolean; votes: number }>(`/requests/${encodeURIComponent(id)}/vote`, {}),

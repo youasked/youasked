@@ -166,7 +166,20 @@ export function createDemoClient(appName = "Acme"): DemoClient {
       await wait();
       const r = find(id);
       if (!r) throw new YouAskedError("not_found");
-      return { request: view(r), comments: [...r.comments_], attachments: [...r.attachments_], earlyAccess: r.early };
+      const othersJoined = r.votes > (r.mine && r.voted ? 1 : 0) || r.comments_.some((c) => !c.mine);
+      return {
+        request: view(r),
+        comments: [...r.comments_],
+        attachments: [...r.attachments_],
+        earlyAccess: r.early,
+        canDelete: Boolean(r.mine) && (r.status === "open" || r.status === "pending") && !othersJoined,
+      };
+    },
+    async remove(id) {
+      await wait();
+      const i = store.findIndex((r) => r.id === id);
+      if (i >= 0) store.splice(i, 1);
+      return { ok: true as const };
     },
     async create(input) {
       await wait(650);

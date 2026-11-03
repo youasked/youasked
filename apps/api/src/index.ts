@@ -593,7 +593,7 @@ pub.use(
   cors({
     origin: (origin) => origin || "*",
     allowHeaders: ["content-type", "x-youasked-key", "x-youasked-user", "x-youasked-sig", "x-youasked-anon", "x-youasked-dev", "x-youasked-platform"],
-    allowMethods: ["GET", "POST"],
+    allowMethods: ["GET", "POST", "DELETE"],
     maxAge: 86400,
   }),
 );
@@ -727,6 +727,23 @@ pub.get("/requests/similar", async (c) => {
   return c.json({ requests: scored.slice(0, 4).map((x) => publicRequest(x.r, me)) });
 });
 
+/**
+ * Someone can take back a request they wrote while it's still only theirs: open or awaiting
+ * approval, nobody else has voted, and the team hasn't replied. After that it belongs to everyone
+ * who joined in, so it stays (the team can still remove it).
+ */
+async function canDeleteOwn(db: D1Database, r: RequestRow, me: UserRow | null): Promise<boolean> {
+  if (!me || r.author_id !== me.id || (r.status !== "open" && r.status !== "pending")) return false;
+  const others = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM votes WHERE request_id = ?1 AND user_id != ?2)
+            + (SELECT COUNT(*) FROM comments WHERE request_id = ?1 AND (is_team = 1 OR user_id IS NULL OR user_id != ?2)) AS n`,
+    )
+    .bind(r.id, me.id)
+    .first<{ n: number }>();
+  return (others?.n ?? 0) === 0;
+}
+
 pub.get("/requests/:id", async (c) => {
   const me = c.get("user");
   const r = await c.env.DB.prepare(
@@ -755,6 +772,7 @@ pub.get("/requests/:id", async (c) => {
     request: publicRequest(r, me),
     attachments: files.get(r.id) ?? [],
     earlyAccess: Boolean(early),
+    canDelete: await canDeleteOwn(c.env.DB, r, me),
     comments: results.map((cm) => ({
       id: cm.id,
       body: cm.body,
@@ -764,6 +782,17 @@ pub.get("/requests/:id", async (c) => {
       createdAt: cm.created_at,
     })),
   });
+});
+
+pub.delete("/requests/:id", async (c) => {
+  const me = requireUser(c);
+  const r = await c.env.DB.prepare("SELECT * FROM requests WHERE id = ? AND app_id = ?").bind(c.req.param("id"), c.get("app").id).first<RequestRow>();
+  if (!r) fail(404, "not_found");
+  if (!(await canDeleteOwn(c.env.DB, r, me))) {
+    fail(403, "cant_delete", { message: "Other people have joined in on this one, so it stays. The team can still remove it." });
+  }
+  await purgeRequest(c.env, r);
+  return c.json({ ok: true });
 });
 
 pub.post("/requests", async (c) => {
