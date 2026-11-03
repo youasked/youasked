@@ -33,6 +33,9 @@ export const FOUNDING_SLOTS = 100;
 export const lookupKey = (plan: Plan, interval: Interval, founding: boolean) =>
   `youasked_${plan}_${interval}${founding ? "_founding" : ""}`;
 
+/** Apps a workspace can hold before it has paid (they only answer on localhost). */
+export const TEST_MODE_APPS = 3;
+
 /** Subscription states that keep an app live. past_due keeps working while Stripe retries the card. */
 const LIVE_STATUSES = ["active", "trialing", "past_due"];
 

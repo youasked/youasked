@@ -1,5 +1,5 @@
 // A small client for the YouAsked admin API. Everything is authorised with the app's secret key.
-export const DEFAULT_API = "https://youasked-api.adenteo.workers.dev";
+export const DEFAULT_API = "https://api.youasked.dev";
 
 export type Status = "open" | "planned" | "in_progress" | "shipped" | "declined" | "merged";
 

@@ -3,7 +3,12 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { addTeamComment, loadRequestById, mergeRequests, setStatus } from "./actions";
 import { adminPage } from "./admin-page";
+import { adminMovedPage } from "./admin-moved";
 import agent from "./agent";
+import auth, { dashboardBase } from "./auth";
+import { stripeHook } from "./billing";
+import { createDash } from "./dash";
+import { entitlements, isLocalOrigin } from "./plans";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, verifySignature } from "./lib";
@@ -26,7 +31,7 @@ import {
   type WebhookConfig,
 } from "./types";
 
-type Vars = { app: AppRow; user: UserRow | null };
+type Vars = { app: AppRow; user: UserRow | null; mode: "test" | "live" };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
@@ -48,8 +53,8 @@ async function announceNew(env: Env, ctx: Pick<ExecutionContext, "waitUntil">, a
   );
 }
 
-function fail(status: 400 | 401 | 403 | 404 | 429 | 502, error: string): never {
-  throw new HTTPException(status, { res: Response.json({ error }, { status }) });
+function fail(status: 400 | 401 | 402 | 403 | 404 | 429 | 502, error: string, extra: Record<string, unknown> = {}): never {
+  throw new HTTPException(status, { res: Response.json({ error, ...extra }, { status }) });
 }
 
 /** First name of an author who opted in to being thanked, once it has shipped. */
@@ -206,8 +211,11 @@ app.onError((err, c) => {
 });
 
 app.get("/", (c) => c.text("youasked api"));
-app.get("/admin", (c) => c.html(adminPage));
+app.get("/admin", (c) => c.html(adminMovedPage(dashboardBase(c.env))));
+app.get("/admin/legacy", (c) => c.html(adminPage));
 app.route("/v1/hooks", hooks);
+app.route("/v1/hooks", stripeHook);
+app.route("/v1/auth", auth);
 app.route("/v1", signup);
 
 // ---------------------------------------------------------------- bootstrap
@@ -513,6 +521,9 @@ app.route("/v1/admin", quality({ announce: announceNew }));
 app.route("/v1", unsubscribe);
 app.route("/v1/admin", admin);
 
+// The dashboard's door into the admin routes above, authenticated by session instead of secret key.
+app.route("/v1/dash", createDash((req, env, ctx) => app.fetch(req, env, ctx)));
+
 // ---------------------------------------------------------------- public (widget, publishable key)
 
 // Screenshots are served without a key so a plain <img> works, in the widget, the dashboard and chat apps.
@@ -555,7 +566,16 @@ pub.use("*", async (c, next) => {
     const origin = c.req.header("origin");
     if (origin && !(JSON.parse(row.allowed_origins) as string[]).includes(origin)) fail(403, "origin_not_allowed");
   }
+  // Test mode: until the workspace is on a paid plan, the app only answers from localhost.
+  const origin = c.req.header("origin");
+  const live = row.always_live ? true : (await entitlements(c.env, row)).live;
+  if (!live && !isLocalOrigin(origin)) {
+    fail(402, "test_mode", {
+      message: `This app is in test mode. It works on localhost until it's on a paid plan: ${dashboardBase(c.env)}`,
+    });
+  }
   c.set("app", row);
+  c.set("mode", live ? "live" : "test");
   c.set("user", await resolveUser(c.env.DB, row, c.req.raw.headers));
   await next();
 });
@@ -585,6 +605,7 @@ pub.get("/config", async (c) => {
   }
   return c.json({
     app: { name: a.name },
+    mode: c.get("mode"),
     watermark: Boolean(a.watermark),
     identified: me ? !me.is_anon : false,
     canCredit: me ? !me.is_anon && Boolean(me.name) : false,

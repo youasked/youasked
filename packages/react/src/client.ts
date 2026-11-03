@@ -57,6 +57,7 @@ export type Config = {
   canCredit: boolean;
   unseen: Notice[];
   whatsNew: WhatsNew | null;
+  mode?: "test" | "live";
 };
 
 export type NewRequest = {

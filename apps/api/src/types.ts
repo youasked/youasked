@@ -48,6 +48,8 @@ export type AppRow = {
   workspace_id: string | null;
   claim_token: string | null;
   moderation?: "off" | "approve";
+  /** 1 skips test mode (set by hand for the Demo app and our own site). */
+  always_live?: number;
 };
 
 export type UserRow = {

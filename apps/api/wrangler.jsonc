@@ -22,5 +22,8 @@
   //   wrangler vectorize create youasked-requests --dimensions=384 --metric=cosine
   // Both bindings are optional in code; without them the API falls back to word matching.
   "ai": { "binding": "AI" },
-  "vectorize": [{ "binding": "VECTORIZE", "index_name": "youasked-requests" }]
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "youasked-requests" }],
+  // Cloudflare Email Sending (sign-in links, invites). hello@youasked.dev must be onboarded under
+  // Compute > Email Service once the domain is on Cloudflare. Without the binding, mail is logged.
+  "send_email": [{ "name": "EMAIL" }]
 }

@@ -1,7 +1,7 @@
 // `youasked doctor` and `youasked open`.
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_API, checkPublicKey, checkSecretKey } from "./api.js";
+import { DEFAULT_API, checkMode, checkSecretKey } from "./api.js";
 import { detectProject, exists, hasDependency, read, readEnv } from "./project.js";
 import { bad, bold, cyan, dim, ok, say, warn } from "./ui.js";
 
@@ -46,9 +46,12 @@ export async function doctor({ flags, cwd }) {
   else warn("Couldn't find <YouAsked> or <FeatureRequests> in your source. Is it added to your layout?");
 
   if (pub) {
-    const v = await checkPublicKey(target, pub);
-    if (v === true) ok(`${target} accepts your publishable key`);
-    else if (v === false) fail(`${target} rejected your publishable key. Is it from a different server?`);
+    const mode = await checkMode(target, pub);
+    if (mode === "live") ok(`${target} accepts your publishable key. The app is ${bold("live")}.`);
+    else if (mode === "test") {
+      ok(`${target} accepts your publishable key.`);
+      warn(`The app is in ${bold("test mode")}: it works on localhost only. To go live, claim it and pick a plan at https://app.youasked.dev`);
+    } else if (mode === "invalid") fail(`${target} rejected your publishable key. Is it from a different server?`);
     else fail(`Couldn't reach ${target}.`);
   }
   if (sec) {
@@ -89,6 +92,7 @@ function findWiring(/** @type {string} */ cwd) {
 
 export async function openDashboard({ flags }) {
   const api = String(flags.api || process.env.YOUASKED_API_URL || DEFAULT_API).replace(/\/$/, "");
-  say(`\n  Your dashboard: ${cyan(`${api}/admin`)}`);
-  say(`  ${dim("Sign in with your secret key (YOUASKED_SECRET_KEY in your env file).")}\n`);
+  void api;
+  say(`\n  Your dashboard: ${cyan("https://app.youasked.dev")}`);
+  say(`  ${dim("Sign in with Google, GitHub or an email link. Apps made with `init` show up after you claim them.")}\n`);
 }
