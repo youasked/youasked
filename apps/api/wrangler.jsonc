@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "youasked-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "youasked",
+      "database_id": "b16d8e4a-66d5-4df2-a48a-d743d63e1dea",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
