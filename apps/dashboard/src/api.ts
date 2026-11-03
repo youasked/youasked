@@ -67,6 +67,8 @@ export type AppInfo = {
   requireSignature: boolean;
   allowedOrigins: string[] | null;
   moderation?: "off" | "approve";
+  /** The occasional in-app prompt; null when it's off. */
+  nudge?: { everyDays: number; activeSeconds: number; skipVisits: number; message: string | null; position: "bottom" | "top" } | null;
   slug?: string | null;
   publicBoard?: boolean;
   publicUrl?: string | null;

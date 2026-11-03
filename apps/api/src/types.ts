@@ -59,6 +59,8 @@ export type AppRow = {
   allowed_origins: string | null;
   workspace_id: string | null;
   claim_token: string | null;
+  /** JSON settings for the occasional in-app prompt; NULL means off. */
+  nudge?: string | null;
   moderation?: "off" | "approve";
   /** 1 skips test mode (set by hand for the Demo app and our own site). */
   always_live?: number;

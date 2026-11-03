@@ -5,6 +5,8 @@ import { appUrl, useSession } from "../session";
 import { Button, CopyButton, Dialog, ErrorState, Icon, PageHead, Skeleton, Switch, useFail, useLoad, useToast } from "../ui";
 import { secretStore } from "./FirstRun";
 
+const NUDGE_DEFAULTS = { everyDays: 7, activeSeconds: 30, skipVisits: 1, message: null, position: "bottom" as const };
+
 function Row({ title, hint, children, stack }: { title: string; hint?: ReactNode; children: ReactNode; stack?: boolean }) {
   return (
     <div className={`setting ${stack ? "stack-on" : ""}`}>
@@ -26,6 +28,7 @@ export function Settings({ app }: { app: WorkspaceApp }) {
 
   const [name, setName] = useState("");
   const [origins, setOrigins] = useState("");
+  const [nudgeMessage, setNudgeMessage] = useState("");
   const [dialog, setDialog] = useState<"rotate" | null>(null);
   const [newSecret, setNewSecret] = useState<string | null>(null);
 
@@ -33,6 +36,7 @@ export function Settings({ app }: { app: WorkspaceApp }) {
     if (!d) return;
     setName(d.name);
     setOrigins((d.allowedOrigins ?? []).join("\n"));
+    setNudgeMessage(d.nudge?.message ?? "");
   }, [d]);
 
   const patch = async (body: Partial<Record<string, unknown>>, ok?: string) => {
@@ -75,6 +79,55 @@ export function Settings({ app }: { app: WorkspaceApp }) {
             <Switch label={'Show "Feedback by YouAsked"'} checked={canRemoveBranding ? d.watermark : true} disabled={!canRemoveBranding} onChange={(v) => patch({ watermark: v }, v ? "The line is back" : "The line is hidden")} />
             {!canRemoveBranding && <Icon name="lock" size={15} className="lock" />}
           </Row>
+
+          <h2 className="group">Occasional prompt</h2>
+          <Row
+            title="Ask people for ideas now and then"
+            hint={`A small card that asks "Got an idea for ${d.name}?". It waits until someone has been using your app for a while, never shows next to a reply, and backs off each time they tap Not now.`}
+          >
+            <Switch
+              label="Ask people for ideas now and then"
+              checked={Boolean(d.nudge)}
+              onChange={(v) => patch({ nudge: v ? NUDGE_DEFAULTS : null }, v ? "The prompt is on" : "The prompt is off")}
+            />
+          </Row>
+          {d.nudge && (
+            <>
+              <Row title="Show it at most once every">
+                <select className="input" aria-label="Show it at most once every" value={d.nudge.everyDays} onChange={(e) => patch({ nudge: { ...d.nudge!, everyDays: Number(e.target.value) } }, "Saved")}>
+                  {[1, 3, 7, 14, 30].map((n) => (
+                    <option key={n} value={n}>{n === 1 ? "day" : `${n} days`}</option>
+                  ))}
+                </select>
+              </Row>
+              <Row title="After they've used your app for" hint="Only time with your app open in front of them counts.">
+                <select className="input" aria-label="After they've used your app for" value={d.nudge.activeSeconds} onChange={(e) => patch({ nudge: { ...d.nudge!, activeSeconds: Number(e.target.value) } }, "Saved")}>
+                  {[10, 30, 60, 120].map((n) => (
+                    <option key={n} value={n}>{n < 60 ? `${n} seconds` : n === 60 ? "1 minute" : "2 minutes"}</option>
+                  ))}
+                </select>
+              </Row>
+              <Row title="Skip their first" hint="New people get to look around before anyone asks them anything.">
+                <select className="input" aria-label="Skip their first" value={d.nudge.skipVisits} onChange={(e) => patch({ nudge: { ...d.nudge!, skipVisits: Number(e.target.value) } }, "Saved")}>
+                  {[0, 1, 2, 4].map((n) => (
+                    <option key={n} value={n}>{n === 0 ? "No visits (ask on the first)" : n === 1 ? "1 visit" : `${n} visits`}</option>
+                  ))}
+                </select>
+              </Row>
+              <Row title="Where it shows">
+                <select className="input" aria-label="Where it shows" value={d.nudge.position} onChange={(e) => patch({ nudge: { ...d.nudge!, position: e.target.value as "bottom" | "top" } }, "Saved")}>
+                  <option value="bottom">Bottom of the screen</option>
+                  <option value="top">Top of the screen</option>
+                </select>
+              </Row>
+              <Row title="Headline" hint="Leave empty for the default." stack>
+                <div className="inline-form">
+                  <input className="input" aria-label="Headline" value={nudgeMessage} maxLength={120} placeholder={`Got an idea for ${d.name}?`} onChange={(e) => setNudgeMessage(e.target.value)} />
+                  <Button disabled={nudgeMessage.trim() === (d.nudge.message ?? "")} onClick={() => patch({ nudge: { ...d.nudge!, message: nudgeMessage.trim() || null } }, "Headline saved")}>Save</Button>
+                </div>
+              </Row>
+            </>
+          )}
 
           <h2 className="group">Who can ask</h2>
           <Row title="Require signed users" hint="Only people your app signs in can ask and vote. Your server signs each user with the secret key.">

@@ -45,6 +45,32 @@ const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
 const now = () => Date.now();
 
+/** The occasional in-app prompt. Stored as JSON on apps.nudge; NULL means off. */
+type Nudge = { everyDays: number; activeSeconds: number; skipVisits: number; message: string | null; position: "bottom" | "top" };
+const NUDGE_DEFAULTS: Nudge = { everyDays: 7, activeSeconds: 30, skipVisits: 1, message: null, position: "bottom" };
+const pick = <T,>(v: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(v as T) ? (v as T) : fallback);
+
+function readNudge(raw: string | null | undefined): Nudge | null {
+  if (!raw) return null;
+  try {
+    return normaliseNudge(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function normaliseNudge(v: unknown): Nudge {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const message = typeof o.message === "string" ? cleanText(o.message, 120) : "";
+  return {
+    everyDays: pick(o.everyDays, [1, 3, 7, 14, 30] as const, NUDGE_DEFAULTS.everyDays),
+    activeSeconds: pick(o.activeSeconds, [10, 30, 60, 120] as const, NUDGE_DEFAULTS.activeSeconds),
+    skipVisits: pick(o.skipVisits, [0, 1, 2, 4] as const, NUDGE_DEFAULTS.skipVisits),
+    message: message || null,
+    position: pick(o.position, ["bottom", "top"] as const, NUDGE_DEFAULTS.position),
+  };
+}
+
 /** Lets actions.ts send "it shipped" and reply emails after the response. */
 const mailOf = (c: Ctx): Mail => ({ env: c.env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
 
@@ -275,6 +301,7 @@ admin.get("/app", (c) => {
     publicBoard: Boolean(a.public_board),
     description: a.description,
     publicUrl: publicUrl(c.env, a),
+    nudge: readNudge(a.nudge),
   });
 });
 
@@ -288,6 +315,8 @@ admin.patch("/app", async (c) => {
     slug?: string | null;
     publicBoard?: boolean;
     description?: string | null;
+    /** Settings for the occasional prompt, or null to turn it off. */
+    nudge?: Partial<Nudge> | null;
   }>();
   if (body.moderation !== undefined && body.moderation !== "off" && body.moderation !== "approve") fail(400, "bad_moderation");
   const a = c.get("app");
@@ -315,6 +344,10 @@ admin.patch("/app", async (c) => {
       a.id,
     )
     .run();
+  if (body.nudge !== undefined) {
+    const nudge = body.nudge === null ? null : JSON.stringify(normaliseNudge({ ...readNudge(a.nudge), ...body.nudge }));
+    await c.env.DB.prepare("UPDATE apps SET nudge = ? WHERE id = ?").bind(nudge, a.id).run();
+  }
   if (pubSettings) {
     await c.env.DB.prepare("UPDATE apps SET slug = ?, public_board = ?, description = ? WHERE id = ?")
       .bind(pubSettings.slug, pubSettings.public_board, pubSettings.description, a.id)
@@ -651,6 +684,7 @@ pub.get("/config", async (c) => {
   return c.json({
     app: { name: a.name },
     mode: c.get("mode"),
+    nudge: readNudge(a.nudge),
     watermark: Boolean(a.watermark),
     identified: me ? !me.is_anon : false,
     canCredit: me ? !me.is_anon && Boolean(me.name) : false,

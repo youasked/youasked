@@ -229,6 +229,10 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-toast .ya-live{margin-top:8px}
 .ya-live svg{width:15px;height:15px}
 .ya-toast-note{font-size:13.5px;color:var(--_muted);margin-top:6px;overflow-wrap:anywhere}
+.ya-toast[data-place=top]{top:calc(16px + env(safe-area-inset-top));bottom:auto}
+.ya-nudge-body{display:flex;gap:12px;align-items:flex-start;margin-top:6px}
+.ya-nudge-body .ya-card-icon{flex:none;margin-top:2px}
+.ya-nudge-body .ya-toast-title{margin-top:0}
 .ya-toast-actions{display:flex;gap:8px;margin-top:12px}
 .ya-toast-quote{color:var(--_fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ya-toast .ya-icon-btn{width:30px;height:30px;margin:-6px -6px 0 0;background:none}

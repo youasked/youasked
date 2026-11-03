@@ -61,6 +61,8 @@ export type Config = {
   unseen: Notice[];
   whatsNew: WhatsNew | null;
   mode?: "test" | "live";
+  /** The occasional in-app prompt, as set in the dashboard. null when it's off. */
+  nudge?: import("./nudge").NudgeSettings | null;
 };
 
 export type NewRequest = {

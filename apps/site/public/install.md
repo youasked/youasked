@@ -137,6 +137,8 @@ Don't put one on every screen.
 
 On React Native, the same components exist with the same props. They render native views, and the sheet is a native bottom sheet.
 
+**An occasional prompt (optional):** the developer can turn on a small "Got an idea for <App>?" card in the dashboard (Settings, Occasional prompt). It chooses how often it shows, how long someone must use the app first, and how many first visits to skip. It never shows next to a reply and backs off when dismissed. To change it in code, use `nudge={false}` to turn it off, or for example `nudge={{ everyDays: 14 }}`. Don't add it unless the developer asks.
+
 ## 7. Identify signed-in users
 
 Skip this if the app has no sign-in; people are then anonymous, one id per device. With sign-in, sign the user's id on the server so nobody can vote as someone else.

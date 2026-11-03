@@ -4,6 +4,7 @@ import { createClient, YouAskedError, type Config, type Notice, type WhatsNew, t
 import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
 import { createDemoClient } from "./demo";
 import { IconCheck, IconClose, IconIdea } from "./icons";
+import { NudgeToast, resolveNudge, useNudge, type NudgeSettings } from "./nudge";
 import { injectStyles } from "./styles";
 import { resolveTokens, tokenStyle, type Appearance } from "./theme";
 import { whatsNewHeading } from "./shared";
@@ -45,6 +46,12 @@ export type YouAskedProps = {
   offset?: number;
   /** Show the corner card for replies, shipped requests and what's new. Turn off for previews embedded in a page. */
   cards?: boolean;
+  /**
+   * The occasional "Got an idea for <App>?" prompt. Set it up in the dashboard; this overrides it:
+   * false turns it off, true turns it on with the dashboard's (or default) settings, an object
+   * changes individual settings, e.g. `{ everyDays: 14, activeSeconds: 60 }`.
+   */
+  nudge?: boolean | Partial<NudgeSettings>;
   apiUrl?: string;
   children?: ReactNode;
 };
@@ -69,6 +76,7 @@ export function YouAsked({
   appKey = "",
   demo = false,
   cards = true,
+  nudge: nudgeProp,
   user,
   signature,
   ready = true,
@@ -240,6 +248,18 @@ export function YouAsked({
   const standing = unseen.filter((n) => !coveredBy(whatsNew, n));
   const notice = standing.find((n) => n.kind === "shipped") ?? standing.find((n) => n.kind === "reply");
 
+  const nudgeSettings = useMemo(
+    () => (config && cards && !testMode ? resolveNudge(config.nudge, nudgeProp) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [Boolean(config), JSON.stringify(config?.nudge ?? null), cards, testMode, typeof nudgeProp === "object" ? JSON.stringify(nudgeProp) : nudgeProp],
+  );
+  const busy = route !== null || Boolean(notice) || (whatsNewToast && Boolean(whatsNew));
+  const nudge = useNudge(nudgeSettings, demo ? null : `youasked:nudge:${appKey}:${userId ?? "anon"}`, busy);
+  // Opening the sheet any way counts as having been asked.
+  useEffect(() => {
+    if (route !== null) nudge.engaged();
+  }, [route, nudge.engaged]);
+
   if (testMode) return <YouAskedContext.Provider value={value}>{children}</YouAskedContext.Provider>;
 
   return (
@@ -264,6 +284,16 @@ export function YouAsked({
                 trigger={trigger}
                 onOpen={() => open()}
                 onDismiss={dismissWhatsNew}
+              />
+            )}
+            {nudgeSettings && nudge.show && !busy && (
+              <NudgeToast
+                settings={nudgeSettings}
+                appName={appName ?? config?.app.name ?? "us"}
+                position={position}
+                trigger={trigger}
+                onOpen={() => open({ view: "new" })}
+                onDismiss={nudge.dismiss}
               />
             )}
             {cards && notice && route === null && (
