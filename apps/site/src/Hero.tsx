@@ -3,7 +3,8 @@ import { gsap } from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { FeatureBoard, YouAsked } from "@youasked/react";
 import { AGENT_PROMPT, INSTALL_CMD } from "./content";
-import { Check, CopyIcon, reducedMotion, useCopied } from "./ui";
+import { LogoRow } from "./Logos";
+import { Check, CopyIcon, Mark, reducedMotion, useCopied } from "./ui";
 
 gsap.registerPlugin(MotionPathPlugin);
 
@@ -70,6 +71,10 @@ export function Hero() {
             </span>
             <span className="copy-chip">{cmdCopied ? <Check size={16} /> : <CopyIcon />}</span>
           </button>
+        </div>
+        <div className="hero-works">
+          <small>Works with the tools you already use</small>
+          <LogoRow keys={["claude", "openai", "cursor", "github", "telegram", "slack", "discord"]} tone="light" />
         </div>
       </div>
       <HeroStage />
@@ -176,6 +181,10 @@ function HeroStage() {
             <Terminal />
           </>
         )}
+        <div className="phone-tag" style={{ top: 34 }}>
+          <Mark className="spot-mark" />
+          The real YouAsked widget. Try it.
+        </div>
         <div className="phone" style={{ left: (w - 348) / 2, top: 60 }}>
           <div className="phone-screen">
             <div className="island" />

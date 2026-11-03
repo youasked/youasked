@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { AskAbout, AskBar, AskForIt, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "@youasked/react";
 import { GRAIDEN_LOOK } from "./Hero";
-import { Reveal } from "./ui";
+import { Reveal, Spot } from "./ui";
 
 const ENTRIES = [
   { key: "ask", title: "Ask bar", code: "<AskBar />", desc: "Looks like a chat input. Tapping it opens the composer, ready to type." },
@@ -40,6 +40,14 @@ export function Entries() {
               <Preview k={key} />
             </YouAsked>
             <div className="code-chip">{codeFor(entry.key)}</div>
+            <div className="preview-legend" aria-hidden="true">
+              <span>
+                <i className="l-host" /> Your app
+              </span>
+              <span>
+                <i className="l-ya" /> YouAsked
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -69,74 +77,107 @@ function codeFor(k: Key): ReactNode {
 function Preview({ k }: { k: Key }) {
   if (k === "page") {
     return (
-      <div className="mock-app" style={{ padding: 0, overflow: "hidden", height: 560 }}>
-        <FeatureBoard height="100%" className="page-board" />
-      </div>
+      <Spot label="YouAsked page">
+        <div className="mock-app" style={{ padding: 0, overflow: "hidden", height: 540 }}>
+          <FeatureBoard height="100%" className="page-board" />
+        </div>
+      </Spot>
     );
   }
+  const expenses = (
+    <div className="app-card host" style={{ padding: "6px 16px" }}>
+      <div className="app-row">
+        <span className="ic">🛒</span>FairPrice<span className="amt">$86.40</span>
+      </div>
+      <div className="app-row">
+        <span className="ic">🚕</span>Grab<span className="amt">$18.20</span>
+      </div>
+    </div>
+  );
   return (
     <div className="mock-app">
       <div className="mock-top">
-        <b>Graiden</b>
+        <b className="host">Graiden</b>
         <div className="mock-icons">
-          {k === "buttons" && <RequestButton variant="icon" />}
-          <span className="mock-circle" aria-hidden="true">
+          {k === "buttons" && (
+            <Spot inline label="icon">
+              <RequestButton variant="icon" />
+            </Spot>
+          )}
+          <span className="mock-circle host" aria-hidden="true">
             ⟳
           </span>
         </div>
       </div>
-      {k === "ask" && <AskBar />}
-      <div className="app-card">
+      {k === "ask" && (
+        <Spot>
+          <AskBar />
+        </Spot>
+      )}
+      <div className="app-card host">
         <div className="k">This month</div>
         <div className="v">$1,284.20</div>
       </div>
-      {k === "card" && <FeatureCard />}
+      {k === "card" && (
+        <Spot>
+          <FeatureCard />
+        </Spot>
+      )}
       {k === "buttons" && (
         <>
-          <div>
-            <RequestButton variant="pill" label="Suggest a feature" />
+          <div style={{ marginTop: 8 }}>
+            <Spot inline label="pill">
+              <RequestButton variant="pill" label="Suggest a feature" />
+            </Spot>
           </div>
-          <RequestButton variant="row" />
+          <div style={{ marginTop: 22 }}>
+            <Spot label="row">
+              <RequestButton variant="row" />
+            </Spot>
+          </div>
         </>
       )}
-      {k === "code" && <LockedFeature />}
+      {k === "code" && (
+        <Spot label="Your button, opening YouAsked">
+          <LockedFeature />
+        </Spot>
+      )}
       {k === "context" && (
         <>
           <div className="app-card">
-            <div className="k">Spending by week</div>
-            <div className="mini-chart" aria-hidden="true">
+            <div className="k host">Spending by week</div>
+            <div className="mini-chart host" aria-hidden="true">
               {[38, 64, 46, 80, 58, 92, 70].map((h, i) => (
                 <i key={i} style={{ height: `${h}%` }} />
               ))}
             </div>
-            <AskAbout topic="charts" prompt="Want more from charts?" />
+            <Spot inline label="AskAbout">
+              <AskAbout topic="charts" prompt="Want more from charts?" />
+            </Spot>
           </div>
           <div className="app-card">
-            <div className="mock-search">⌕ split bills</div>
-            <p className="mock-empty">No expenses match “split bills”.</p>
-            <AskForIt query="split bills" />
+            <div className="mock-search host">⌕ split bills</div>
+            <p className="mock-empty host">No expenses match “split bills”.</p>
+            <Spot inline label="AskForIt">
+              <AskForIt query="split bills" />
+            </Spot>
           </div>
         </>
       )}
-      {(k === "ask" || k === "launcher" || k === "code") && (
-        <div className="app-card" style={{ padding: "6px 16px" }}>
-          <div className="app-row">
-            <span className="ic">🛒</span>FairPrice<span className="amt">$86.40</span>
-          </div>
-          <div className="app-row">
-            <span className="ic">🚕</span>Grab<span className="amt">$18.20</span>
-          </div>
-        </div>
-      )}
+      {(k === "ask" || k === "launcher" || k === "code") && expenses}
       {k === "launcher" && (
         <>
           <p className="mock-note">The real launcher is in the bottom corner of this page. Try it.</p>
           <div style={{ height: 70 }} />
-          <span className="mock-fab" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 11.5a8 8 0 0 1-11.3 7.3L4 20l1.2-4.4A8 8 0 1 1 20 11.5Z" />
-              <path d="m12 8 .9 1.8 1.9.3-1.4 1.3.3 1.9-1.7-.9-1.7.9.3-1.9-1.4-1.3 1.9-.3Z" fill="currentColor" strokeWidth={1} />
-            </svg>
+          <span className="mock-fab-spot">
+            <Spot inline label="launcher">
+              <span className="mock-fab" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3.5c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L5.2 20.5l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.97 3.5 12 3.5Z" />
+                  <path d="M8.2 13.2 12 9.4l3.8 3.8" strokeWidth={2.6} />
+                </svg>
+              </span>
+            </Spot>
           </span>
         </>
       )}

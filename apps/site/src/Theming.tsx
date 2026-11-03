@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AskBar, FeatureCard, YouAsked } from "@youasked/react";
-import { Reveal } from "./ui";
+import { Reveal, Spot } from "./ui";
 
 const ACCENTS = [
   { name: "Violet", value: "#5b3df5" },
@@ -101,10 +101,15 @@ export function Theming() {
           <YouAsked demo cards={false} offset={84} trigger="none" appearance={appearance} appName="Graiden" appIcon={false}>
             <div className={dark ? "mock-app dark" : "mock-app"} style={{ fontFamily: font.value }}>
               <div className="mock-top">
-                <b style={{ fontFamily: font.value }}>Graiden</b>
+                <b className="host" style={{ fontFamily: font.value }}>Graiden</b>
               </div>
-              <AskBar />
-              <FeatureCard limit={2} />
+              <Spot>
+                <AskBar />
+              </Spot>
+              <div style={{ height: 8 }} />
+              <Spot>
+                <FeatureCard limit={2} />
+              </Spot>
             </div>
           </YouAsked>
         </div>

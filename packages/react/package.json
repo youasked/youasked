@@ -1,6 +1,6 @@
 {
   "name": "@youasked/react",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Feature requests your users can vote on, and a 'you asked, it's live' moment when you ship.",
   "license": "MIT",
   "type": "module",

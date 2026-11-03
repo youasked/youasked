@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { gsap } from "gsap";
+import type { LogoKey } from "./logo-data";
+import { LogoRow } from "./Logos";
 import { Check, SendIcon, reducedMotion } from "./ui";
 
-const STEPS = [
+const STEPS: { title: string; body: string; logos?: LogoKey[] }[] = [
   {
     title: "They ask, right where they are.",
     body: "An ask bar, a button or a quiet prompt next to a feature opens a sheet that feels like part of your app. They can circle the part of the screen they mean. As they type, it finds what others already asked, so one vote replaces ten duplicates.",
@@ -10,10 +12,12 @@ const STEPS = [
   {
     title: "You hear it on your phone.",
     body: "Every request lands in Telegram, Slack or Discord with buttons to plan, merge or reply. Your reply reaches everyone who asked, inside the app. No dashboard to check.",
+    logos: ["telegram", "slack", "discord"],
   },
   {
     title: "You ship with a commit.",
     body: "Write “closes YA-12” in a commit or pull request. When it lands, YouAsked marks it shipped and writes the note from your commit. Or let your agent pick the top request and do the whole thing.",
+    logos: ["github", "claude", "openai", "cursor"],
   },
   {
     title: "Everyone who asked hears about it.",
@@ -59,6 +63,11 @@ export function Story() {
                 </span>
                 <h3 className="h3">{s.title}</h3>
                 <p>{s.body}</p>
+                {s.logos && (
+                  <div className="step-logos">
+                    <LogoRow keys={s.logos} />
+                  </div>
+                )}
                 <MobileScene index={i} />
               </div>
             ))}

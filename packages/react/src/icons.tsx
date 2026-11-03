@@ -66,10 +66,10 @@ export const IconSpark = () => (
     <path d="M19 16v4M17 18h4" />
   </svg>
 );
-/** Chat bubble with a spark: the launcher mark. */
+/** YouAsked's own mark for asking: a speech bubble with an up arrow (ask, and vote it up). */
 export const IconIdea = () => (
   <svg {...base}>
-    <path d="M20 11.5a8 8 0 0 1-11.3 7.3L4 20l1.2-4.4A8 8 0 1 1 20 11.5Z" />
-    <path d="m12 8 .9 1.8 1.9.3-1.4 1.3.3 1.9-1.7-.9-1.7.9.3-1.9-1.4-1.3 1.9-.3Z" fill="currentColor" strokeWidth={1} />
+    <path d="M12 3.5c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L5.2 20.5l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.97 3.5 12 3.5Z" />
+    <path d="M8.2 13.2 12 9.4l3.8 3.8" strokeWidth={2.6} />
   </svg>
 );

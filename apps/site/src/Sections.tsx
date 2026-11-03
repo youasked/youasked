@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AGENT_PROMPT, INSTALL_CMD, MCP_CMD, SITE } from "./content";
+import { Logo, LogoRow } from "./Logos";
 import { Check, CopyButton, CopyIcon, Mark, Reveal, useCopied } from "./ui";
 
 export function Nav() {
@@ -58,30 +59,24 @@ export function Agents() {
         </Reveal>
         <div className="agent-grid">
           <Reveal className="agent-block">
+            <div className="agent-logos" aria-label="Claude Code, Codex and Cursor">
+              <Logo k="claude" size={22} />
+              <Logo k="openai" size={22} />
+              <Logo k="cursor" size={22} />
+            </div>
             <h3 className="h3">Paste this into your agent</h3>
             <p>It reads the install guide, adds the entry points that fit your UI and signs your users.</p>
-            <div className="codebox">
-              {AGENT_PROMPT}
-              <CopyButton text={AGENT_PROMPT} label="Copy prompt" />
-            </div>
+            <CodeBox label="Prompt" text={AGENT_PROMPT} copyLabel="Copy prompt" />
           </Reveal>
           <Reveal className="agent-block half" delay={60}>
             <h3 className="h3">Or run it yourself</h3>
             <p>Finds your framework, writes the keys and adds the components you pick.</p>
-            <div className="codebox">
-              <span className="dim">$ </span>
-              {INSTALL_CMD}
-              <CopyButton text={INSTALL_CMD} />
-            </div>
+            <CodeBox label="Terminal" text={INSTALL_CMD} shell />
           </Reveal>
           <Reveal className="agent-block half" delay={120}>
             <h3 className="h3">Let your agent ship requests</h3>
             <p>Lists the top asks, reads the details, replies and marks things shipped.</p>
-            <div className="codebox">
-              <span className="dim">$ </span>
-              {MCP_CMD}
-              <CopyButton text={MCP_CMD} />
-            </div>
+            <CodeBox label="Terminal" text={MCP_CMD} shell />
           </Reveal>
         </div>
         <Reveal className="ai-links" delay={80}>
@@ -103,17 +98,26 @@ export function Agents() {
             {mdCopied ? "Copied" : "Copy this page as Markdown"}
           </button>
         </Reveal>
-        <div className="works" aria-label="Works with">
-          Works with <span>Claude Code</span>
-          <span>Codex</span>
-          <span>Cursor</span>
-          <span>Telegram</span>
-          <span>Slack</span>
-          <span>Discord</span>
-          <span>GitHub</span>
+        <div className="works">
+          <LogoRow keys={["claude", "openai", "cursor", "github", "telegram", "slack", "discord"]} />
         </div>
       </div>
     </section>
+  );
+}
+
+function CodeBox({ label, text, copyLabel, shell }: { label: string; text: string; copyLabel?: string; shell?: boolean }) {
+  return (
+    <div className="codebox">
+      <div className="codebox-bar">
+        <span>{label}</span>
+        <CopyButton text={text} label={copyLabel} />
+      </div>
+      <pre>
+        {shell && <span className="dim">$ </span>}
+        {text}
+      </pre>
+    </div>
   );
 }
 

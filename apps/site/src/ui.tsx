@@ -19,19 +19,33 @@ export const SendIcon = () => (
   </svg>
 );
 
-/** The YouAsked mark: a speech bubble whose tail is a tick. */
+/** The YouAsked mark: a speech bubble with a tick (it shipped) and a spark (it's live). */
 export const Mark = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
     <defs>
-      <linearGradient id="ya-mark" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#5b74f5" />
+      <linearGradient id="ya-mark" x1="0.1" y1="0" x2="0.9" y2="1">
+        <stop offset="0" stopColor="#6d84ff" />
         <stop offset="1" stopColor="#2b4bee" />
       </linearGradient>
     </defs>
-    <path d="M16 3C8.8 3 3 8.2 3 14.6c0 3.5 1.7 6.6 4.4 8.7L6.2 28.4l5.6-2.9c1.3.4 2.7.6 4.2.6 7.2 0 13-5.2 13-11.5S23.2 3 16 3Z" fill="url(#ya-mark)" />
-    <path d="m10.6 14.9 3.6 3.5 7.3-7.3" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M11.4 3.2c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L4.6 20.2l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.37 3.2 11.4 3.2Z" fill="url(#ya-mark)" />
+    <path d="m7.9 11.2 2.5 2.4 4.7-4.7" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="19.4" cy="4.4" r="2.6" fill="#ffe066" stroke="#f6f7fb" strokeWidth="1.3" />
   </svg>
 );
+
+/** Outlines a real YouAsked component inside a mock app, so it's clear which part is ours. */
+export function Spot({ children, label = "YouAsked", inline }: { children: ReactNode; label?: string; inline?: boolean }) {
+  return (
+    <div className={inline ? "spot spot-inline" : "spot"}>
+      <span className="spot-tag">
+        <Mark className="spot-mark" />
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
 
 export async function copyText(text: string) {
   try {

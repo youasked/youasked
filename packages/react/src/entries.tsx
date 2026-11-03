@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { useInternal, type Route } from "./context";
-import { IconBulb, IconCheck, IconChevron, IconIdea, IconSend } from "./icons";
+import { IconCheck, IconChevron, IconIdea, IconSend } from "./icons";
 import { AppAvatar, RequestRow, Skeleton, useLoad } from "./shared";
 import { Navigator } from "./views";
 
@@ -56,7 +56,7 @@ export function FeatureCard({
       <section className="ya-card">
         <div className="ya-card-head">
           <span className="ya-card-icon" aria-hidden="true">
-            <IconBulb />
+            <IconIdea />
           </span>
           <div>
             <h3 className="ya-card-title">{heading}</h3>
@@ -136,7 +136,7 @@ export function RequestButton({
       <div {...scope}>
         <button type="button" className="ya-menurow" onClick={() => open()}>
           <span className="ya-card-icon" aria-hidden="true">
-            <IconBulb />
+            <IconIdea />
           </span>
           <span className="ya-menurow-text">
             <span className="ya-menurow-label">{label}</span>
@@ -151,7 +151,7 @@ export function RequestButton({
   return (
     <span {...scope}>
       <button type="button" className="ya-pillbtn" onClick={() => open()}>
-        <IconBulb />
+        <IconIdea />
         {label}
         {badge}
       </button>
@@ -173,7 +173,7 @@ export function AskAbout({
   return (
     <span {...useScope(className, style)}>
       <button type="button" className="ya-askabout" onClick={() => open({ view: "new", topic })}>
-        <IconBulb />
+        <IconIdea />
         {prompt ?? `Want more from ${topic}?`}
       </button>
     </span>
