@@ -127,9 +127,22 @@ export function YouAsked({
     setMounted(true);
   }, []);
 
+  // Tabs stay open for days, so look for replies and "it's live" again when someone comes back to the
+  // tab (at most once a minute).
+  const [refresh, setRefresh] = useState(0);
+  const lastLoad = useRef(0);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastLoad.current > 60_000) setRefresh((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     let alive = true;
+    lastLoad.current = Date.now();
     client
       .config()
       .then((c) => {
@@ -155,7 +168,7 @@ export function YouAsked({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, ready]);
+  }, [client, ready, refresh]);
 
   // The demo's pretend team writes in a few seconds after you post.
   useEffect(() => {

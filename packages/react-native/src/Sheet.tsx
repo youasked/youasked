@@ -111,17 +111,28 @@ export function Sheet({
   dismissRef.current = dismiss;
 
   // Swipe down on the handle or header to dismiss; a small flick or a quarter of the height is enough.
-  const pan = useMemo(() => {
+  // The handle claims the touch as soon as it starts (on Android's new architecture a view that only
+  // asks on move never gets the gesture). The header has buttons, so it only takes over once the
+  // finger is clearly moving down, using the capture phase so a button under the finger can't keep it.
+  const { grab, header } = useMemo(() => {
     const settle = () =>
       Animated.spring(ty, { toValue: 0, bounciness: 4, speed: 16, useNativeDriver: useNative }).start();
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+    const downward = (g: { dy: number; dx: number }) => g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2;
+    const handlers = {
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => ty.stopAnimation(),
-      onPanResponderMove: (_, g) => ty.setValue(g.dy < 0 ? Math.max(-18, g.dy * 0.2) : g.dy),
-      onPanResponderRelease: (_, g) => (g.dy > sheetH * 0.25 || g.vy > 0.5 ? dismiss() : settle()),
+      onPanResponderMove: (_: unknown, g: { dy: number }) => ty.setValue(g.dy < 0 ? Math.max(-18, g.dy * 0.2) : g.dy),
+      onPanResponderRelease: (_: unknown, g: { dy: number; vy: number }) => (g.dy > sheetH * 0.25 || g.vy > 0.5 ? dismiss() : settle()),
       onPanResponderTerminate: settle,
-    });
+    };
+    return {
+      grab: PanResponder.create({ onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: (_, g) => downward(g), ...handlers }),
+      header: PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => downward(g),
+        onMoveShouldSetPanResponderCapture: (_, g) => downward(g),
+        ...handlers,
+      }),
+    };
   }, [ty, sheetH, dismiss]);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -155,10 +166,10 @@ export function Sheet({
             accessibilityViewIsModal
             style={[s.sheet, { height: sheetH, maxHeight: "100%", paddingBottom: bottomInset, transform: [{ translateY: ty }] }]}
           >
-            <View {...pan.panHandlers} style={s.grabZone}>
+            <View {...grab.panHandlers} style={s.grabZone} collapsable={false}>
               <View style={s.grab} />
             </View>
-            <DragContext.Provider value={pan.panHandlers as unknown as Record<string, unknown>}>
+            <DragContext.Provider value={header.panHandlers as unknown as Record<string, unknown>}>
               <View style={{ flex: 1 }}>{children}</View>
             </DragContext.Provider>
           </Animated.View>

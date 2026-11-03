@@ -1,6 +1,6 @@
 {
   "name": "@youasked/react-native",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Feature requests your users can vote on, as a native bottom sheet for React Native and Expo, with a 'you asked, it's live' moment when you ship.",
   "license": "MIT",
   "sideEffects": false,
@@ -34,9 +34,15 @@
     "react-native-safe-area-context": "*"
   },
   "peerDependenciesMeta": {
-    "expo-haptics": { "optional": true },
-    "@react-native-async-storage/async-storage": { "optional": true },
-    "react-native-safe-area-context": { "optional": true }
+    "expo-haptics": {
+      "optional": true
+    },
+    "@react-native-async-storage/async-storage": {
+      "optional": true
+    },
+    "react-native-safe-area-context": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, Pressable, View, useColorScheme, type ImageSourcePropType, type StyleProp, type ViewStyle } from "react-native";
+import { AppState, Animated, Easing, Pressable, View, useColorScheme, type ImageSourcePropType, type StyleProp, type ViewStyle } from "react-native";
 import { createClient, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
 import { YouAskedContext, registerOpener, useInternal as useInternalStyles, toRoute, type CaptureScreenshot, type InternalContext, type OpenOptions, type Route } from "./context";
 import { createDemoClient } from "./demo";
@@ -119,11 +119,23 @@ export function YouAsked({
     [appIcon],
   );
 
+  // Phones keep apps alive for days, so look for replies and "it's live" again whenever the app
+  // comes back to the front (at most once a minute).
+  const [refresh, setRefresh] = useState(0);
+  const lastLoad = useRef(0);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && Date.now() - lastLoad.current > 60_000) setRefresh((n) => n + 1);
+    });
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     let alive = true;
     (async () => {
       try {
+        lastLoad.current = Date.now();
         const c = await client.config();
         // Only what shipped after the last time they were shown the list, even if the server missed the news.
         const seenAt = whatsNewKey ? Number(await getItem(whatsNewKey)) || 0 : 0;
@@ -152,7 +164,7 @@ export function YouAsked({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, ready]);
+  }, [client, ready, refresh]);
 
   // The demo's pretend team writes in a few seconds after you post.
   useEffect(() => {
