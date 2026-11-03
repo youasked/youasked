@@ -308,7 +308,7 @@ function SceneShip({ active }: { active: boolean }) {
           <i />
           <i />
           <i />
-          <span>claude · graiden</span>
+          <span>claude · acme</span>
         </div>
         <div className="term-body" style={{ minHeight: 360, fontSize: 13.5 }}>
           <div className="s3-line a">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createClient, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
 import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
@@ -332,15 +332,16 @@ function useTokens(appearance: Appearance | undefined, mounted: boolean) {
 }
 
 function useMedia(query: string) {
-  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
-  useEffect(() => {
-    const m = window.matchMedia(query);
-    const on = () => setMatches(m.matches);
-    on();
-    m.addEventListener("change", on);
-    return () => m.removeEventListener("change", on);
-  }, [query]);
-  return matches;
+  // Server and hydration render as false, then React re-renders with the real value.
+  return useSyncExternalStore(
+    (onChange) => {
+      const m = window.matchMedia(query);
+      m.addEventListener("change", onChange);
+      return () => m.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
 }
 
 // ---------------------------------------------------------------- panel: bottom sheet on phones, corner panel on desktop

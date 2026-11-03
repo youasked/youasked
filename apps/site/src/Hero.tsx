@@ -252,7 +252,7 @@ function Terminal() {
         <i />
         <i />
         <i />
-        <span>graiden · main</span>
+        <span>acme · main</span>
       </div>
       <div className="term-body">
         <div className="term-line l1">

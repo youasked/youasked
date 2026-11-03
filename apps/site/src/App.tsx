@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { YouAsked } from "@youasked/react";
 import { API, SITE_KEY } from "./content";
 import { Entries } from "./Entries";
@@ -22,13 +22,15 @@ const SITE_LOOK = {
 
 export function App() {
   // Icon-only launcher on phones, so it doesn't sit over the content.
-  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 700px)").matches);
-  useEffect(() => {
-    const m = window.matchMedia("(min-width: 700px)");
-    const on = () => setWide(m.matches);
-    m.addEventListener("change", on);
-    return () => m.removeEventListener("change", on);
-  }, []);
+  const wide = useSyncExternalStore(
+    (onChange) => {
+      const m = window.matchMedia("(min-width: 700px)");
+      m.addEventListener("change", onChange);
+      return () => m.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(min-width: 700px)").matches,
+    () => false,
+  );
   return (
     <YouAsked
       appKey={SITE_KEY}
