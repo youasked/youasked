@@ -35,10 +35,12 @@ export function useInsets(): Insets {
 }
 
 /**
- * How far to lift the sheet for the keyboard. On iOS the window doesn't move, so lift by the keyboard's
- * height. On Android the window may already have shrunk (adjustResize), so only lift by what's left.
+ * How far to lift the sheet for the keyboard, and the keyboard's height (0 when it's down). On iOS the
+ * window doesn't move, so lift by the keyboard's height. On Android the window may already have shrunk
+ * (adjustResize), so only lift by what's left; `baseline` is the full height measured while the
+ * keyboard was down.
  */
-function useKeyboardPad(rootHeight: number, baseline: MutableRefObject<number>) {
+function useKeyboardPad(rootHeight: number, baseline: MutableRefObject<number>): [number, number] {
   const [kb, setKb] = useState(0);
   useEffect(() => {
     const ios = Platform.OS === "ios";
@@ -55,9 +57,9 @@ function useKeyboardPad(rootHeight: number, baseline: MutableRefObject<number>) 
       hide.remove();
     };
   }, []);
-  if (kb === 0) return 0;
+  if (kb === 0) return [0, 0];
   const shrunk = Math.max(0, baseline.current - rootHeight);
-  return Math.max(0, kb - shrunk);
+  return [Math.max(0, kb - shrunk), kb];
 }
 
 export function Sheet({
@@ -81,9 +83,9 @@ export function Sheet({
   const closing = useRef(false);
   const [rootH, setRootH] = useState(0);
   const baseline = useRef(0);
-  const pad = useKeyboardPad(rootH, baseline);
-  const padRef = useRef(0);
-  padRef.current = pad;
+  const [pad, keyboard] = useKeyboardPad(rootH, baseline);
+  const keyboardRef = useRef(0);
+  keyboardRef.current = keyboard;
 
   useEffect(() => {
     if (active && !mounted) {
@@ -138,7 +140,9 @@ export function Sheet({
   const onLayout = (e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
     setRootH(h);
-    if (padRef.current === 0) baseline.current = h;
+    // Only while the keyboard is down: with it up, a shrunk window would look like the full height and
+    // the sheet would lift twice, leaving a see-through gap above the keyboard on Android.
+    if (keyboardRef.current === 0) baseline.current = h;
   };
 
   const bottomInset = pad > 0 ? 0 : insets.bottom;
