@@ -72,3 +72,7 @@ npm run typecheck                    # api, react, cli, mcp
 
 Create an app: `npx youasked init --api http://localhost:8787`, or `POST /v1/signup`, or `POST /v1/apps` with
 `Authorization: Bearer $ADMIN_TOKEN` and `{"name": "..."}`.
+
+## License
+
+The packages under `packages/` (`@youasked/react`, `youasked`, `@youasked/mcp`) are MIT. The hosted API, dashboard and website under `apps/` are [FSL-1.1-MIT](https://fsl.software): you can read, run and self-host them for your own apps, but not offer them as a competing hosted service. Each release becomes MIT two years after it ships. See [LICENSE](LICENSE).

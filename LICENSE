@@ -1,3 +1,14 @@
+Copyright (c) 2026 Aden Teo
+
+Portions of this software are licensed as follows:
+
+- Everything under "apps/" (the hosted API, dashboard and website) is licensed under the
+  Functional Source License, Version 1.1, MIT Future License, as defined in "apps/api/LICENSE.md"
+  and "apps/site/LICENSE.md". Each version becomes available under the MIT license two years
+  after it is released.
+- Everything else, including the published packages under "packages/" (@youasked/react,
+  youasked and @youasked/mcp), is licensed under the MIT license below.
+
 MIT License
 
 Copyright (c) 2026 Aden Teo

@@ -141,7 +141,7 @@ export async function init({ flags, cwd }) {
       const entries = await ask.multi(
         "Entry points",
         [
-          { key: "floating", label: "Floating launcher", hint: "a bulb button in the corner" },
+          { key: "floating", label: "Floating launcher", hint: "a chat bubble in the corner" },
           { key: "askbar", label: "Ask bar", hint: "chat-style input for a home screen" },
           { key: "card", label: "Feature card", hint: "top requests with vote buttons" },
           { key: "settings", label: "Settings row", hint: "a row in your menu or settings" },
@@ -206,7 +206,7 @@ export async function init({ flags, cwd }) {
       });
     }
     say(`\n${bold("Next")}`);
-    say(`  1. Start your dev server and look for the bulb in the corner. Add a request, vote on it.`);
+    say(`  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`);
     say(`  2. Your dashboard: ${cyan(dashboardUrl)}${created ? dim("  (sign in with the secret key from " + project.envFile + ")") : ""}`);
     say(`  3. Ship from your commits: connect GitHub in the dashboard, then write ${bold('"closes YA-12"')} in a commit or PR.`);
     say(`  4. Let your agent read and ship requests:`);
