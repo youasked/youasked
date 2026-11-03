@@ -1,0 +1,17 @@
+{
+  "name": "youasked",
+  "version": "0.1.0",
+  "description": "Add YouAsked feature requests to your app in one command: npx youasked init",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "youasked": "./bin/youasked.js" },
+  "files": ["bin", "src", "README.md"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}
