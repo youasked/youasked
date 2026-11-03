@@ -280,6 +280,7 @@ admin.get("/app", (c) => {
 
 admin.patch("/app", async (c) => {
   const body = await c.req.json<{
+    name?: string;
     watermark?: boolean;
     requireSignature?: boolean;
     allowedOrigins?: string[] | null;
@@ -290,6 +291,13 @@ admin.patch("/app", async (c) => {
   }>();
   if (body.moderation !== undefined && body.moderation !== "off" && body.moderation !== "approve") fail(400, "bad_moderation");
   const a = c.get("app");
+  const name = body.name === undefined ? a.name : cleanText(String(body.name), 60);
+  if (!name) fail(400, "name_required");
+  // The "Feedback by YouAsked" line comes off on Pro and Studio only.
+  if (body.watermark === false && a.watermark && !a.always_live) {
+    const { limits } = await entitlements(c.env, a);
+    if (!limits?.removeBranding) fail(402, "upgrade_required", { upgrade: true, message: "Removing the YouAsked line is on Pro and Studio." });
+  }
   const pubSettings = await publicSettings(c.env, a, body);
   const origins =
     body.allowedOrigins === undefined
@@ -297,8 +305,9 @@ admin.patch("/app", async (c) => {
       : body.allowedOrigins === null
         ? null
         : JSON.stringify(body.allowedOrigins.filter((o) => typeof o === "string").slice(0, 20));
-  await c.env.DB.prepare("UPDATE apps SET watermark = ?, require_signature = ?, allowed_origins = ?, moderation = ? WHERE id = ?")
+  await c.env.DB.prepare("UPDATE apps SET name = ?, watermark = ?, require_signature = ?, allowed_origins = ?, moderation = ? WHERE id = ?")
     .bind(
+      name,
       body.watermark === undefined ? a.watermark : body.watermark ? 1 : 0,
       body.requireSignature === undefined ? a.require_signature : body.requireSignature ? 1 : 0,
       origins,

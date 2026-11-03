@@ -6,12 +6,15 @@ import { Button, CopyButton, Dialog, Icon, PageHead, useFail, useInterval, useLo
 import { secretStore } from "./FirstRun";
 
 export const setupPrompt = (name: string, publicKey: string) =>
-  `Add YouAsked feature requests to this project (${name}).
+  `Add YouAsked to ${name} so people can ask for features, vote, and hear when what they asked for ships.
 
-1. Read https://youasked.dev/install.md and follow it for this framework.
-2. My publishable key is ${publicKey}. Put it in the env file the way the guide says. It is safe in client code.
-3. The secret key is only for the server. Ask me for it, keep it out of git, and never ship it to the browser.
-4. Run the app locally and tell me when a test request goes through. Test mode works on localhost.`;
+Read https://youasked.dev/install.md and follow it from start to finish:
+1. Before changing anything, work out the platforms (web, React Native or Expo, or both) and how the app is laid out.
+2. Propose where the entry points should go and why, and whether users will be signed in. Wait for my OK, and ask me anything you can't tell from the code.
+3. Set it up with \`npx youasked init --key ${publicKey}\` (my publishable key; it's safe in client code). The secret key is only for the server: ask me for it, keep it out of git, and never ship it in the app.
+4. Sign users on the server if the app has sign-in, and match our theme in light and dark.
+5. Test every entry point on localhost or a dev build (test mode works there).
+6. Finish with what changed, where each entry point lives, and what I need to do to go live.`;
 
 export function Install({ app }: { app: WorkspaceApp }) {
   const cmd = `npx youasked init --key ${app.publicKey}`;

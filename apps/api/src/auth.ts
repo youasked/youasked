@@ -78,15 +78,21 @@ export function dashCors() {
   ];
 }
 
+/** Where the session cookie lives follows the dashboard's host. wrangler dev rewrites the request
+ * URL to the production route's host, so the request host can't tell local from production. */
+function cookieScope(c: Context<any>) {
+  const host = new URL(dashboardBase(c.env)).hostname;
+  return { local: isLocalHost(host), shared: host.endsWith("youasked.dev") };
+}
+
 function cookieOptions(c: Context<any>) {
-  const host = new URL(c.req.url).hostname;
-  const local = isLocalHost(host);
+  const { local, shared } = cookieScope(c);
   return {
     httpOnly: true,
     secure: !local,
     sameSite: "Lax" as const,
     path: "/",
-    ...(host.endsWith("youasked.dev") ? { domain: ".youasked.dev" } : {}),
+    ...(shared ? { domain: ".youasked.dev" } : {}),
   };
 }
 
@@ -391,7 +397,7 @@ auth.post("/logout", async (c) => {
   if (token && /^[0-9a-f]{64}$/.test(token)) {
     await c.env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256Hex(token)).run();
   }
-  deleteCookie(c, SESSION_COOKIE, { path: "/", ...(new URL(c.req.url).hostname.endsWith("youasked.dev") ? { domain: ".youasked.dev" } : {}) });
+  deleteCookie(c, SESSION_COOKIE, { path: "/", ...(cookieScope(c).shared ? { domain: ".youasked.dev" } : {}) });
   return c.json({ ok: true });
 });
 
