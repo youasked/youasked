@@ -1,62 +1,38 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { addTeamComment, loadRequestById, mergeRequests, setStatus } from "./actions";
 import { adminPage } from "./admin-page";
+import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
-
-type Env = { DB: D1Database; ADMIN_TOKEN: string };
-
-type AppRow = {
-  id: string;
-  name: string;
-  public_key: string;
-  secret_key: string;
-  watermark: number;
-  require_signature: number;
-  allowed_origins: string | null;
-};
-
-type UserRow = {
-  id: string;
-  external_id: string;
-  email: string | null;
-  name: string | null;
-  is_anon: number;
-  last_seen_at: number;
-};
-
-type RequestRow = {
-  id: string;
-  app_id: string;
-  author_id: string;
-  title: string;
-  body: string;
-  status: Status;
-  vote_count: number;
-  comment_count: number;
-  merged_into: string | null;
-  ship_note: string | null;
-  shipped_at: number | null;
-  created_at: number;
-  updated_at: number;
-};
+import { loadIntegrations, notifyTeam, tg } from "./notify";
+import {
+  STATUSES,
+  type AppRow,
+  type Env,
+  type GithubConfig,
+  type RequestRow,
+  type Status,
+  type TelegramConfig,
+  type UserRow,
+  type WebhookConfig,
+} from "./types";
 
 type Vars = { app: AppRow; user: UserRow | null };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
-const STATUSES = ["open", "planned", "in_progress", "shipped", "declined"] as const;
-type Status = (typeof STATUSES)[number] | "merged";
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
 const now = () => Date.now();
 
-function fail(status: 400 | 401 | 403 | 404 | 429, error: string): never {
+function fail(status: 400 | 401 | 403 | 404 | 429 | 502, error: string): never {
   throw new HTTPException(status, { res: Response.json({ error }, { status }) });
 }
 
 function publicRequest(r: RequestRow & { voted?: number }, me: UserRow | null) {
   return {
     id: r.id,
+    number: r.number,
     title: r.title,
     body: r.body,
     status: r.status,
@@ -84,12 +60,11 @@ async function upsertUser(
     .first<UserRow>();
   const t = now();
   if (!existing) {
-    const user: UserRow = { id: newId("usr"), external_id: externalId, email, name, is_anon: isAnon ? 1 : 0, last_seen_at: t };
     await db
       .prepare(
         "INSERT INTO users (id, app_id, external_id, email, name, is_anon, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, external_id) DO NOTHING",
       )
-      .bind(user.id, appId, externalId, email, name, user.is_anon, t, t)
+      .bind(newId("usr"), appId, externalId, email, name, isAnon ? 1 : 0, t, t)
       .run();
     // A concurrent first request may have won the insert; read back whichever row exists.
     return (await db
@@ -147,9 +122,7 @@ function requireUser(c: Ctx): UserRow {
 }
 
 async function loadRequest(c: Ctx, id: string): Promise<RequestRow> {
-  const row = await c.env.DB.prepare("SELECT * FROM requests WHERE id = ? AND app_id = ?")
-    .bind(id, c.get("app").id)
-    .first<RequestRow>();
+  const row = await loadRequestById(c.env.DB, c.get("app").id, id);
   if (!row) fail(404, "not_found");
   return row;
 }
@@ -164,6 +137,7 @@ app.onError((err, c) => {
 
 app.get("/", (c) => c.text("youasked api"));
 app.get("/admin", (c) => c.html(adminPage));
+app.route("/v1/hooks", hooks);
 
 // ---------------------------------------------------------------- bootstrap
 
@@ -275,67 +249,35 @@ admin.get("/requests/:id", async (c) => {
 admin.patch("/requests/:id", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
   const body = await c.req.json<{ status?: string; title?: string; body?: string; shipNote?: string | null }>();
-  const status = body.status ?? r.status;
+  const status = (body.status ?? r.status) as Status;
   if (!(STATUSES as readonly string[]).includes(status) && status !== r.status) fail(400, "bad_status");
-  const title = body.title !== undefined ? cleanText(body.title, 120) || r.title : r.title;
-  const text = body.body !== undefined ? cleanText(body.body, 4000) : r.body;
-  const shipNote = body.shipNote !== undefined ? cleanText(body.shipNote, 500) || null : r.ship_note;
-  const t = now();
-  const becameShipped = status === "shipped" && r.status !== "shipped";
-  const stmts = [
-    c.env.DB.prepare(
-      "UPDATE requests SET status = ?, title = ?, body = ?, ship_note = ?, shipped_at = ?, updated_at = ? WHERE id = ?",
-    ).bind(status, title, text, shipNote, status === "shipped" ? (r.shipped_at ?? t) : r.shipped_at, t, r.id),
-  ];
-  if (becameShipped) {
-    // Everyone who asked or voted hears about it once, even if the status is toggled later.
-    stmts.push(
-      c.env.DB.prepare(
-        `INSERT INTO notifications (id, user_id, request_id, kind, created_at)
-         SELECT 'ntf_' || lower(hex(randomblob(8))), who.uid, ?1, 'shipped', ?2
-         FROM (SELECT author_id AS uid FROM requests WHERE id = ?1
-               UNION SELECT user_id FROM votes WHERE request_id = ?1) who
-         WHERE NOT EXISTS (SELECT 1 FROM notifications n WHERE n.request_id = ?1 AND n.kind = 'shipped' AND n.user_id = who.uid)`,
-      ).bind(r.id, t),
-    );
+  if (body.title !== undefined || body.body !== undefined) {
+    await c.env.DB.prepare("UPDATE requests SET title = ?, body = ?, updated_at = ? WHERE id = ?")
+      .bind(
+        body.title !== undefined ? cleanText(body.title, 120) || r.title : r.title,
+        body.body !== undefined ? cleanText(body.body, 4000) : r.body,
+        now(),
+        r.id,
+      )
+      .run();
   }
-  await c.env.DB.batch(stmts);
-  return c.json({ request: publicRequest(await loadRequest(c, r.id), null), notified: becameShipped });
+  const shipNote = body.shipNote !== undefined ? cleanText(body.shipNote, 500) || null : undefined;
+  const { notified } = await setStatus(c.env.DB, r, status, shipNote);
+  return c.json({ request: publicRequest(await loadRequest(c, r.id), null), notified: notified > 0, told: notified });
 });
 
 admin.post("/requests/:id/comments", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
   const body = cleanText((await c.req.json<{ body?: string }>()).body, 2000);
   if (!body) fail(400, "body_required");
-  const id = newId("cmt");
-  await c.env.DB.batch([
-    c.env.DB.prepare("INSERT INTO comments (id, request_id, user_id, is_team, body, created_at) VALUES (?, ?, NULL, 1, ?, ?)").bind(
-      id,
-      r.id,
-      body,
-      now(),
-    ),
-    c.env.DB.prepare("UPDATE requests SET comment_count = comment_count + 1, updated_at = ? WHERE id = ?").bind(now(), r.id),
-  ]);
-  return c.json({ id });
+  return c.json(await addTeamComment(c.env.DB, r, body));
 });
 
 admin.post("/requests/:id/merge", async (c) => {
   const from = await loadRequest(c, c.req.param("id"));
   const into = await loadRequest(c, (await c.req.json<{ into?: string }>()).into ?? "");
   if (from.id === into.id) fail(400, "same_request");
-  const t = now();
-  await c.env.DB.batch([
-    c.env.DB.prepare("INSERT OR IGNORE INTO votes (request_id, user_id, created_at) SELECT ?, user_id, created_at FROM votes WHERE request_id = ?").bind(
-      into.id,
-      from.id,
-    ),
-    c.env.DB.prepare("UPDATE requests SET vote_count = (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1").bind(
-      into.id,
-      t,
-    ),
-    c.env.DB.prepare("UPDATE requests SET status = 'merged', merged_into = ?, updated_at = ? WHERE id = ?").bind(into.id, t, from.id),
-  ]);
+  await mergeRequests(c.env.DB, from, into);
   return c.json({ ok: true });
 });
 
@@ -350,7 +292,114 @@ admin.delete("/requests/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], allowMethods: ["GET", "POST", "PATCH", "DELETE"] }));
+// ---- integrations
+
+admin.get("/integrations", async (c) => {
+  const origin = new URL(c.req.url).origin;
+  const list = await loadIntegrations(c.env.DB, c.get("app").id);
+  const out: Record<string, unknown> = {};
+  for (const i of list) {
+    if (i.kind === "telegram") {
+      const cfg = i.config as TelegramConfig;
+      out.telegram = {
+        connected: Boolean(cfg.chatId),
+        chatTitle: cfg.chatTitle,
+        botUsername: cfg.botUsername,
+        link: cfg.linkCode ? `https://t.me/${cfg.botUsername}?start=${cfg.linkCode}` : null,
+        groupLink: cfg.linkCode ? `https://t.me/${cfg.botUsername}?startgroup=${cfg.linkCode}` : null,
+      };
+    } else if (i.kind === "github") {
+      out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: (i.config as GithubConfig).secret };
+    } else if (i.kind === "webhook") {
+      out.webhook = i.config;
+    }
+  }
+  return c.json(out);
+});
+
+async function upsertIntegration(db: D1Database, appId: string, kind: string, config: unknown): Promise<string> {
+  const existing = await db.prepare("SELECT id FROM integrations WHERE app_id = ? AND kind = ?").bind(appId, kind).first<{ id: string }>();
+  if (existing) {
+    await db.prepare("UPDATE integrations SET config = ? WHERE id = ?").bind(JSON.stringify(config), existing.id).run();
+    return existing.id;
+  }
+  const id = newId("int");
+  await db
+    .prepare("INSERT INTO integrations (id, app_id, kind, config, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(id, appId, kind, JSON.stringify(config), now())
+    .run();
+  return id;
+}
+
+/** Connects a Telegram bot: points its webhook here and returns a link that ties a chat to this app. */
+admin.put("/integrations/telegram", async (c) => {
+  const { botToken } = await c.req.json<{ botToken?: string }>();
+  if (!botToken || !/^\d+:[\w-]{30,}$/.test(botToken)) fail(400, "bad_bot_token");
+  const me = await tg(c.env, botToken, "getMe", {});
+  if (!me?.ok) fail(400, "bot_token_rejected");
+  const appId = c.get("app").id;
+  const config: TelegramConfig = {
+    botToken,
+    botUsername: me.result.username,
+    secret: newId("tgs", 32).replace("tgs_", ""),
+    linkCode: newId("lnk", 12).replace("lnk_", ""),
+    chatId: null,
+    chatTitle: null,
+  };
+  const id = await upsertIntegration(c.env.DB, appId, "telegram", config);
+  const hook = await tg(c.env, botToken, "setWebhook", {
+    url: `${new URL(c.req.url).origin}/v1/hooks/telegram/${id}`,
+    secret_token: config.secret,
+    allowed_updates: ["message", "callback_query"],
+    drop_pending_updates: true,
+  });
+  if (!hook?.ok) fail(502, "webhook_failed");
+  return c.json({
+    botUsername: config.botUsername,
+    link: `https://t.me/${config.botUsername}?start=${config.linkCode}`,
+    groupLink: `https://t.me/${config.botUsername}?startgroup=${config.linkCode}`,
+  });
+});
+
+admin.put("/integrations/github", async (c) => {
+  const appId = c.get("app").id;
+  const existing = (await loadIntegrations(c.env.DB, appId)).find((i) => i.kind === "github");
+  const config: GithubConfig = (existing?.config as GithubConfig) ?? { secret: newId("ghs", 32).replace("ghs_", "") };
+  const id = await upsertIntegration(c.env.DB, appId, "github", config);
+  return c.json({ payloadUrl: `${new URL(c.req.url).origin}/v1/hooks/github/${id}`, secret: config.secret, events: ["pull_request", "push"] });
+});
+
+admin.put("/integrations/webhook", async (c) => {
+  const body = await c.req.json<{ url?: string; format?: string }>();
+  let url: URL;
+  try {
+    url = new URL(body.url ?? "");
+  } catch {
+    fail(400, "bad_url");
+  }
+  if (url.protocol !== "https:") fail(400, "https_only");
+  const format: WebhookConfig["format"] =
+    body.format === "slack" || body.format === "discord" || body.format === "json"
+      ? body.format
+      : url.hostname.endsWith("slack.com")
+        ? "slack"
+        : url.hostname.includes("discord")
+          ? "discord"
+          : "json";
+  await upsertIntegration(c.env.DB, c.get("app").id, "webhook", { url: url.toString(), format });
+  return c.json({ ok: true, format });
+});
+
+admin.delete("/integrations/:kind", async (c) => {
+  const appId = c.get("app").id;
+  const kind = c.req.param("kind");
+  const existing = (await loadIntegrations(c.env.DB, appId)).find((i) => i.kind === kind);
+  if (existing?.kind === "telegram") await tg(c.env, (existing.config as TelegramConfig).botToken, "deleteWebhook", {});
+  await c.env.DB.prepare("DELETE FROM integrations WHERE app_id = ? AND kind = ?").bind(appId, kind).run();
+  return c.json({ ok: true });
+});
+
+app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }));
 app.route("/v1/admin", admin);
 
 // ---------------------------------------------------------------- public (widget, publishable key)
@@ -387,13 +436,22 @@ pub.get("/config", async (c) => {
   let unseen: unknown[] = [];
   if (me) {
     const { results } = await c.env.DB.prepare(
-      `SELECT n.id, n.kind, r.id AS request_id, r.title, r.ship_note FROM notifications n
+      `SELECT n.id, n.kind, r.id AS request_id, r.title, r.ship_note, cm.body AS reply
+       FROM notifications n
        JOIN requests r ON r.id = n.request_id
-       WHERE n.user_id = ? AND n.seen_at IS NULL ORDER BY n.created_at DESC LIMIT 5`,
+       LEFT JOIN comments cm ON cm.id = n.comment_id
+       WHERE n.user_id = ? AND n.seen_at IS NULL ORDER BY n.created_at DESC LIMIT 8`,
     )
       .bind(me.id)
-      .all<{ id: string; kind: string; request_id: string; title: string; ship_note: string | null }>();
-    unseen = results.map((n) => ({ id: n.id, kind: n.kind, requestId: n.request_id, title: n.title, shipNote: n.ship_note }));
+      .all<{ id: string; kind: string; request_id: string; title: string; ship_note: string | null; reply: string | null }>();
+    unseen = results.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      requestId: n.request_id,
+      title: n.title,
+      shipNote: n.ship_note,
+      reply: n.reply,
+    }));
   }
   return c.json({ app: { name: a.name }, watermark: Boolean(a.watermark), identified: me ? !me.is_anon : false, unseen });
 });
@@ -418,24 +476,29 @@ pub.get("/requests", async (c) => {
   return c.json({ requests: results.map((r) => publicRequest(r, me)) });
 });
 
+async function findSimilar(db: D1Database, appId: string, q: string, meId: string, excludeId?: string) {
+  const { results } = await db
+    .prepare(
+      `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
+       LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
+       WHERE r.app_id = ? AND r.status IN ('open','planned','in_progress','shipped')
+       ORDER BY r.created_at DESC LIMIT 500`,
+    )
+    .bind(meId, appId)
+    .all<RequestRow & { voted: number }>();
+  return results
+    .filter((r) => r.id !== excludeId)
+    .map((r) => ({ r, score: Math.max(similarity(q, r.title), similarity(q, `${r.title} ${r.body}`) * 0.8) }))
+    .filter((x) => x.score >= 0.34)
+    .sort((x, y) => y.score - x.score || y.r.vote_count - x.r.vote_count);
+}
+
 pub.get("/requests/similar", async (c) => {
   const q = cleanText(c.req.query("q"), 200);
   if (q.length < 3) return c.json({ requests: [] });
   const me = c.get("user");
-  const { results } = await c.env.DB.prepare(
-    `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
-     LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
-     WHERE r.app_id = ? AND r.status IN ('open','planned','in_progress','shipped')
-     ORDER BY r.created_at DESC LIMIT 500`,
-  )
-    .bind(me?.id ?? "", c.get("app").id)
-    .all<RequestRow & { voted: number }>();
-  const scored = results
-    .map((r) => ({ r, score: Math.max(similarity(q, r.title), similarity(q, `${r.title} ${r.body}`) * 0.8) }))
-    .filter((x) => x.score >= 0.34)
-    .sort((x, y) => y.score - x.score || y.r.vote_count - x.r.vote_count)
-    .slice(0, 4);
-  return c.json({ requests: scored.map((x) => publicRequest(x.r, me)) });
+  const scored = await findSimilar(c.env.DB, c.get("app").id, q, me?.id ?? "");
+  return c.json({ requests: scored.slice(0, 4).map((x) => publicRequest(x.r, me)) });
 });
 
 pub.get("/requests/:id", async (c) => {
@@ -470,6 +533,7 @@ pub.get("/requests/:id", async (c) => {
 
 pub.post("/requests", async (c) => {
   const me = requireUser(c);
+  const a = c.get("app");
   const body = await c.req.json<{ title?: string; body?: string }>().catch(() => ({}) as { title?: string; body?: string });
   const title = cleanText(body.title, 120);
   const text = cleanText(body.body, 2000);
@@ -480,13 +544,26 @@ pub.post("/requests", async (c) => {
   if ((recent?.n ?? 0) >= 10) fail(429, "slow_down");
   const id = newId("req");
   const t = now();
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      "INSERT INTO requests (id, app_id, author_id, title, body, status, vote_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'open', 1, ?, ?)",
-    ).bind(id, c.get("app").id, me.id, title, text, t, t),
-    c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
-  ]);
+  const insert = () =>
+    c.env.DB.batch([
+      c.env.DB.prepare(
+        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, created_at, updated_at)
+         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, 'open', 1, ?6, ?6)`,
+      ).bind(id, a.id, me.id, title, text, t),
+      c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
+    ]);
+  try {
+    await insert();
+  } catch {
+    await insert(); // two requests raced for the same number; the retry takes the next one
+  }
   const r = await loadRequest(c, id);
+  c.executionCtx.waitUntil(
+    (async () => {
+      const similar = (await findSimilar(c.env.DB, a.id, title, "", r.id)).find((x) => x.score >= 0.5)?.r ?? null;
+      await notifyTeam(c.env, a.id, { kind: "request", appName: a.name, request: r, author: me, similar });
+    })(),
+  );
   return c.json({ request: publicRequest({ ...r, voted: 1 }, me) }, 201);
 });
 
@@ -530,6 +607,7 @@ pub.post("/requests/:id/comments", async (c) => {
     ),
     c.env.DB.prepare("UPDATE requests SET comment_count = comment_count + 1, updated_at = ? WHERE id = ?").bind(t, r.id),
   ]);
+  c.executionCtx.waitUntil(notifyTeam(c.env, c.get("app").id, { kind: "comment", appName: c.get("app").name, request: r, author: me, body }));
   return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t } }, 201);
 });
 
@@ -563,4 +641,9 @@ pub.post("/notifications/seen", async (c) => {
 
 app.route("/v1", pub);
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(sendDigests(env));
+  },
+};

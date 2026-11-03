@@ -27,5 +27,8 @@ for (const [who, title, body, votes, status, note] of seeds) {
 const youReq = await post("you", "/requests", { title: "Show which card I paid with", body: "" });
 await admin(`/requests/${youReq.request.id}`, "PATCH", { status: "shipped", shipNote: "Each expense now shows the card's last 4 digits." });
 const sig = createHmac("sha256", app.secretKey).update("you").digest("hex");
+await admin(`/requests/${youReq.request.id}`, "PATCH", { status: "open" });
+const reply = await post("you", "/requests", { title: "Export expenses to Excel", body: "For my accountant at tax time." });
+await admin(`/requests/${reply.request.id}/comments`, "POST", { body: "Good one. Would a CSV that opens in Excel work, or do you need .xlsx?" });
 writeFileSync(new URL("./keys.json", import.meta.url), JSON.stringify({ publicKey: app.publicKey, sig }));
 console.log("seeded", seeds.length + 1, "requests");

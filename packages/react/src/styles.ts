@@ -123,6 +123,20 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-send:disabled{opacity:.3}
 .ya-mark{text-align:center;font-size:11.5px;color:var(--_muted);margin-top:8px}
 
+
+.ya-bubble-kicker{font-size:12.5px;font-weight:650;color:var(--_muted)}
+.ya-detail-meta{display:flex;align-items:center;gap:8px}
+.ya-ref{font-size:12px;font-weight:650;color:var(--_muted);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.ya-thread{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.ya-msg{display:flex;gap:8px;align-items:flex-end;max-width:92%}
+.ya-msg .ya-avatar{border-radius:50%;margin-bottom:2px}
+.ya-msg-dot{width:26px;height:26px;border-radius:50%;background:var(--_surface);flex:none;margin-bottom:2px}
+.ya-msg-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ya-msg-body .ya-bubble{max-width:100%;animation:none}
+.ya-msg-out{align-self:flex-end;flex-direction:column;align-items:flex-end;gap:3px}
+.ya-msg-out .ya-bubble{max-width:100%;animation:none}
+.ya-msg-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--_muted);padding:0 4px}
+.ya-msg-meta b{color:var(--_fg);font-weight:650}
 /* ---------- board, detail */
 .ya-tabs{display:flex;gap:2px;margin:0 16px 8px;padding:3px;background:var(--_surface);border-radius:calc(var(--_radius) - 2px);flex:none}
 .ya-tab{flex:1;padding:7px 0;border-radius:calc(var(--_radius) - 5px);font-size:14px;font-weight:600;color:var(--_muted);text-align:center;transition:background .15s,color .15s}
@@ -176,6 +190,7 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-live svg{width:15px;height:15px}
 .ya-toast-note{font-size:13.5px;color:var(--_muted);margin-top:6px;overflow-wrap:anywhere}
 .ya-toast-actions{display:flex;gap:8px;margin-top:12px}
+.ya-toast-quote{color:var(--_fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ya-toast .ya-icon-btn{width:30px;height:30px;margin:-6px -6px 0 0;background:none}
 
 /* ---------- inline entry points */

@@ -138,7 +138,7 @@ export function YouAsked({
     [open, close, route, unseen.length, client, config, markSeen, scopeStyle, tokens?.mode, appName, appIcon, title, greeting],
   );
 
-  const notice = unseen.find((n) => n.kind === "shipped");
+  const notice = unseen.find((n) => n.kind === "shipped") ?? unseen.find((n) => n.kind === "reply");
 
   return (
     <YouAskedContext.Provider value={value}>
@@ -393,6 +393,35 @@ function ShippedToast({
 }) {
   return (
     <div className="ya-toast" role="status" data-pos={position} data-trigger={trigger}>
+      {notice.kind === "reply" ? (
+        <>
+          <div className="ya-toast-top">
+            <p className="ya-toast-kicker">New reply about</p>
+            <button type="button" className="ya-icon-btn" onClick={onDismiss} aria-label="Dismiss">
+              <IconClose />
+            </button>
+          </div>
+          <p className="ya-toast-title">{notice.title}</p>
+          <p className="ya-toast-note ya-toast-quote">{notice.reply}</p>
+          <div className="ya-toast-actions">
+            <button type="button" className="ya-btn ya-btn-sm" onClick={onOpen}>
+              Reply
+            </button>
+            <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onDismiss}>
+              Later
+            </button>
+          </div>
+        </>
+      ) : (
+        <ShippedBody notice={notice} onOpen={onOpen} onDismiss={onDismiss} />
+      )}
+    </div>
+  );
+}
+
+function ShippedBody({ notice, onOpen, onDismiss }: { notice: Notice; onOpen: () => void; onDismiss: () => void }) {
+  return (
+    <>
       <div className="ya-toast-top">
         <p className="ya-toast-kicker">You asked for</p>
         <button type="button" className="ya-icon-btn" onClick={onDismiss} aria-label="Dismiss">
@@ -413,6 +442,6 @@ function ShippedToast({
           Nice
         </button>
       </div>
-    </div>
+    </>
   );
 }

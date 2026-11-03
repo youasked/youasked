@@ -2,6 +2,8 @@ export type Status = "open" | "planned" | "in_progress" | "shipped" | "declined"
 
 export type FeatureRequest = {
   id: string;
+  /** Shown as YA-12; commits and PRs that say "closes YA-12" ship it. */
+  number: number;
   title: string;
   body: string;
   status: Status;
@@ -23,7 +25,15 @@ export type RequestComment = {
   createdAt: number;
 };
 
-export type Notice = { id: string; kind: string; requestId: string; title: string; shipNote: string | null };
+export type Notice = {
+  id: string;
+  /** "shipped", or "reply" when the team answered */
+  kind: string;
+  requestId: string;
+  title: string;
+  shipNote: string | null;
+  reply: string | null;
+};
 
 export type Config = { app: { name: string }; watermark: boolean; identified: boolean; unseen: Notice[] };
 

@@ -40,6 +40,16 @@ export const adminPage = /* html */ `<!doctype html>
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 12px; font-weight:600; opacity:0; transition: opacity .2s; pointer-events:none; }
   .toast.show { opacity: 1; }
   button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+  .connect { background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-bottom: 16px; }
+  .connect summary { cursor: pointer; font-weight: 600; }
+  .cgrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 12px; }
+  .cgrid h3 { margin: 0 0 4px; font-size: 16px; }
+  .hint { color: var(--muted); font-size: 13.5px; margin: 0 0 10px; }
+  .row { display:flex; gap: 8px; }
+  .row input { flex:1; min-width: 0; }
+  .out { font-size: 13.5px; margin: 8px 0 0; overflow-wrap:anywhere; }
+  .out code { background: var(--paper); padding: 1px 5px; border-radius: 6px; }
+  .ref { font-weight: 700; color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -50,6 +60,29 @@ export const adminPage = /* html */ `<!doctype html>
     <input id="key" type="password" placeholder="Secret key (ya_sec_…)" autocomplete="off">
     <button>Open</button>
   </form>
+  <details class="connect" id="connect">
+    <summary>Connect Telegram, GitHub, Slack or Discord</summary>
+    <div class="cgrid">
+      <section>
+        <h3>Telegram</h3>
+        <p class="hint">New requests and comments arrive with buttons to plan, ship, merge or reply. Reply to a card to answer the person who asked, in the app. Make a bot with @BotFather, then paste its token.</p>
+        <div class="row"><input id="tgtoken" placeholder="123456:ABC-DEF…" autocomplete="off"><button id="tgsave">Connect</button></div>
+        <p class="out" id="tgout"></p>
+      </section>
+      <section>
+        <h3>GitHub</h3>
+        <p class="hint">Write “closes YA-12” in a commit or PR. When it lands on your default branch, YA-12 is marked shipped and everyone who asked is told. Mentioning YA-12 in an open PR marks it in progress.</p>
+        <div class="row"><button id="ghsave" class="ghost">Show webhook settings</button></div>
+        <p class="out" id="ghout"></p>
+      </section>
+      <section>
+        <h3>Slack or Discord</h3>
+        <p class="hint">Paste an incoming webhook URL to get a message for each new request and comment.</p>
+        <div class="row"><input id="whurl" placeholder="https://hooks.slack.com/…" autocomplete="off"><button id="whsave">Save</button></div>
+        <p class="out" id="whout"></p>
+      </section>
+    </div>
+  </details>
   <div class="filters" id="filters"></div>
   <div id="list"></div>
 </main>
@@ -109,7 +142,7 @@ function row(r) {
   return el("article", { className: "req status-" + r.status },
     el("div", { className: "votes" }, String(r.votes), el("small", { textContent: r.votes === 1 ? "vote" : "votes" })),
     el("div", {},
-      el("p", { className: "title", textContent: r.title }),
+      el("p", { className: "title" }, el("span", { className: "ref", textContent: "YA-" + r.number }), r.title),
       r.body ? el("p", { className: "body", textContent: r.body }) : null,
       el("div", { className: "meta", textContent: who + " · " + ago(r.createdAt) + " · " + r.comments + " comments · " + r.id }),
       el("div", { className: "actions" }, select, note, save),
@@ -117,10 +150,46 @@ function row(r) {
     ),
   );
 }
-$("keyform").onsubmit = (e) => { e.preventDefault(); key = $("key").value.trim(); try { localStorage.setItem("ya_admin_key", key); } catch {} load(); };
+function line(parent, ...parts) {
+  parent.replaceChildren(...parts.filter((p) => p !== "").map((p) => typeof p === "string" ? document.createTextNode(p) : p));
+}
+async function loadConnections() {
+  try {
+    const i = await api("/integrations");
+    if (i.telegram) {
+      if (i.telegram.connected) line($("tgout"), "Connected to " + (i.telegram.chatTitle || "a chat") + " via @" + i.telegram.botUsername + ".");
+      else line($("tgout"), "Almost there. Open ", el("a", { href: i.telegram.link, target: "_blank", textContent: "this link" }), " and press Start, or ", el("a", { href: i.telegram.groupLink, target: "_blank", textContent: "add the bot to a group" }), ".");
+    }
+    if (i.github) showGithub(i.github);
+    if (i.webhook) line($("whout"), "Sending to " + new URL(i.webhook.url).hostname + " (" + i.webhook.format + ").");
+  } catch {}
+}
+function showGithub(g) {
+  line($("ghout"), "Repo → Settings → Webhooks → Add webhook. Payload URL ", el("code", { textContent: g.payloadUrl }), ", content type application/json, secret ", el("code", { textContent: g.secret }), ", events: Pull requests and Pushes.");
+}
+$("tgsave").onclick = async () => {
+  try {
+    const out = await fetch("/v1/admin/integrations/telegram", { method: "PUT", headers: { authorization: "Bearer " + key, "content-type": "application/json" }, body: JSON.stringify({ botToken: $("tgtoken").value.trim() }) });
+    if (!out.ok) throw new Error((await out.json()).error);
+    $("tgtoken").value = ""; loadConnections();
+  } catch (e) { toast("Couldn't connect: " + e.message); }
+};
+$("ghsave").onclick = async () => {
+  try { showGithub(await fetch("/v1/admin/integrations/github", { method: "PUT", headers: { authorization: "Bearer " + key } }).then((r) => r.json())); }
+  catch (e) { toast("Couldn't set up GitHub: " + e.message); }
+};
+$("whsave").onclick = async () => {
+  try {
+    const out = await fetch("/v1/admin/integrations/webhook", { method: "PUT", headers: { authorization: "Bearer " + key, "content-type": "application/json" }, body: JSON.stringify({ url: $("whurl").value.trim() }) });
+    if (!out.ok) throw new Error((await out.json()).error);
+    $("whurl").value = ""; loadConnections();
+  } catch (e) { toast("Couldn't save: " + e.message); }
+};
+$("keyform").onsubmit = (e) => { e.preventDefault(); key = $("key").value.trim(); try { localStorage.setItem("ya_admin_key", key); } catch {} load(); loadConnections(); };
 $("key").value = key;
 renderFilters();
 load();
+loadConnections();
 </script>
 </body>
 </html>`;

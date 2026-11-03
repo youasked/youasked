@@ -55,7 +55,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   const [text, setText] = useState(route.draft ?? "");
   const [thread, setThread] = useState<ThreadItem[]>([]);
   const [similar, setSimilar] = useState<FeatureRequest[]>([]);
-  const [notices] = useState<Notice[]>(() => config?.unseen.filter((n) => n.kind === "shipped") ?? []);
+  const [notices] = useState<Notice[]>(() => config?.unseen ?? []);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const sending = thread.some((t) => t.kind === "typing");
@@ -138,20 +138,32 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
       />
       <div className="ya-body ya-chat" ref={bodyRef}>
         <div className="ya-bubble ya-bubble-in">{greeting ?? `Hey! What would make ${appName} better for you?`}</div>
-        {notices.map((n) => (
-          <div key={n.id} className="ya-bubble ya-bubble-in ya-bubble-win">
-            <span className="ya-live">
-              <IconCheck />
-              It's live
-            </span>
-            <span>
-              You asked for <b>{n.title}</b>. {n.shipNote ?? "Thanks for asking."}
-            </span>
-            <button type="button" className="ya-bubble-link" onClick={() => openRequest(n.requestId)}>
-              See it
-            </button>
-          </div>
-        ))}
+        {notices.map((n) =>
+          n.kind === "reply" ? (
+            <div key={n.id} className="ya-bubble ya-bubble-in">
+              <span className="ya-bubble-kicker">
+                {appName} replied about {n.title}
+              </span>
+              <span>{n.reply}</span>
+              <button type="button" className="ya-bubble-link" onClick={() => openRequest(n.requestId)}>
+                Reply
+              </button>
+            </div>
+          ) : (
+            <div key={n.id} className="ya-bubble ya-bubble-in ya-bubble-win">
+              <span className="ya-live">
+                <IconCheck />
+                It's live
+              </span>
+              <span>
+                You asked for <b>{n.title}</b>. {n.shipNote ?? "Thanks for asking."}
+              </span>
+              <button type="button" className="ya-bubble-link" onClick={() => openRequest(n.requestId)}>
+                See it
+              </button>
+            </div>
+          ),
+        )}
 
         {!chatting && (
           <>
@@ -365,8 +377,14 @@ function Board({
 // ---------------------------------------------------------------- one request
 
 function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) => void; onClose?: () => void }) {
-  const { client } = useInternal();
+  const { client, config, markSeen, appName, appIcon } = useInternal();
   const { data, error, setData } = useLoad(() => client.get(id), [client, id]);
+
+  // Opening a request someone was told about counts as seeing it.
+  const unseenHere = config?.unseen.filter((n) => n.requestId === id).map((n) => n.id).join(",") ?? "";
+  useEffect(() => {
+    if (unseenHere) markSeen(unseenHere.split(","));
+  }, [unseenHere, markSeen]);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
@@ -404,7 +422,10 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
           <Skeleton />
         ) : (
           <>
-            {request.status !== "open" && <StatusPill status={request.status} />}
+            <div className="ya-detail-meta">
+              {request.status !== "open" && <StatusPill status={request.status} />}
+              <span className="ya-ref">YA-{request.number}</span>
+            </div>
             <h3 className="ya-detail-title">{request.title}</h3>
             {request.body && request.body !== request.title && <p className="ya-text">{request.body}</p>}
             <BigVote client={client} request={request} />
@@ -420,11 +441,15 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
                 </span>
               </div>
             )}
-            <p className="ya-section-h">{comments.length ? `Comments (${comments.length})` : "Comments"}</p>
+            <p className="ya-section-h">Conversation</p>
             {comments.length === 0 ? (
-              <p className="ya-text ya-text-muted">No comments yet.</p>
+              <p className="ya-text ya-text-muted">No messages yet. Add details or ask a question below.</p>
             ) : (
-              comments.map((c) => <CommentItem key={c.id} comment={c} />)
+              <div className="ya-thread">
+                {comments.map((c) => (
+                  <Message key={c.id} comment={c} appName={appName} appIcon={appIcon} />
+                ))}
+              </div>
             )}
           </>
         )}
@@ -436,8 +461,8 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
             rows={1}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Add a comment"
-            aria-label="Add a comment"
+            placeholder="Message"
+            aria-label="Message"
             maxLength={1000}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -460,14 +485,28 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
   );
 }
 
-function CommentItem({ comment }: { comment: RequestComment }) {
-  return (
-    <div className="ya-comment">
-      <div className="ya-comment-who">
-        {comment.team ? <span className="ya-team">Team</span> : <span>{comment.mine ? "You" : comment.author || "Someone"}</span>}
-        <time dateTime={new Date(comment.createdAt).toISOString()}>{ago(comment.createdAt)}</time>
+/** Team replies read as messages from the app, yours sit on the right like any chat. */
+function Message({ comment, appName, appIcon }: { comment: RequestComment; appName: string; appIcon?: string }) {
+  const when = <time dateTime={new Date(comment.createdAt).toISOString()}>{ago(comment.createdAt)}</time>;
+  if (comment.mine) {
+    return (
+      <div className="ya-msg ya-msg-out">
+        <div className="ya-bubble ya-bubble-out">{comment.body}</div>
+        <span className="ya-msg-meta">{when}</span>
       </div>
-      <p className="ya-text">{comment.body}</p>
+    );
+  }
+  return (
+    <div className="ya-msg">
+      {comment.team ? <AppAvatar name={appName} icon={appIcon} size={26} /> : <span className="ya-msg-dot" aria-hidden="true" />}
+      <div className="ya-msg-body">
+        <span className="ya-msg-meta">
+          <b>{comment.team ? appName : comment.author || "Someone"}</b>
+          {comment.team && <span className="ya-team">Team</span>}
+          {when}
+        </span>
+        <div className="ya-bubble ya-bubble-in">{comment.body}</div>
+      </div>
     </div>
   );
 }
