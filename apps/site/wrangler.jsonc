@@ -2,6 +2,8 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "youasked",
   "compatibility_date": "2026-10-01",
+  // Keep the old *.workers.dev address working for installs that already point at it.
+  "workers_dev": true,
   "routes": [
     { "pattern": "youasked.dev", "custom_domain": true },
     { "pattern": "www.youasked.dev", "custom_domain": true }

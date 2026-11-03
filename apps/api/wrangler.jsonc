@@ -2,6 +2,8 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "youasked-api",
   "main": "src/index.ts",
+  // Keep the old *.workers.dev address working for installs that already point at it.
+  "workers_dev": true,
   "routes": [{ "pattern": "api.youasked.dev", "custom_domain": true }],
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
