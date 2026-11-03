@@ -34,6 +34,11 @@ export type Env = {
   VECTORIZE?: VectorizeIndex;
   EMAIL?: SendEmail;
 
+  /** Amazon SES for email (preferred over the EMAIL binding when set). Region defaults to ap-southeast-1. */
+  SES_ACCESS_KEY_ID?: string;
+  SES_SECRET_ACCESS_KEY?: string;
+  SES_REGION?: string;
+
   /** Heard elsewhere (social listening) data source. */
   SCRAPECREATORS_API_KEY?: string;
   /** Workers AI model for classifying and summarising; the default is set in ai.ts. */

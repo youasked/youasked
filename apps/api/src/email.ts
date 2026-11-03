@@ -1,12 +1,46 @@
-// Transactional email (sign-in links, invites, "it shipped" notes) through Cloudflare Email Sending
-// (the EMAIL binding). When the binding is missing, mail is logged so local dev and tests still see it.
+// Transactional email (sign-in links, invites, "it shipped" notes). Sent through Amazon SES when its
+// keys are set (the same SES account as Graiden and Otay), else through Cloudflare Email Sending (the
+// EMAIL binding), else logged so local dev and tests still see it.
+import { AwsClient } from "aws4fetch";
 import type { Env } from "./types";
 
 export type Email = { to: string; subject: string; text: string; html?: string };
 
 export const FROM = { email: "hello@youasked.dev", name: "YouAsked" };
 
+async function sendWithSes(env: Env, email: Email): Promise<boolean> {
+  const region = env.SES_REGION ?? "ap-southeast-1";
+  const aws = new AwsClient({ accessKeyId: env.SES_ACCESS_KEY_ID!, secretAccessKey: env.SES_SECRET_ACCESS_KEY!, service: "ses", region });
+  const res = await aws.fetch(`https://email.${region}.amazonaws.com/v2/email/outbound-emails`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      FromEmailAddress: `${FROM.name} <${FROM.email}>`,
+      Destination: { ToAddresses: [email.to] },
+      Content: {
+        Simple: {
+          Subject: { Data: email.subject, Charset: "UTF-8" },
+          Body: { Text: { Data: email.text, Charset: "UTF-8" }, ...(email.html ? { Html: { Data: email.html, Charset: "UTF-8" } } : {}) },
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    console.error(`[email] SES send to ${email.to} failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    return false;
+  }
+  return true;
+}
+
 export async function sendEmail(env: Env, email: Email): Promise<boolean> {
+  if (env.SES_ACCESS_KEY_ID && env.SES_SECRET_ACCESS_KEY) {
+    try {
+      return await sendWithSes(env, email);
+    } catch (err) {
+      console.error(`[email] SES send to ${email.to} failed:`, err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
   if (!env.EMAIL) {
     console.log(`[email] to=${email.to} subject=${JSON.stringify(email.subject)}\n${email.text}`);
     return false;
