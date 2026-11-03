@@ -1,4 +1,4 @@
-import { INSTALL_CMD, MCP_CMD, SITE } from "./content";
+import { INSTALL_CMD, MCP_CMD, SITE, AGENT_PROMPT } from "./content";
 import { Callout, Code, PageHead, Prose } from "./Page";
 
 const TOC: [string, string][] = [
@@ -41,12 +41,7 @@ export function DocsPage() {
           </p>
           <Code label="Terminal">{`$ ${INSTALL_CMD}`}</Code>
           <p>Or let your coding agent do it. Paste this into Claude Code, Codex or Cursor:</p>
-          <Code label="Prompt">{`Add YouAsked to this app so people can request features, vote, and hear when they ship.
-
-1. Read ${SITE}/install.md
-2. Run \`${INSTALL_CMD}\` and choose entry points that fit this UI.
-3. If the app has sign-in, sign each user on the server with signUser from @youasked/react/server.
-4. Match our colours with the appearance prop, then show me where each entry point went.`}</Code>
+          <Code label="Prompt">{AGENT_PROMPT}</Code>
           <p>To do it by hand:</p>
           <Code label="Terminal">{`npm i @youasked/react`}</Code>
           <Code label=".env.local">{`NEXT_PUBLIC_YOUASKED_KEY=ya_pub_…   # publishable, safe in client code
@@ -225,9 +220,23 @@ export async function GET() {
           </p>
 
           <h2 id="react-native">React Native and Expo</h2>
-          <Callout title="Coming soon">
-            A native React Native and Expo SDK with the same Ask sheet and the same API is being built. Until it lands, <code>youasked init</code> detects React Native and stops without changing anything. Swift and Flutter come after.
-          </Callout>
+          <p>
+            <code>@youasked/react-native</code> has the same components and props as the web package, drawn with native views: a bottom sheet you can swipe away, keyboard-aware, with the Android back button and haptics. It needs nothing beyond React Native itself, so it works in Expo Go. <code>youasked init</code> sets it up in an Expo app.
+          </p>
+          <Code label="Terminal">{`npm i @youasked/react-native
+npx expo install @react-native-async-storage/async-storage expo-haptics   # optional`}</Code>
+          <Code label="app/_layout.tsx">{`import { YouAsked } from "@youasked/react-native";
+
+export default function RootLayout() {
+  return (
+    <YouAsked appKey={process.env.EXPO_PUBLIC_YOUASKED_KEY!} trigger="none">
+      <Stack />
+    </YouAsked>
+  );
+}`}</Code>
+          <p>
+            Then add <code>&lt;RequestButton variant="row" /&gt;</code> to a settings screen, <code>&lt;RequestButton variant="icon" /&gt;</code> to a header or <code>&lt;FeatureCard /&gt;</code> to a home screen. Sign users on your server, never in the app. Dev builds work in test mode. Swift and Flutter come next.
+          </p>
 
           <h2 id="self-host">Self-hosting</h2>
           <p>

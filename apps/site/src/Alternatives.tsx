@@ -131,7 +131,7 @@ export function CannyPage() {
               ["Roadmap and changelog", "Yes", "Yes, as a public board per app"],
               ["AI", "Autopilot pulls feedback from tools such as Intercom, Zendesk and Gong", "AI duplicate matching and a weekly digest, plus agents that read requests through MCP"],
               ["Agents and MCP", "An MCP server has been reported for paid plans", "MCP server, one-command CLI install, llms.txt, install guide and Claude Code skill, “closes YA-12” ships from a commit"],
-              ["Mobile SDK", "None native", "React Native and Expo SDK coming. Web and React today"],
+              ["Mobile SDK", "None native", "React Native and Expo SDK, plus React and Next.js on the web"],
               ["Open source", "No", "Widget, CLI and MCP are MIT. The server is source-available (FSL) and can be self-hosted"],
               ["Track record", "Established, with a long track record", "New and in beta"],
             ]}
@@ -239,7 +239,7 @@ export function FeaturebasePage() {
               ["Where people ask", "Hosted portal and an embeddable widget for JavaScript and React", "A chat-style sheet inside your app with several entry points"],
               ["Hearing about requests", "Dashboard, integrations", "Telegram with action buttons, Slack, Discord, GitHub, dashboard"],
               ["Agents and MCP", "MCP server, announced 4 May 2026, on paid plans", "MCP server, one-command CLI install, llms.txt and a Claude Code skill. “closes YA-12” ships from a commit"],
-              ["Mobile SDK", "No native SDK", "React Native and Expo SDK coming"],
+              ["Mobile SDK", "No native SDK", "React Native and Expo SDK"],
               ["Open source", "No", "Widget, CLI and MCP are MIT. The server is source-available (FSL) and can be self-hosted"],
               ["Startup discount", "A startup program with a large discount for eligible startups", `Founding prices for the first ${FOUNDING_SLOTS} paying workspaces`],
             ]}

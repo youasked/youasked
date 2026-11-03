@@ -1,6 +1,6 @@
 ---
 name: youasked
-description: Add YouAsked feature requests to a React or Next.js app, and read, reply to or ship requests. Use when the user mentions feature requests, feedback, YouAsked, a request number like YA-12, or wants users to vote on what to build.
+description: Add YouAsked feature requests to a React, Next.js, React Native or Expo app, and read, reply to or ship requests. Use when the user mentions feature requests, feedback, YouAsked, a request number like YA-12, or wants users to vote on what to build.
 ---
 
 # YouAsked
@@ -9,7 +9,7 @@ YouAsked puts feature requests inside the app (users ask and vote in a chat-styl
 
 ## Adding it to an app
 
-1. Run `npx youasked init`, or follow https://youasked.dev/install.md by hand.
+1. Follow https://youasked.dev/install.md from start to finish: look at the app's layout first, propose where entry points go and wait for an OK, then run `npx youasked init` (web uses `@youasked/react`, React Native and Expo use `@youasked/react-native`, same components).
 2. Wrap the app in `<YouAsked appKey={…}>`. Use `trigger="none"` if there's a bottom tab bar.
 3. Pick entry points that fit the UI: `<AskBar />` on the home screen, `<RequestButton variant="icon" />` in the header, `<RequestButton variant="row" />` in settings, `<FeatureCard />` on a dashboard, `<FeatureBoard />` for a page. For locked or missing features: `useYouAsked().open({ view: "new", draft: "…" })`.
 4. If the app has sign-in, add a server route that returns `signUser(process.env.YOUASKED_SECRET_KEY, user.id)` and pass `user`, `signature` and `ready` to the provider. The secret key stays on the server.
