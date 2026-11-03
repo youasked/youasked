@@ -47,6 +47,7 @@ export type AppRow = {
   allowed_origins: string | null;
   workspace_id: string | null;
   claim_token: string | null;
+  moderation?: "off" | "approve";
 };
 
 export type UserRow = {
@@ -58,10 +59,12 @@ export type UserRow = {
   created_at: number;
   last_seen_at: number;
   last_whats_new_at: number | null;
+  email_optout?: number;
 };
 
 export const STATUSES = ["open", "planned", "in_progress", "shipped", "declined"] as const;
-export type Status = (typeof STATUSES)[number] | "merged";
+/** "pending" waits for approval (moderation on); the team never picks it as a status. */
+export type Status = (typeof STATUSES)[number] | "merged" | "pending";
 
 export type RequestRow = {
   id: string;
@@ -72,6 +75,8 @@ export type RequestRow = {
   body: string;
   status: Status;
   vote_count: number;
+  /** Votes from an import, which have no individual voters; vote_count includes them. */
+  imported_votes?: number;
   comment_count: number;
   merged_into: string | null;
   ship_note: string | null;

@@ -6,7 +6,11 @@ import { adminPage } from "./admin-page";
 import agent from "./agent";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
-import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
+import { cleanText, decodeBase64Url, newId, verifySignature } from "./lib";
+import type { Mail } from "./mail";
+import quality, { findSimilar, purgeRequest, unsubscribe } from "./quality";
+import { removeRequests, upsertRequests } from "./semantic";
+import { guardContent, reject } from "./spam";
 import { loadIntegrations, notifyTeam, tg } from "./notify";
 import {
   STATUSES,
@@ -28,6 +32,21 @@ type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
 const now = () => Date.now();
+
+/** Lets actions.ts send "it shipped" and reply emails after the response. */
+const mailOf = (c: Ctx): Mail => ({ env: c.env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
+
+/** What happens once a request is visible to the team: tell them, and hint at a similar one. */
+async function announceNew(env: Env, ctx: Pick<ExecutionContext, "waitUntil">, a: AppRow, r: RequestRow, origin: string) {
+  ctx.waitUntil(
+    (async () => {
+      const author = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(r.author_id).first<UserRow>();
+      const similar = (await findSimilar(env, a.id, r.title, "", r.id)).find((x) => x.score >= 0.5)?.r ?? null;
+      const attachments = (await attachmentsFor(env.DB, [r.id], origin)).get(r.id) ?? [];
+      await notifyTeam(env, a.id, { kind: "request", appName: a.name, request: r, author, similar, attachments, origin });
+    })(),
+  );
+}
 
 function fail(status: 400 | 401 | 403 | 404 | 429 | 502, error: string): never {
   throw new HTTPException(status, { res: Response.json({ error }, { status }) });
@@ -234,11 +253,13 @@ admin.get("/app", (c) => {
     watermark: Boolean(a.watermark),
     requireSignature: Boolean(a.require_signature),
     allowedOrigins: a.allowed_origins ? JSON.parse(a.allowed_origins) : null,
+    moderation: a.moderation ?? "off",
   });
 });
 
 admin.patch("/app", async (c) => {
-  const body = await c.req.json<{ watermark?: boolean; requireSignature?: boolean; allowedOrigins?: string[] | null }>();
+  const body = await c.req.json<{ watermark?: boolean; requireSignature?: boolean; allowedOrigins?: string[] | null; moderation?: string }>();
+  if (body.moderation !== undefined && body.moderation !== "off" && body.moderation !== "approve") fail(400, "bad_moderation");
   const a = c.get("app");
   const origins =
     body.allowedOrigins === undefined
@@ -246,11 +267,12 @@ admin.patch("/app", async (c) => {
       : body.allowedOrigins === null
         ? null
         : JSON.stringify(body.allowedOrigins.filter((o) => typeof o === "string").slice(0, 20));
-  await c.env.DB.prepare("UPDATE apps SET watermark = ?, require_signature = ?, allowed_origins = ? WHERE id = ?")
+  await c.env.DB.prepare("UPDATE apps SET watermark = ?, require_signature = ?, allowed_origins = ?, moderation = ? WHERE id = ?")
     .bind(
       body.watermark === undefined ? a.watermark : body.watermark ? 1 : 0,
       body.requireSignature === undefined ? a.require_signature : body.requireSignature ? 1 : 0,
       origins,
+      body.moderation ?? a.moderation ?? "off",
       a.id,
     )
     .run();
@@ -327,15 +349,17 @@ admin.patch("/requests/:id", async (c) => {
       .run();
   }
   const shipNote = body.shipNote !== undefined ? cleanText(body.shipNote, 500) || null : undefined;
-  const { notified } = await setStatus(c.env.DB, r, status, shipNote);
-  return c.json({ request: publicRequest(await loadRequest(c, r.id), null), notified: notified > 0, told: notified });
+  const { notified } = await setStatus(c.env.DB, r, status, shipNote, mailOf(c));
+  const after = await loadRequest(c, r.id);
+  if (body.title !== undefined || body.body !== undefined) c.executionCtx.waitUntil(upsertRequests(c.env, [after]));
+  return c.json({ request: publicRequest(after, null), notified: notified > 0, told: notified });
 });
 
 admin.post("/requests/:id/comments", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
   const body = cleanText((await c.req.json<{ body?: string }>()).body, 2000);
   if (!body) fail(400, "body_required");
-  return c.json(await addTeamComment(c.env.DB, r, body));
+  return c.json(await addTeamComment(c.env.DB, r, body, mailOf(c)));
 });
 
 admin.post("/requests/:id/merge", async (c) => {
@@ -343,21 +367,12 @@ admin.post("/requests/:id/merge", async (c) => {
   const into = await loadRequest(c, (await c.req.json<{ into?: string }>()).into ?? "");
   if (from.id === into.id) fail(400, "same_request");
   await mergeRequests(c.env.DB, from, into);
+  c.executionCtx.waitUntil(removeRequests(c.env, [from.id]));
   return c.json({ ok: true });
 });
 
 admin.delete("/requests/:id", async (c) => {
-  const r = await loadRequest(c, c.req.param("id"));
-  const files = (await attachmentsFor(c.env.DB, [r.id], "")).get(r.id) ?? [];
-  await c.env.DB.batch([
-    c.env.DB.prepare("DELETE FROM votes WHERE request_id = ?").bind(r.id),
-    c.env.DB.prepare("DELETE FROM comments WHERE request_id = ?").bind(r.id),
-    c.env.DB.prepare("DELETE FROM notifications WHERE request_id = ?").bind(r.id),
-    c.env.DB.prepare("DELETE FROM early_access WHERE request_id = ?").bind(r.id),
-    c.env.DB.prepare("DELETE FROM uploads WHERE request_id = ?").bind(r.id),
-    c.env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(r.id),
-  ]);
-  if (files.length) await c.env.UPLOADS.delete(files.map((f) => f.id));
+  await purgeRequest(c.env, await loadRequest(c, c.req.param("id")));
   return c.json({ ok: true });
 });
 
@@ -494,6 +509,8 @@ admin.delete("/integrations/:kind", async (c) => {
 
 app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }));
 app.route("/v1/admin", agent);
+app.route("/v1/admin", quality({ announce: announceNew }));
+app.route("/v1", unsubscribe);
 app.route("/v1/admin", admin);
 
 // ---------------------------------------------------------------- public (widget, publishable key)
@@ -636,29 +653,11 @@ pub.get("/requests", async (c) => {
   return c.json({ requests: results.map((r) => publicRequest(r, me)) });
 });
 
-async function findSimilar(db: D1Database, appId: string, q: string, meId: string, excludeId?: string) {
-  const { results } = await db
-    .prepare(
-      `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
-       LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
-       LEFT JOIN users au ON au.id = r.author_id
-       WHERE r.app_id = ? AND r.status IN ('open','planned','in_progress','shipped')
-       ORDER BY r.created_at DESC LIMIT 500`,
-    )
-    .bind(meId, appId)
-    .all<RequestRow & { voted: number; author_name: string | null }>();
-  return results
-    .filter((r) => r.id !== excludeId)
-    .map((r) => ({ r, score: Math.max(similarity(q, r.title), similarity(q, `${r.title} ${r.body}`) * 0.8) }))
-    .filter((x) => x.score >= 0.34)
-    .sort((x, y) => y.score - x.score || y.r.vote_count - x.r.vote_count);
-}
-
 pub.get("/requests/similar", async (c) => {
   const q = cleanText(c.req.query("q"), 200);
   if (q.length < 3) return c.json({ requests: [] });
   const me = c.get("user");
-  const scored = await findSimilar(c.env.DB, c.get("app").id, q, me?.id ?? "");
+  const scored = await findSimilar(c.env, c.get("app").id, q, me?.id ?? "", undefined, me?.id ?? c.req.header("cf-connecting-ip") ?? "anon");
   return c.json({ requests: scored.slice(0, 4).map((x) => publicRequest(x.r, me)) });
 });
 
@@ -673,6 +672,8 @@ pub.get("/requests/:id", async (c) => {
     .bind(me?.id ?? "", c.req.param("id"), c.get("app").id)
     .first<RequestRow & { voted: number; author_name: string | null }>();
   if (!r) fail(404, "not_found");
+  // A request waiting for approval is only visible to the person who wrote it.
+  if (r.status === "pending" && r.author_id !== me?.id) fail(404, "not_found");
   if (r.status === "merged" && r.merged_into) return c.json({ redirect: r.merged_into });
   const { results } = await c.env.DB.prepare(
     `SELECT c.id, c.body, c.is_team, c.created_at, c.user_id, u.name FROM comments c
@@ -716,15 +717,18 @@ pub.post("/requests", async (c) => {
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM requests WHERE author_id = ? AND created_at > ?")
     .bind(me.id, now() - 60 * 60 * 1000)
     .first<{ n: number }>();
-  if ((recent?.n ?? 0) >= 10) fail(429, "slow_down");
+  if ((recent?.n ?? 0) >= 10) reject(429, "slow_down", "That's a lot of requests in an hour. Try again a bit later.");
+  const verdict = await guardContent(c.env, c.req.raw.headers, a.id, "request", `${title}\n${text}`);
+  // Moderation holds everything for approval; text that looks off is held even when moderation is off.
+  const status = a.moderation === "approve" || verdict === "review" ? "pending" : "open";
   const id = newId("req");
   const t = now();
   const insert = () =>
     c.env.DB.batch([
       c.env.DB.prepare(
         `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, context, credit, created_at, updated_at)
-         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, 'open', 1, ?7, ?8, ?6, ?6)`,
-      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit),
+         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, ?9, 1, ?7, ?8, ?6, ?6)`,
+      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit, status),
       c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
       // Only the author's own, not-yet-used uploads can be attached.
       ...uploadIds.map((u) =>
@@ -738,13 +742,8 @@ pub.post("/requests", async (c) => {
   }
   const r = await loadRequest(c, id);
   const origin = new URL(c.req.url).origin;
-  c.executionCtx.waitUntil(
-    (async () => {
-      const similar = (await findSimilar(c.env.DB, a.id, title, "", r.id)).find((x) => x.score >= 0.5)?.r ?? null;
-      const attachments = (await attachmentsFor(c.env.DB, [r.id], origin)).get(r.id) ?? [];
-      await notifyTeam(c.env, a.id, { kind: "request", appName: a.name, request: r, author: me, similar, attachments, origin });
-    })(),
-  );
+  c.executionCtx.waitUntil(upsertRequests(c.env, [r]));
+  await announceNew(c.env, c.executionCtx, a, r, origin);
   const files = await attachmentsFor(c.env.DB, [r.id], origin);
   return c.json({ request: publicRequest({ ...r, voted: 1, author_name: me.name }, me), attachments: files.get(r.id) ?? [] }, 201);
 });
@@ -753,13 +752,14 @@ pub.post("/requests/:id/vote", async (c) => {
   const me = requireUser(c);
   const r = await loadRequest(c, c.req.param("id"));
   if (r.status === "merged") fail(400, "merged");
+  if (r.status === "pending") fail(400, "pending");
   const existing = await c.env.DB.prepare("SELECT 1 AS x FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first();
   const t = now();
   await c.env.DB.batch([
     existing
       ? c.env.DB.prepare("DELETE FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id)
       : c.env.DB.prepare("INSERT OR IGNORE INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(r.id, me.id, t),
-    c.env.DB.prepare("UPDATE requests SET vote_count = (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1").bind(
+    c.env.DB.prepare("UPDATE requests SET vote_count = imported_votes + (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1").bind(
       r.id,
       t,
     ),
@@ -771,12 +771,14 @@ pub.post("/requests/:id/vote", async (c) => {
 pub.post("/requests/:id/comments", async (c) => {
   const me = requireUser(c);
   const r = await loadRequest(c, c.req.param("id"));
+  if (r.status === "pending" && r.author_id !== me.id) fail(404, "not_found");
   const body = cleanText((await c.req.json<{ body?: string }>().catch(() => ({}) as { body?: string })).body, 1000);
   if (!body) fail(400, "body_required");
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE user_id = ? AND created_at > ?")
     .bind(me.id, now() - 60 * 60 * 1000)
     .first<{ n: number }>();
-  if ((recent?.n ?? 0) >= 30) fail(429, "slow_down");
+  if ((recent?.n ?? 0) >= 30) reject(429, "slow_down", "That's a lot of comments in an hour. Try again a bit later.");
+  await guardContent(c.env, c.req.raw.headers, c.get("app").id, "comment", body);
   const id = newId("cmt");
   const t = now();
   await c.env.DB.batch([

@@ -35,6 +35,7 @@ const STATUS_WORD: Record<string, string> = {
   shipped: "Shipped",
   declined: "Not planned",
   merged: "Merged",
+  pending: "Needs approval",
 };
 
 export function esc(s: string): string {

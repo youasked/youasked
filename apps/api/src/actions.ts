@@ -1,6 +1,7 @@
 // Things the team does to a request. The dashboard, Telegram and GitHub all go through here,
 // so everyone who asked hears about it the same way whichever one was used.
 import { newId } from "./lib";
+import { emailReply, emailShipped, type Mail } from "./mail";
 import type { RequestRow, Status } from "./types";
 
 export const ref = (r: Pick<RequestRow, "number">) => `YA-${r.number}`;
@@ -19,6 +20,7 @@ export async function setStatus(
   r: RequestRow,
   status: Status,
   shipNote?: string | null,
+  mail?: Mail,
 ): Promise<{ notified: number }> {
   const t = Date.now();
   const becameShipped = status === "shipped" && r.status !== "shipped";
@@ -42,6 +44,7 @@ export async function setStatus(
     );
   }
   const results = await db.batch(stmts);
+  if (becameShipped && mail) mail.waitUntil(emailShipped(mail.env, { ...r, status, ship_note: note }));
   return { notified: becameShipped ? (results[1]?.meta.changes ?? 0) : 0 };
 }
 
@@ -61,7 +64,7 @@ export async function setShipNote(db: D1Database, r: RequestRow, note: string) {
  * Posts a reply as the team. The author and everyone who commented get it as a message in the
  * app, so the conversation goes both ways.
  */
-export async function addTeamComment(db: D1Database, r: RequestRow, body: string): Promise<{ id: string; notified: number }> {
+export async function addTeamComment(db: D1Database, r: RequestRow, body: string, mail?: Mail): Promise<{ id: string; notified: number }> {
   const id = newId("cmt");
   const t = Date.now();
   const results = await db.batch([
@@ -76,6 +79,7 @@ export async function addTeamComment(db: D1Database, r: RequestRow, body: string
       )
       .bind(r.id, id, t),
   ]);
+  if (mail) mail.waitUntil(emailReply(mail.env, r, body, id));
   return { id, notified: results[2]?.meta.changes ?? 0 };
 }
 
@@ -86,8 +90,10 @@ export async function mergeRequests(db: D1Database, from: RequestRow, into: Requ
       .prepare("INSERT OR IGNORE INTO votes (request_id, user_id, created_at) SELECT ?, user_id, created_at FROM votes WHERE request_id = ?")
       .bind(into.id, from.id),
     db
-      .prepare("UPDATE requests SET vote_count = (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1")
+      .prepare("UPDATE requests SET vote_count = imported_votes + (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1")
       .bind(into.id, t),
+    // Votes carried over from another tool move with the merge.
+    db.prepare("UPDATE requests SET imported_votes = imported_votes + ?2, vote_count = vote_count + ?2 WHERE id = ?1 AND ?2 > 0").bind(into.id, from.imported_votes ?? 0),
     db.prepare("UPDATE requests SET status = 'merged', merged_into = ?, updated_at = ? WHERE id = ?").bind(into.id, t, from.id),
   ]);
 }
