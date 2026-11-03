@@ -17,5 +17,8 @@
   ],
   // Screenshots attached to requests. Create the bucket once with `wrangler r2 bucket create youasked-uploads`;
   // `wrangler dev` simulates it locally without that.
-  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }]
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }],
+  // Cloudflare Email Sending (sign-in links, invites). hello@youasked.dev must be onboarded under
+  // Compute > Email Service once the domain is on Cloudflare. Without the binding, mail is logged.
+  "send_email": [{ "name": "EMAIL" }]
 }

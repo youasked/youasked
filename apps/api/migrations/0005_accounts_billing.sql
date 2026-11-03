@@ -77,3 +77,8 @@ CREATE INDEX invites_workspace ON invites (workspace_id);
 ALTER TABLE apps ADD COLUMN workspace_id TEXT;
 ALTER TABLE apps ADD COLUMN claim_token TEXT;
 CREATE INDEX apps_workspace ON apps (workspace_id);
+
+-- Escape hatch: an app with always_live = 1 skips test mode (the Demo app and our own site's app).
+-- Set by hand: UPDATE apps SET always_live = 1 WHERE id = '...';
+ALTER TABLE apps ADD COLUMN always_live INTEGER NOT NULL DEFAULT 0;
+UPDATE apps SET always_live = 1 WHERE id = 'app_aulbapd9vcj0x3t4';

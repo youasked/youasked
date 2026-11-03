@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { createClient, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
+import { createClient, YouAskedError, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
 import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
 import { createDemoClient } from "./demo";
 import { IconCheck, IconClose, IconIdea } from "./icons";
@@ -9,7 +9,9 @@ import { resolveTokens, tokenStyle, type Appearance } from "./theme";
 import { whatsNewHeading } from "./shared";
 import { Navigator } from "./views";
 
-export const DEFAULT_API_URL = "https://youasked-api.adenteo.workers.dev";
+let warnedTestMode = false;
+
+export const DEFAULT_API_URL = "https://api.youasked.dev";
 
 export type YouAskedProps = {
   /** Publishable key (ya_pub_…). Safe to ship in client code. Not needed with `demo`. */
@@ -96,6 +98,8 @@ export function YouAsked({
   const [mounted, setMounted] = useState(false);
   const [route, setRoute] = useState<Route | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
+  // An app that isn't on a paid plan only works on localhost; elsewhere the widget stays out of the way.
+  const [testMode, setTestMode] = useState(false);
   const [whatsNew, setWhatsNew] = useState<WhatsNew | null>(null);
   const [whatsNewToast, setWhatsNewToast] = useState(false);
   const [capture, setCapture] = useState<{
@@ -131,7 +135,14 @@ export function YouAsked({
         // A toast on first load, unless a notice that isn't already part of the list is waiting.
         setWhatsNewToast(Boolean(news) && c.unseen.filter((n) => !coveredBy(news, n)).length === 0);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!alive || !(err instanceof YouAskedError) || err.code !== "test_mode") return;
+        setTestMode(true);
+        if (!warnedTestMode) {
+          warnedTestMode = true;
+          console.warn(`[youasked] ${err.detail ?? "This app is in test mode. It works on localhost until it's on a paid plan."}`);
+        }
+      });
     return () => {
       alive = false;
     };
@@ -228,6 +239,8 @@ export function YouAsked({
   // "It's live" notices for things already in the what's-new list wait for that list instead of saying it twice.
   const standing = unseen.filter((n) => !coveredBy(whatsNew, n));
   const notice = standing.find((n) => n.kind === "shipped") ?? standing.find((n) => n.kind === "reply");
+
+  if (testMode) return <YouAskedContext.Provider value={value}>{children}</YouAskedContext.Provider>;
 
   return (
     <YouAskedContext.Provider value={value}>

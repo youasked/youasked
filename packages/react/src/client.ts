@@ -57,6 +57,7 @@ export type Config = {
   canCredit: boolean;
   unseen: Notice[];
   whatsNew: WhatsNew | null;
+  mode?: "test" | "live";
 };
 
 export type NewRequest = {
@@ -80,7 +81,10 @@ export type RequestDetail = {
 export type YouAskedUser = { id: string | number; email?: string | null; name?: string | null };
 
 export class YouAskedError extends Error {
-  constructor(public code: string) {
+  constructor(
+    public code: string,
+    public detail?: string,
+  ) {
     super(code);
   }
 }
@@ -137,7 +141,7 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
       body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new YouAskedError((data as { error?: string }).error ?? `http_${res.status}`);
+    if (!res.ok) throw new YouAskedError((data as { error?: string }).error ?? `http_${res.status}`, (data as { message?: string }).message);
     return data as T;
   }
 

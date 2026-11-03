@@ -68,8 +68,8 @@ export async function init({ flags, cwd }) {
     const existing = readEnv(envPath);
     let publicKey = String(flags.key || "");
     let secretKey = String(flags.secret || "");
-    let dashboardUrl = `${api}/admin`;
-    let created = false;
+    let dashboardUrl = "https://app.youasked.dev";
+    let claimUrl = "";
 
     if (!publicKey && existing[project.keyVar]?.startsWith("ya_pub_")) {
       const reuse = await ask.confirm(`${project.envFile} already has a YouAsked key. Keep using it?`, true);
@@ -91,7 +91,7 @@ export async function init({ flags, cwd }) {
       publicKey = made.publicKey;
       secretKey = made.secretKey;
       dashboardUrl = made.dashboardUrl || dashboardUrl;
-      created = true;
+      claimUrl = made.claimUrl || "";
       ok(`Created ${bold(name)}`);
     }
 
@@ -207,7 +207,12 @@ export async function init({ flags, cwd }) {
     }
     say(`\n${bold("Next")}`);
     say(`  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`);
-    say(`  2. Your dashboard: ${cyan(dashboardUrl)}${created ? dim("  (sign in with the secret key from " + project.envFile + ")") : ""}`);
+    if (claimUrl) {
+      say(`  2. Try it now on localhost. To go live, claim it: ${cyan(claimUrl)}`);
+      say(`     ${dim("Until it's claimed and on a plan, the widget only answers on localhost.")}`);
+    } else {
+      say(`  2. Your dashboard: ${cyan(dashboardUrl)}`);
+    }
     say(`  3. Ship from your commits: connect GitHub in the dashboard, then write ${bold('"closes YA-12"')} in a commit or PR.`);
     say(`  4. Let your agent read and ship requests:`);
     say(`     ${cyan("claude mcp add youasked -e YOUASKED_SECRET_KEY=ya_sec_… -- npx -y @youasked/mcp")}`);

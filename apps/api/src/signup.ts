@@ -2,6 +2,7 @@
 // instead each IP can make a handful of apps a day.
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { dashboardBase } from "./auth";
 import { cleanText, newId } from "./lib";
 import type { Env } from "./types";
 
@@ -31,17 +32,24 @@ signup.post("/signup", async (c) => {
   if ((recent?.n ?? 0) >= PER_IP_PER_DAY) fail(429, "too_many_apps");
 
   const app = { id: newId("app"), publicKey: newId("ya_pub", 24), secretKey: newId("ya_sec", 32) };
+  // Whoever holds the claim link can move this app into their workspace, so it's long and random.
+  const claimToken = newId("claim", 32);
   await c.env.DB.batch([
-    c.env.DB.prepare("INSERT INTO apps (id, name, public_key, secret_key, created_at) VALUES (?, ?, ?, ?, ?)").bind(
+    c.env.DB.prepare("INSERT INTO apps (id, name, public_key, secret_key, claim_token, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(
       app.id,
       name,
       app.publicKey,
       app.secretKey,
+      claimToken,
       t,
     ),
     c.env.DB.prepare("INSERT INTO signups (id, app_id, ip, email, created_at) VALUES (?, ?, ?, ?, ?)").bind(newId("sgn"), app.id, ip, email, t),
   ]);
-  return c.json({ publicKey: app.publicKey, secretKey: app.secretKey, dashboardUrl: `${new URL(c.req.url).origin}/admin` }, 201);
+  const dashboard = dashboardBase(c.env);
+  return c.json(
+    { publicKey: app.publicKey, secretKey: app.secretKey, dashboardUrl: dashboard, claimUrl: `${dashboard}/claim?token=${claimToken}` },
+    201,
+  );
 });
 
 export default signup;
