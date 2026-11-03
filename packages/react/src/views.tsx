@@ -213,7 +213,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
     } catch (err) {
       setThread((th) => [
         ...th.filter((t) => t.kind !== "typing" && !(t.kind === "out" && t.text === message)),
-        { kind: "error", text: errorText(err instanceof YouAskedError ? err.code : "network") },
+        { kind: "error", text: errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined) },
       ]);
       setText(message);
       setShots(attached);
@@ -602,7 +602,7 @@ function Detail({ id, setRoute, onClose }: { id: string; setRoute: (r: Route) =>
       setData({ ...data, comments: [...comments, c], request: { ...request, comments: request.comments + 1 } });
       setReply("");
     } catch (err) {
-      setReplyError(errorText(err instanceof YouAskedError ? err.code : "network"));
+      setReplyError(errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined));
     } finally {
       setSending(false);
     }

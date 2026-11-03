@@ -17,5 +17,10 @@
   ],
   // Screenshots attached to requests. Create the bucket once with `wrangler r2 bucket create youasked-uploads`;
   // `wrangler dev` simulates it locally without that.
-  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }]
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "youasked-uploads" }],
+  // Duplicate catching by meaning. Create the index once (384 dims, cosine) with:
+  //   wrangler vectorize create youasked-requests --dimensions=384 --metric=cosine
+  // Both bindings are optional in code; without them the API falls back to word matching.
+  "ai": { "binding": "AI" },
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "youasked-requests" }]
 }

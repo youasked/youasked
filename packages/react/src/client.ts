@@ -1,4 +1,4 @@
-export type Status = "open" | "planned" | "in_progress" | "shipped" | "declined";
+export type Status = "open" | "planned" | "in_progress" | "shipped" | "declined" | "pending";
 
 export type FeatureRequest = {
   id: string;
@@ -80,7 +80,11 @@ export type RequestDetail = {
 export type YouAskedUser = { id: string | number; email?: string | null; name?: string | null };
 
 export class YouAskedError extends Error {
-  constructor(public code: string) {
+  constructor(
+    public code: string,
+    /** A ready-to-show sentence from the server, when it sent one (spam and rate-limit answers do). */
+    public detail?: string,
+  ) {
     super(code);
   }
 }
@@ -137,7 +141,7 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
       body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new YouAskedError((data as { error?: string }).error ?? `http_${res.status}`);
+    if (!res.ok) throw new YouAskedError((data as { error?: string }).error ?? `http_${res.status}`, (data as { message?: string }).message);
     return data as T;
   }
 

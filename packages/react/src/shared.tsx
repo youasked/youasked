@@ -66,6 +66,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   in_progress: "In progress",
   shipped: "Shipped",
   declined: "Not planned",
+  pending: "Awaiting approval",
 };
 
 export function StatusPill({ status }: { status: Status }) {
@@ -138,13 +139,16 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   return { data, error, setData };
 }
 
-export function errorText(code: string | null): string {
+export function errorText(code: string | null, detail?: string): string {
+  if (detail) return detail;
   switch (code) {
     case "signature_required":
     case "bad_signature":
       return "We couldn't confirm who you are. Refresh the page and try again.";
     case "slow_down":
       return "That's a lot of requests in an hour. Try again a bit later.";
+    case "looks_like_spam":
+      return "That looks like spam, so we didn't post it. Reword it and try again.";
     case "title_too_short":
       return "Add a few more words so others know what you mean.";
     case "network":

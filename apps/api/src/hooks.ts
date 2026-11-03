@@ -90,7 +90,7 @@ hooks.post("/telegram/:id", async (c) => {
     }
     let toast = "";
     if (action === "s" && (STATUSES as readonly string[]).includes(arg)) {
-      const { notified } = await setStatus(env.DB, r, arg as Status);
+      const { notified } = await setStatus(env.DB, r, arg as Status, undefined, { env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
       toast = arg === "shipped" ? `Shipped. ${notified} told.` : `Marked ${arg.replace("_", " ")}.`;
     } else if (action === "u" && (STATUSES as readonly string[]).includes(arg)) {
       await undoShip(env.DB, r, arg as Status);
@@ -144,7 +144,7 @@ hooks.post("/telegram/:id", async (c) => {
       await setShipNote(env.DB, r, cleanText(text, 500));
       await say(chatId, `✏️ Ship note saved for ${ref(r)}.`, { reply_to_message_id: msg.message_id });
     } else {
-      const { notified } = await addTeamComment(env.DB, r, text);
+      const { notified } = await addTeamComment(env.DB, r, text, { env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
       await say(chatId, `✓ Sent to ${notified} ${notified === 1 ? "person" : "people"} in the app.`, { reply_to_message_id: msg.message_id });
     }
   }
@@ -203,7 +203,7 @@ hooks.post("/github/:id", async (c) => {
       const r = await loadRequestByNumber(env.DB, integ.app_id, n);
       if (!r || r.status === "shipped" || r.status === "merged") continue;
       const previous = r.status;
-      const { notified } = await setStatus(env.DB, r, "shipped", r.ship_note ?? (note || null));
+      const { notified } = await setStatus(env.DB, r, "shipped", r.ship_note ?? (note || null), { env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
       results.push(`${ref(r)} shipped`);
       const fresh = (await loadRequestById(env.DB, integ.app_id, r.id))!;
       c.executionCtx.waitUntil(
