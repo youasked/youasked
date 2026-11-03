@@ -52,11 +52,12 @@ export function useInsets(): Insets {
 }
 
 /**
- * How far to lift the sheet so it sits right on the keyboard: how much the keyboard's top edge still
- * overlaps the sheet's root, re-measured whenever the root's layout changes. Some Android setups
- * (edge-to-edge Android 15+ with a Modal) also shrink the root by part of the keyboard after it opens;
- * re-measuring means the two never add up. The keyboard's reported height isn't used: on edge-to-edge
- * Android it doesn't match what's on screen.
+ * How far to lift the sheet so it sits right on the keyboard: how much the keyboard's top edge
+ * overlaps the sheet's root, re-measured whenever the root's layout changes. The keyboard's reported
+ * height isn't used: on edge-to-edge Android it doesn't match what's on screen.
+ *
+ * On Android, measureInWindow counts from the bottom of the status bar while the keyboard's screenY
+ * counts from the top of the screen, so the status bar height is taken off the keyboard's edge.
  */
 function useKeyboardPad(rootRef: RefObject<View | null>): [number, () => void] {
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
@@ -98,19 +99,20 @@ function useKeyboardPad(rootRef: RefObject<View | null>): [number, () => void] {
       hide.remove();
     };
   }, [remeasure]);
+  const frameTop = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
   const pad =
     keyboardTop === null
       ? fallback
       : rootBottom > 0
-        ? Math.max(0, Math.round(rootBottom - keyboardTop))
+        ? Math.max(0, Math.round(rootBottom - (keyboardTop - frameTop)))
         : 0;
   useEffect(() => {
     if (__DEV__ && Platform.OS === "android" && keyboardTop !== null) {
       console.log(
-        `[YouAsked] keyboard top ${Math.round(keyboardTop)}, sheet bottom ${Math.round(rootBottom)}, lift ${pad}`,
+        `[YouAsked] keyboard top ${Math.round(keyboardTop)}, status bar ${frameTop}, root bottom ${Math.round(rootBottom)}, lift ${pad}`,
       );
     }
-  }, [keyboardTop, rootBottom, pad]);
+  }, [keyboardTop, rootBottom, pad, frameTop]);
   return [pad, remeasure];
 }
 
@@ -268,8 +270,11 @@ export function Sheet({
           style={[
             s.sheet,
             {
+              // Shrinks to fit above the keyboard. With only maxHeight, Yoga still places it by its
+              // full height, which pushed it up by the difference and left a gap over the keyboard.
               height: sheetH,
               maxHeight: "100%",
+              flexShrink: 1,
               paddingBottom: bottomInset,
               transform: [{ translateY: ty }],
             },
