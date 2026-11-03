@@ -1,17 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { createClient, type Config, type Notice, type YouAskedUser } from "./client";
+import { createClient, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
 import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
+import { createDemoClient } from "./demo";
 import { IconCheck, IconClose, IconIdea } from "./icons";
 import { injectStyles } from "./styles";
 import { resolveTokens, tokenStyle, type Appearance } from "./theme";
+import { whatsNewHeading } from "./shared";
 import { Navigator } from "./views";
 
 export const DEFAULT_API_URL = "https://youasked-api.adenteo.workers.dev";
 
 export type YouAskedProps = {
-  /** Publishable key (ya_pub_…). Safe to ship in client code. */
-  appKey: string;
+  /** Publishable key (ya_pub_…). Safe to ship in client code. Not needed with `demo`. */
+  appKey?: string;
+  /**
+   * Runs entirely in the browser with sample requests and a pretend team, no network. Posting, voting,
+   * commenting and a reply a few seconds later all work. For docs, Storybook and landing pages.
+   */
+  demo?: boolean;
   /** Who's asking. Leave out for anonymous visitors. */
   user?: YouAskedUser | null;
   /** hex HMAC-SHA256 of user.id with your secret key, made on your server (see `signUser`). */
@@ -38,8 +45,25 @@ export type YouAskedProps = {
   children?: ReactNode;
 };
 
+/**
+ * localStorage backup for "what's new", for when the server can't be told (offline, blocked). Kept per
+ * app and person so two people sharing a browser don't hide each other's news. The demo never uses it.
+ */
+function lastWhatsNew(key: string | null): number {
+  try {
+    return key ? Number(localStorage.getItem(key)) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function coveredBy(news: WhatsNew | null, n: Notice): boolean {
+  return n.kind === "shipped" && Boolean(news?.items.some((i) => i.id === n.requestId));
+}
+
 export function YouAsked({
-  appKey,
+  appKey = "",
+  demo = false,
   user,
   signature,
   ready = true,
@@ -59,12 +83,22 @@ export function YouAsked({
   const userEmail = user?.email;
   const userName = user?.name;
   const client = useMemo(
-    () => createClient({ appKey, apiUrl, user: userId == null ? null : { id: userId, email: userEmail, name: userName }, signature }),
-    [appKey, apiUrl, userId, userEmail, userName, signature],
+    () =>
+      demo
+        ? createDemoClient(appName)
+        : createClient({ appKey, apiUrl, user: userId == null ? null : { id: userId, email: userEmail, name: userName }, signature }),
+    [demo, appName, appKey, apiUrl, userId, userEmail, userName, signature],
   );
+  const whatsNewKey = demo ? null : `youasked:whats-new:${appKey}:${userId ?? "anon"}`;
   const [mounted, setMounted] = useState(false);
   const [route, setRoute] = useState<Route | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
+  const [whatsNew, setWhatsNew] = useState<WhatsNew | null>(null);
+  const [whatsNewToast, setWhatsNewToast] = useState(false);
+  const [capture, setCapture] = useState<{
+    Layer: ComponentType<{ onDone: (image: Blob) => void; onCancel: () => void }>;
+    resolve: (image: Blob | null) => void;
+  } | null>(null);
   const tokens = useTokens(appearance, mounted);
   const openerRef = useRef<Element | null>(null);
   const [detectedIcon, setDetectedIcon] = useState<string | null>(null);
@@ -83,12 +117,54 @@ export function YouAsked({
     let alive = true;
     client
       .config()
-      .then((c) => alive && setConfig(c))
+      .then((c) => {
+        if (!alive) return;
+        // Only what shipped after the last time they were shown the list, even if the server missed the news.
+        const seenAt = lastWhatsNew(whatsNewKey);
+        const items = c.whatsNew?.items.filter((i) => i.shippedAt > seenAt) ?? [];
+        const news = c.whatsNew && items.length ? { ...c.whatsNew, items } : null;
+        setConfig(c);
+        setWhatsNew(news);
+        // A toast on first load, unless a notice that isn't already part of the list is waiting.
+        setWhatsNewToast(Boolean(news) && c.unseen.filter((n) => !coveredBy(news, n)).length === 0);
+      })
       .catch(() => {});
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, ready]);
+
+  // The demo's pretend team writes in a few seconds after you post.
+  useEffect(() => {
+    if (!("onNotice" in client)) return;
+    return (client as ReturnType<typeof createDemoClient>).onNotice((n) =>
+      setConfig((c) => (c ? { ...c, unseen: [...c.unseen, n] } : c)),
+    );
+  }, [client]);
+
+  const dismissWhatsNew = useCallback(() => {
+    setWhatsNew(null);
+    setWhatsNewToast(false);
+    try {
+      if (whatsNewKey) localStorage.setItem(whatsNewKey, String(Date.now()));
+    } catch {
+      /* private mode: the server still remembers */
+    }
+    client.whatsNewSeen().catch(() => {});
+  }, [client, whatsNewKey]);
+
+  const pointAtIt = useCallback(
+    () =>
+      new Promise<Blob | null>((resolve, reject) => {
+        // The screenshot library only loads the first time someone asks to point at something.
+        import("./capture").then(
+          (m) => setCapture({ Layer: m.default, resolve }),
+          (err) => reject(err),
+        );
+      }),
+    [],
+  );
 
   const open = useCallback((options?: OpenOptions) => {
     openerRef.current = document.activeElement;
@@ -134,30 +210,44 @@ export function YouAsked({
       client,
       config,
       markSeen,
+      whatsNew,
+      dismissWhatsNew,
+      pointAtIt,
       scope: { className: "ya-scope", style: scopeStyle, "data-ya-mode": tokens?.mode },
       appName: appName ?? config?.app.name ?? "us",
       appIcon: appIcon === false ? null : (appIcon ?? detectedIcon),
       title,
       greeting,
     }),
-    [open, close, route, unseen.length, client, config, markSeen, scopeStyle, tokens?.mode, appName, appIcon, detectedIcon, title, greeting],
+    [open, close, route, unseen.length, client, config, markSeen, whatsNew, dismissWhatsNew, pointAtIt, scopeStyle, tokens?.mode, appName, appIcon, detectedIcon, title, greeting],
   );
 
-  const notice = unseen.find((n) => n.kind === "shipped") ?? unseen.find((n) => n.kind === "reply");
+  // "It's live" notices for things already in the what's-new list wait for that list instead of saying it twice.
+  const standing = unseen.filter((n) => !coveredBy(whatsNew, n));
+  const notice = standing.find((n) => n.kind === "shipped") ?? standing.find((n) => n.kind === "reply");
 
   return (
     <YouAskedContext.Provider value={value}>
       {children}
       {mounted &&
         createPortal(
-          <div className="ya-scope" data-ya-mode={tokens?.mode} style={scopeStyle}>
-            {trigger === "floating" && (
+          <div className="ya-scope" data-ya-mode={tokens?.mode} data-ya-skip="" style={scopeStyle}>
+            {trigger === "floating" && !capture && (
               <Launcher
                 position={position}
                 label={label}
                 isOpen={route !== null}
                 badge={unseen.length > 0}
                 onClick={() => (route ? close() : open())}
+              />
+            )}
+            {!notice && whatsNewToast && whatsNew && route === null && (
+              <WhatsNewToast
+                news={whatsNew}
+                position={position}
+                trigger={trigger}
+                onOpen={() => open()}
+                onDismiss={dismissWhatsNew}
               />
             )}
             {notice && route === null && (
@@ -173,7 +263,26 @@ export function YouAsked({
               />
             )}
             {route && (
-              <Panel route={route} setRoute={setRoute} onClose={close} position={position} hasLauncher={trigger === "floating"} />
+              <Panel
+                route={route}
+                setRoute={setRoute}
+                onClose={close}
+                position={position}
+                hasLauncher={trigger === "floating"}
+                hidden={capture !== null}
+              />
+            )}
+            {capture && (
+              <capture.Layer
+                onDone={(image) => {
+                  capture.resolve(image);
+                  setCapture(null);
+                }}
+                onCancel={() => {
+                  capture.resolve(null);
+                  setCapture(null);
+                }}
+              />
             )}
           </div>,
           document.body,
@@ -239,18 +348,23 @@ function Panel({
   onClose,
   position,
   hasLauncher,
+  hidden,
 }: {
   route: Route;
   setRoute: (r: Route) => void;
   onClose: () => void;
   position: string;
   hasLauncher: boolean;
+  /** Tucked away while someone points at the page; the screen underneath keeps its state. */
+  hidden: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const isSheet = useMedia("(max-width: 639px)");
   const reduceMotion = useMedia("(prefers-reduced-motion: reduce)");
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
   const drag = useRef<{ startY: number; lastY: number; lastT: number; v: number; dy: number } | null>(null);
 
   const requestClose = useCallback(() => {
@@ -275,6 +389,7 @@ function Panel({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (hiddenRef.current) return;
       if (e.key === "Escape") {
         e.stopPropagation();
         requestClose();
@@ -330,7 +445,13 @@ function Panel({
   };
 
   return (
-    <div className="ya-overlay" data-pos={position} data-launcher={hasLauncher || undefined} data-closing={closing || undefined}>
+    <div
+      className="ya-overlay"
+      data-pos={position}
+      data-launcher={hasLauncher || undefined}
+      data-closing={closing || undefined}
+      hidden={hidden}
+    >
       <div className="ya-backdrop" ref={backdropRef} onClick={requestClose} aria-hidden="true" />
       <div
         className="ya-panel"
@@ -436,6 +557,47 @@ function ShippedToast({
       ) : (
         <ShippedBody notice={notice} onOpen={onOpen} onDismiss={onDismiss} />
       )}
+    </div>
+  );
+}
+
+function WhatsNewToast({
+  news,
+  position,
+  trigger,
+  onOpen,
+  onDismiss,
+}: {
+  news: WhatsNew;
+  position: string;
+  trigger: string;
+  onOpen: () => void;
+  onDismiss: () => void;
+}) {
+  const mine = news.items.some((i) => i.mine);
+  return (
+    <div className="ya-toast" role="status" data-pos={position} data-trigger={trigger}>
+      <div className="ya-toast-top">
+        <p className="ya-toast-kicker">What's new</p>
+        <button type="button" className="ya-icon-btn" onClick={onDismiss} aria-label="Dismiss">
+          <IconClose />
+        </button>
+      </div>
+      <p className="ya-toast-title">{whatsNewHeading(news.total)}</p>
+      {mine && (
+        <div className="ya-live">
+          <IconCheck />
+          Including something you asked for
+        </div>
+      )}
+      <div className="ya-toast-actions">
+        <button type="button" className="ya-btn ya-btn-sm" onClick={onOpen}>
+          See what's new
+        </button>
+        <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onDismiss}>
+          Not now
+        </button>
+      </div>
     </div>
   );
 }

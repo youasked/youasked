@@ -10,10 +10,12 @@ import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "
 import { loadIntegrations, notifyTeam, tg } from "./notify";
 import {
   STATUSES,
+  parseContext,
   type AppRow,
   type Env,
   type GithubConfig,
   type RequestRow,
+  type RequestContext,
   type Status,
   type TelegramConfig,
   type UserRow,
@@ -31,7 +33,13 @@ function fail(status: 400 | 401 | 403 | 404 | 429 | 502, error: string): never {
   throw new HTTPException(status, { res: Response.json({ error }, { status }) });
 }
 
-function publicRequest(r: RequestRow & { voted?: number }, me: UserRow | null) {
+/** First name of an author who opted in to being thanked, once it has shipped. */
+function creditName(r: RequestRow & { author_name?: string | null }): string | null {
+  if (!r.credit || r.status !== "shipped" || !r.author_name) return null;
+  return r.author_name.split(/\s+/)[0] || null;
+}
+
+function publicRequest(r: RequestRow & { voted?: number; author_name?: string | null }, me: UserRow | null) {
   return {
     id: r.id,
     number: r.number,
@@ -42,10 +50,51 @@ function publicRequest(r: RequestRow & { voted?: number }, me: UserRow | null) {
     comments: r.comment_count,
     shipNote: r.ship_note,
     shippedAt: r.shipped_at,
+    context: parseContext(r.context),
+    creditName: creditName(r),
     createdAt: r.created_at,
     voted: Boolean(r.voted),
     mine: me ? r.author_id === me.id : false,
   };
+}
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_UPLOAD = 2 * 1024 * 1024;
+const MAX_ATTACHMENTS = 3;
+
+/** Checks the first bytes, so a file can't claim to be an image and be something else. */
+function sniffImage(b: Uint8Array): string | null {
+  if (b.length > 12 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
+    return "image/webp";
+  }
+  return null;
+}
+
+const uploadUrl = (origin: string, id: string) => `${origin}/v1/uploads/${id}`;
+
+/** Where the request came from. The path never carries a query string or hash. */
+function cleanContext(raw: unknown): RequestContext | null {
+  if (!raw || typeof raw !== "object") return null;
+  const { path, topic } = raw as { path?: unknown; topic?: unknown };
+  const out: RequestContext = {};
+  const p = cleanText(path, 200).split(/[?#]/)[0];
+  if (p.startsWith("/")) out.path = p;
+  const t = cleanText(topic, 60);
+  if (t) out.topic = t;
+  return out.path || out.topic ? out : null;
+}
+
+async function attachmentsFor(db: D1Database, requestIds: string[], origin: string): Promise<Map<string, { id: string; url: string }[]>> {
+  const out = new Map<string, { id: string; url: string }[]>();
+  if (!requestIds.length) return out;
+  const { results } = await db
+    .prepare(`SELECT id, request_id FROM uploads WHERE request_id IN (${requestIds.map(() => "?").join(",")}) ORDER BY created_at`)
+    .bind(...requestIds)
+    .all<{ id: string; request_id: string }>();
+  for (const u of results) out.set(u.request_id, [...(out.get(u.request_id) ?? []), { id: u.id, url: uploadUrl(origin, u.id) }]);
+  return out;
 }
 
 async function upsertUser(
@@ -212,7 +261,8 @@ admin.get("/requests", async (c) => {
   const status = c.req.query("status");
   const where = status && status !== "all" ? "AND r.status = ?" : "AND r.status != 'merged'";
   const stmt = c.env.DB.prepare(
-    `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon
+    `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon,
+            (SELECT COUNT(*) FROM early_access e WHERE e.request_id = r.id) AS early_count
      FROM requests r LEFT JOIN users u ON u.id = r.author_id
      WHERE r.app_id = ? ${where}
      ORDER BY CASE r.status WHEN 'in_progress' THEN 0 WHEN 'planned' THEN 1 WHEN 'open' THEN 2 ELSE 3 END,
@@ -222,10 +272,15 @@ admin.get("/requests", async (c) => {
   const { results } = await (status && status !== "all"
     ? stmt.bind(c.get("app").id, status)
     : stmt.bind(c.get("app").id)
-  ).all<RequestRow & { author_email: string | null; author_name: string | null; author_anon: number }>();
+  ).all<RequestRow & { author_email: string | null; author_name: string | null; author_anon: number; early_count: number }>();
+  const origin = new URL(c.req.url).origin;
+  const files = await attachmentsFor(c.env.DB, results.map((r) => r.id), origin);
   return c.json({
     requests: results.map((r) => ({
       ...publicRequest(r, null),
+      attachments: files.get(r.id) ?? [],
+      earlyAccess: r.early_count,
+      credit: Boolean(r.credit),
       author: { email: r.author_email, name: r.author_name, anonymous: Boolean(r.author_anon) },
       updatedAt: r.updated_at,
     })),
@@ -246,7 +301,14 @@ admin.get("/requests/:id", async (c) => {
   )
     .bind(r.id)
     .all();
-  return c.json({ request: publicRequest(r, null), comments, voters });
+  const { results: early } = await c.env.DB.prepare(
+    `SELECT u.email, u.name, u.is_anon FROM early_access e JOIN users u ON u.id = e.user_id
+     WHERE e.request_id = ? ORDER BY e.created_at LIMIT 200`,
+  )
+    .bind(r.id)
+    .all();
+  const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
+  return c.json({ request: publicRequest(r, null), attachments: files.get(r.id) ?? [], comments, voters, earlyAccess: early });
 });
 
 admin.patch("/requests/:id", async (c) => {
@@ -286,12 +348,16 @@ admin.post("/requests/:id/merge", async (c) => {
 
 admin.delete("/requests/:id", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
+  const files = (await attachmentsFor(c.env.DB, [r.id], "")).get(r.id) ?? [];
   await c.env.DB.batch([
     c.env.DB.prepare("DELETE FROM votes WHERE request_id = ?").bind(r.id),
     c.env.DB.prepare("DELETE FROM comments WHERE request_id = ?").bind(r.id),
     c.env.DB.prepare("DELETE FROM notifications WHERE request_id = ?").bind(r.id),
+    c.env.DB.prepare("DELETE FROM early_access WHERE request_id = ?").bind(r.id),
+    c.env.DB.prepare("DELETE FROM uploads WHERE request_id = ?").bind(r.id),
     c.env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(r.id),
   ]);
+  if (files.length) await c.env.UPLOADS.delete(files.map((f) => f.id));
   return c.json({ ok: true });
 });
 
@@ -432,6 +498,25 @@ app.route("/v1/admin", admin);
 
 // ---------------------------------------------------------------- public (widget, publishable key)
 
+// Screenshots are served without a key so a plain <img> works, in the widget, the dashboard and chat apps.
+// The id is 24 random characters, so the link is the secret.
+app.get("/v1/uploads/:id", async (c) => {
+  const id = c.req.param("id");
+  if (!/^upl_[a-z0-9]{24}$/.test(id)) fail(404, "not_found");
+  const object = await c.env.UPLOADS.get(id);
+  if (!object) fail(404, "not_found");
+  return new Response(object.body, {
+    headers: {
+      "content-type": object.httpMetadata?.contentType ?? "application/octet-stream",
+      "cache-control": "public, max-age=31536000, immutable",
+      etag: object.httpEtag,
+      "x-content-type-options": "nosniff",
+      "cross-origin-resource-policy": "cross-origin",
+      "access-control-allow-origin": "*",
+    },
+  });
+});
+
 const pub = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 pub.use(
@@ -481,7 +566,53 @@ pub.get("/config", async (c) => {
       reply: n.reply,
     }));
   }
-  return c.json({ app: { name: a.name }, watermark: Boolean(a.watermark), identified: me ? !me.is_anon : false, unseen });
+  return c.json({
+    app: { name: a.name },
+    watermark: Boolean(a.watermark),
+    identified: me ? !me.is_anon : false,
+    canCredit: me ? !me.is_anon && Boolean(me.name) : false,
+    unseen,
+    whatsNew: me ? await whatsNewFor(c.env.DB, a.id, me) : null,
+  });
+});
+
+/**
+ * What shipped since this person was last shown the list. Their "last visit" is last_whats_new_at,
+ * set when they dismiss the list (or open the panel with it showing), not users.last_seen_at, which
+ * moves hourly on any request. With nothing recorded yet it starts at the user's first visit, so
+ * nobody is greeted with a backlog of things that shipped before they arrived. Anonymous visitors
+ * are tracked the same way by their device id.
+ */
+async function whatsNewFor(db: D1Database, appId: string, me: UserRow) {
+  const since = Math.max(me.last_whats_new_at ?? 0, me.created_at);
+  const { results } = await db
+    .prepare(
+      `SELECT r.id, r.title, r.ship_note, r.shipped_at, r.credit, au.name AS author_name,
+              (r.author_id = ?1 OR v.user_id IS NOT NULL) AS mine
+       FROM requests r
+       LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?1
+       LEFT JOIN users au ON au.id = r.author_id
+       WHERE r.app_id = ?2 AND r.status = 'shipped' AND r.shipped_at > ?3
+       ORDER BY mine DESC, r.shipped_at DESC LIMIT 5`,
+    )
+    .bind(me.id, appId, since)
+    .all<{ id: string; title: string; ship_note: string | null; shipped_at: number; mine: number }>();
+  if (!results.length) return null;
+  const total = await db
+    .prepare("SELECT COUNT(*) AS n FROM requests WHERE app_id = ? AND status = 'shipped' AND shipped_at > ?")
+    .bind(appId, since)
+    .first<{ n: number }>();
+  return {
+    since,
+    total: total?.n ?? results.length,
+    items: results.map((r) => ({ id: r.id, title: r.title, shipNote: r.ship_note, shippedAt: r.shipped_at, mine: Boolean(r.mine) })),
+  };
+}
+
+pub.post("/whats-new/seen", async (c) => {
+  const me = requireUser(c);
+  await c.env.DB.prepare("UPDATE users SET last_whats_new_at = ? WHERE id = ?").bind(now(), me.id).run();
+  return c.json({ ok: true });
 });
 
 pub.get("/requests", async (c) => {
@@ -494,26 +625,28 @@ pub.get("/requests", async (c) => {
   const order =
     filter === "shipped" ? "r.shipped_at DESC" : sort === "new" ? "r.created_at DESC" : "r.vote_count DESC, r.created_at DESC";
   const { results } = await c.env.DB.prepare(
-    `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
+    `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
      LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
+     LEFT JOIN users au ON au.id = r.author_id
      WHERE r.app_id = ? AND r.status IN (${statuses.map(() => "?").join(",")})
      ORDER BY ${order} LIMIT 100`,
   )
     .bind(me?.id ?? "", a.id, ...statuses)
-    .all<RequestRow & { voted: number }>();
+    .all<RequestRow & { voted: number; author_name: string | null }>();
   return c.json({ requests: results.map((r) => publicRequest(r, me)) });
 });
 
 async function findSimilar(db: D1Database, appId: string, q: string, meId: string, excludeId?: string) {
   const { results } = await db
     .prepare(
-      `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
+      `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
        LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
+       LEFT JOIN users au ON au.id = r.author_id
        WHERE r.app_id = ? AND r.status IN ('open','planned','in_progress','shipped')
        ORDER BY r.created_at DESC LIMIT 500`,
     )
     .bind(meId, appId)
-    .all<RequestRow & { voted: number }>();
+    .all<RequestRow & { voted: number; author_name: string | null }>();
   return results
     .filter((r) => r.id !== excludeId)
     .map((r) => ({ r, score: Math.max(similarity(q, r.title), similarity(q, `${r.title} ${r.body}`) * 0.8) }))
@@ -532,12 +665,13 @@ pub.get("/requests/similar", async (c) => {
 pub.get("/requests/:id", async (c) => {
   const me = c.get("user");
   const r = await c.env.DB.prepare(
-    `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
+    `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
      LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
+     LEFT JOIN users au ON au.id = r.author_id
      WHERE r.id = ? AND r.app_id = ?`,
   )
     .bind(me?.id ?? "", c.req.param("id"), c.get("app").id)
-    .first<RequestRow & { voted: number }>();
+    .first<RequestRow & { voted: number; author_name: string | null }>();
   if (!r) fail(404, "not_found");
   if (r.status === "merged" && r.merged_into) return c.json({ redirect: r.merged_into });
   const { results } = await c.env.DB.prepare(
@@ -546,8 +680,14 @@ pub.get("/requests/:id", async (c) => {
   )
     .bind(r.id)
     .all<{ id: string; body: string; is_team: number; created_at: number; user_id: string | null; name: string | null }>();
+  const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
+  const early = me
+    ? await c.env.DB.prepare("SELECT 1 AS x FROM early_access WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first()
+    : null;
   return c.json({
     request: publicRequest(r, me),
+    attachments: files.get(r.id) ?? [],
+    earlyAccess: Boolean(early),
     comments: results.map((cm) => ({
       id: cm.id,
       body: cm.body,
@@ -562,8 +702,15 @@ pub.get("/requests/:id", async (c) => {
 pub.post("/requests", async (c) => {
   const me = requireUser(c);
   const a = c.get("app");
-  const body = await c.req.json<{ title?: string; body?: string }>().catch(() => ({}) as { title?: string; body?: string });
+  const body = await c.req
+    .json<{ title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown }>()
+    .catch(() => ({}) as { title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown });
   const title = cleanText(body.title, 120);
+  const context = cleanContext(body.context);
+  const credit = body.credit === true && !me.is_anon && Boolean(me.name) ? 1 : 0;
+  const uploadIds = (Array.isArray(body.attachments) ? body.attachments : [])
+    .filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x))
+    .slice(0, MAX_ATTACHMENTS);
   const text = cleanText(body.body, 2000);
   if (title.length < 3) fail(400, "title_too_short");
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM requests WHERE author_id = ? AND created_at > ?")
@@ -575,10 +722,14 @@ pub.post("/requests", async (c) => {
   const insert = () =>
     c.env.DB.batch([
       c.env.DB.prepare(
-        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, created_at, updated_at)
-         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, 'open', 1, ?6, ?6)`,
-      ).bind(id, a.id, me.id, title, text, t),
+        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, context, credit, created_at, updated_at)
+         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, 'open', 1, ?7, ?8, ?6, ?6)`,
+      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit),
       c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
+      // Only the author's own, not-yet-used uploads can be attached.
+      ...uploadIds.map((u) =>
+        c.env.DB.prepare("UPDATE uploads SET request_id = ? WHERE id = ? AND user_id = ? AND app_id = ? AND request_id IS NULL").bind(id, u, me.id, a.id),
+      ),
     ]);
   try {
     await insert();
@@ -586,13 +737,16 @@ pub.post("/requests", async (c) => {
     await insert(); // two requests raced for the same number; the retry takes the next one
   }
   const r = await loadRequest(c, id);
+  const origin = new URL(c.req.url).origin;
   c.executionCtx.waitUntil(
     (async () => {
       const similar = (await findSimilar(c.env.DB, a.id, title, "", r.id)).find((x) => x.score >= 0.5)?.r ?? null;
-      await notifyTeam(c.env, a.id, { kind: "request", appName: a.name, request: r, author: me, similar });
+      const attachments = (await attachmentsFor(c.env.DB, [r.id], origin)).get(r.id) ?? [];
+      await notifyTeam(c.env, a.id, { kind: "request", appName: a.name, request: r, author: me, similar, attachments, origin });
     })(),
   );
-  return c.json({ request: publicRequest({ ...r, voted: 1 }, me) }, 201);
+  const files = await attachmentsFor(c.env.DB, [r.id], origin);
+  return c.json({ request: publicRequest({ ...r, voted: 1, author_name: me.name }, me), attachments: files.get(r.id) ?? [] }, 201);
 });
 
 pub.post("/requests/:id/vote", async (c) => {
@@ -639,17 +793,55 @@ pub.post("/requests/:id/comments", async (c) => {
   return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t } }, 201);
 });
 
+/** Takes the image as the raw request body (not multipart). Returns an id to pass as `attachments` when posting. */
+pub.post("/uploads", async (c) => {
+  const me = requireUser(c);
+  const a = c.get("app");
+  if (Number(c.req.header("content-length") ?? 0) > MAX_UPLOAD) fail(400, "too_large");
+  const declared = (c.req.header("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  if (!IMAGE_TYPES.includes(declared)) fail(400, "bad_image");
+  const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM uploads WHERE user_id = ? AND created_at > ?")
+    .bind(me.id, now() - 60 * 60 * 1000)
+    .first<{ n: number }>();
+  if ((recent?.n ?? 0) >= 12) fail(429, "slow_down");
+  const bytes = await c.req.arrayBuffer();
+  if (bytes.byteLength > MAX_UPLOAD) fail(400, "too_large");
+  if (sniffImage(new Uint8Array(bytes)) !== declared) fail(400, "bad_image");
+  const id = newId("upl", 24);
+  await c.env.UPLOADS.put(id, bytes, { httpMetadata: { contentType: declared } });
+  await c.env.DB.prepare("INSERT INTO uploads (id, app_id, user_id, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, a.id, me.id, declared, bytes.byteLength, now())
+    .run();
+  return c.json({ id, url: uploadUrl(new URL(c.req.url).origin, id) }, 201);
+});
+
+/** "Let me try it early": a toggle for people who voted on something planned or being built. */
+pub.post("/requests/:id/early-access", async (c) => {
+  const me = requireUser(c);
+  const r = await loadRequest(c, c.req.param("id"));
+  if (r.status !== "planned" && r.status !== "in_progress") fail(400, "not_in_the_works");
+  const voted = await c.env.DB.prepare("SELECT 1 AS x FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first();
+  if (!voted) fail(403, "vote_first");
+  const existing = await c.env.DB.prepare("SELECT 1 AS x FROM early_access WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first();
+  await (existing
+    ? c.env.DB.prepare("DELETE FROM early_access WHERE request_id = ? AND user_id = ?").bind(r.id, me.id)
+    : c.env.DB.prepare("INSERT OR IGNORE INTO early_access (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(r.id, me.id, now())
+  ).run();
+  return c.json({ earlyAccess: !existing });
+});
+
 pub.get("/me/requests", async (c) => {
   const me = c.get("user");
   if (!me) return c.json({ requests: [] });
   const { results } = await c.env.DB.prepare(
-    `SELECT r.*, (v.user_id IS NOT NULL) AS voted FROM requests r
+    `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
      LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?1
+     LEFT JOIN users au ON au.id = r.author_id
      WHERE r.app_id = ?2 AND r.status != 'merged' AND (r.author_id = ?1 OR v.user_id IS NOT NULL)
      ORDER BY r.updated_at DESC LIMIT 100`,
   )
     .bind(me.id, c.get("app").id)
-    .all<RequestRow & { voted: number }>();
+    .all<RequestRow & { voted: number; author_name: string | null }>();
   return c.json({ requests: results.map((r) => publicRequest(r, me)) });
 });
 

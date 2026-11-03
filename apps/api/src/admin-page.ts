@@ -49,6 +49,11 @@ export const adminPage = /* html */ `<!doctype html>
   .row input { flex:1; min-width: 0; }
   .out { font-size: 13.5px; margin: 8px 0 0; overflow-wrap:anywhere; }
   .out code { background: var(--paper); padding: 1px 5px; border-radius: 6px; }
+  .shots { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .shots a { display:block; border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+  .shots img { display:block; height:96px; width:auto; max-width:200px; object-fit:cover; }
+  .tags { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .tag { font-size:12.5px; padding:2px 9px; border-radius:999px; background:var(--paper); border:1px solid var(--line); color:var(--muted); overflow-wrap:anywhere; }
   .ref { font-weight: 700; color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -144,11 +149,30 @@ function row(r) {
     el("div", {},
       el("p", { className: "title" }, el("span", { className: "ref", textContent: "YA-" + r.number }), r.title),
       r.body ? el("p", { className: "body", textContent: r.body }) : null,
+      r.attachments.length ? el("div", { className: "shots" }, ...r.attachments.map((a) => el("a", { href: a.url, target: "_blank", rel: "noopener" }, el("img", { src: a.url, alt: "Screenshot", loading: "lazy" })))) : null,
+      tags(r),
       el("div", { className: "meta", textContent: who + " · " + ago(r.createdAt) + " · " + r.comments + " comments · " + r.id }),
       el("div", { className: "actions" }, select, note, save),
       el("div", { className: "actions" }, reply, send),
     ),
   );
+}
+function tags(r) {
+  const out = [];
+  if (r.context && r.context.path) out.push("Page: " + r.context.path);
+  if (r.context && r.context.topic) out.push("Topic: " + r.context.topic);
+  if (r.credit) out.push("Wants credit when it ships");
+  if (r.earlyAccess) out.push(r.earlyAccess + " want early access");
+  if (!out.length) return null;
+  const box = el("div", { className: "tags" }, ...out.map((t) => el("span", { className: "tag", textContent: t })));
+  if (r.earlyAccess) {
+    // Names come from the detail call; the list only has the count.
+    api("/requests/" + r.id).then((d) => {
+      const names = d.earlyAccess.map((u) => u.name || u.email || "Anonymous").join(", ");
+      if (names) box.append(el("span", { className: "tag", textContent: "Early access: " + names }));
+    }).catch(() => {});
+  }
+  return box;
 }
 function line(parent, ...parts) {
   parent.replaceChildren(...parts.filter((p) => p !== "").map((p) => typeof p === "string" ? document.createTextNode(p) : p));

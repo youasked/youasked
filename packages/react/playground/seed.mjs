@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
-const B = "http://localhost:8833";
+const B = process.env.YA_API ?? "http://localhost:8833";
 const j = (r) => r.json();
 const app = await fetch(B + "/v1/apps", { method: "POST", headers: { authorization: "Bearer local-admin", "content-type": "application/json" }, body: JSON.stringify({ name: "Graiden" }) }).then(j);
 const H = (id) => ({ "x-youasked-key": app.publicKey, "x-youasked-user": Buffer.from(JSON.stringify({ id, name: id })).toString("base64url"), "x-youasked-sig": createHmac("sha256", app.secretKey).update(id).digest("hex"), "content-type": "application/json" });
@@ -30,5 +30,5 @@ const sig = createHmac("sha256", app.secretKey).update("you").digest("hex");
 await admin(`/requests/${youReq.request.id}`, "PATCH", { status: "open" });
 const reply = await post("you", "/requests", { title: "Export expenses to Excel", body: "For my accountant at tax time." });
 await admin(`/requests/${reply.request.id}/comments`, "POST", { body: "Good one. Would a CSV that opens in Excel work, or do you need .xlsx?" });
-writeFileSync(new URL("./keys.json", import.meta.url), JSON.stringify({ publicKey: app.publicKey, sig }));
+writeFileSync(new URL("./keys.json", import.meta.url), JSON.stringify({ publicKey: app.publicKey, secretKey: app.secretKey, apiUrl: B, sig }));
 console.log("seeded", seeds.length + 1, "requests");

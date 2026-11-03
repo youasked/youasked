@@ -11,9 +11,23 @@ export type FeatureRequest = {
   comments: number;
   shipNote: string | null;
   shippedAt: number | null;
+  /** Where it was asked from: the page path and/or a topic like "charts". */
+  context: { path?: string; topic?: string } | null;
+  /** First name of the person who asked, when they opted in to being thanked and it has shipped. */
+  creditName: string | null;
   createdAt: number;
   voted: boolean;
   mine: boolean;
+};
+
+export type Attachment = { id: string; url: string };
+
+/** What shipped since this person was last shown the list. */
+export type WhatsNew = {
+  /** Items shown, newest first with the ones they asked for or voted on at the top. */
+  items: { id: string; title: string; shipNote: string | null; shippedAt: number; mine: boolean }[];
+  /** How many shipped in all; more than items.length when the list was cut short. */
+  total: number;
 };
 
 export type RequestComment = {
@@ -35,7 +49,33 @@ export type Notice = {
   reply: string | null;
 };
 
-export type Config = { app: { name: string }; watermark: boolean; identified: boolean; unseen: Notice[] };
+export type Config = {
+  app: { name: string };
+  watermark: boolean;
+  identified: boolean;
+  /** Identified with a name, so "Credit me when it ships" makes sense. */
+  canCredit: boolean;
+  unseen: Notice[];
+  whatsNew: WhatsNew | null;
+};
+
+export type NewRequest = {
+  title: string;
+  body: string;
+  /** Ids from `upload()`. */
+  attachments?: string[];
+  context?: { path?: string; topic?: string };
+  credit?: boolean;
+};
+
+export type RequestDetail = {
+  request?: FeatureRequest;
+  comments?: RequestComment[];
+  attachments?: Attachment[];
+  /** Whether this person asked to try it before it ships. */
+  earlyAccess?: boolean;
+  redirect?: string;
+};
 
 export type YouAskedUser = { id: string | number; email?: string | null; name?: string | null };
 
@@ -90,11 +130,11 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
     return h;
   }
 
-  async function call<T>(path: string, body?: unknown): Promise<T> {
+  async function call<T>(path: string, body?: unknown, raw?: Blob): Promise<T> {
     const res = await fetch(base + path, {
-      method: body === undefined ? "GET" : "POST",
-      headers: headers(body !== undefined),
-      body: body === undefined ? undefined : JSON.stringify(body),
+      method: body === undefined && !raw ? "GET" : "POST",
+      headers: raw ? { ...headers(false), "content-type": raw.type } : headers(body !== undefined),
+      body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new YouAskedError((data as { error?: string }).error ?? `http_${res.status}`);
@@ -107,10 +147,15 @@ export function createClient({ appKey, apiUrl, user, signature }: ClientOptions)
       call<{ requests: FeatureRequest[] }>(`/requests?sort=${sort}&status=${status}`).then((d) => d.requests),
     similar: (q: string) =>
       call<{ requests: FeatureRequest[] }>(`/requests/similar?q=${encodeURIComponent(q)}`).then((d) => d.requests),
-    get: (id: string) =>
-      call<{ request?: FeatureRequest; comments?: RequestComment[]; redirect?: string }>(`/requests/${encodeURIComponent(id)}`),
-    create: (title: string, body: string) =>
-      call<{ request: FeatureRequest }>("/requests", { title, body }).then((d) => d.request),
+    get: (id: string) => call<RequestDetail>(`/requests/${encodeURIComponent(id)}`),
+    create: (input: NewRequest) =>
+      call<{ request: FeatureRequest; attachments?: Attachment[] }>("/requests", input).then((d) => ({
+        ...d.request,
+        attachments: d.attachments ?? [],
+      })),
+    upload: (image: Blob) => call<Attachment>("/uploads", undefined, image),
+    earlyAccess: (id: string) => call<{ earlyAccess: boolean }>(`/requests/${encodeURIComponent(id)}/early-access`, {}),
+    whatsNewSeen: () => call<{ ok: true }>("/whats-new/seen", {}),
     vote: (id: string) => call<{ voted: boolean; votes: number }>(`/requests/${encodeURIComponent(id)}/vote`, {}),
     comment: (id: string, body: string) =>
       call<{ comment: RequestComment }>(`/requests/${encodeURIComponent(id)}/comments`, { body }).then((d) => d.comment),

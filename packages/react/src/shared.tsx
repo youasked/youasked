@@ -41,8 +41,17 @@ export function VoteButton({ client, request, compact }: { client: Client; reque
   );
 }
 
-export function BigVote({ client, request }: { client: Client; request: FeatureRequest }) {
+export function BigVote({
+  client,
+  request,
+  onChange,
+}: {
+  client: Client;
+  request: FeatureRequest;
+  onChange?: (voted: boolean) => void;
+}) {
   const { voted, votes, toggle } = useVote(client, request);
+  useEffect(() => onChange?.(voted), [voted, onChange]);
   return (
     <button type="button" className="ya-bigvote" aria-pressed={voted} onClick={toggle}>
       <IconUp />
@@ -143,6 +152,10 @@ export function errorText(code: string | null): string {
     default:
       return "Something went wrong. Try again.";
   }
+}
+
+export function whatsNewHeading(total: number): string {
+  return `${total} ${total === 1 ? "thing" : "things"} shipped since your last visit`;
 }
 
 export function ago(t: number): string {

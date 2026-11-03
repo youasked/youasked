@@ -53,6 +53,19 @@ export const IconBulb = () => (
     <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z" />
   </svg>
 );
+/** Viewfinder corners: "show us" a spot on the page. */
+export const IconFrame = () => (
+  <svg {...base}>
+    <path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3" />
+    <circle cx="12" cy="12" r="2.2" fill="currentColor" strokeWidth={1} />
+  </svg>
+);
+export const IconSpark = () => (
+  <svg {...base}>
+    <path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z" />
+    <path d="M19 16v4M17 18h4" />
+  </svg>
+);
 /** Chat bubble with a spark: the launcher mark. */
 export const IconIdea = () => (
   <svg {...base}>

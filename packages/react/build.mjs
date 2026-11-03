@@ -7,6 +7,8 @@ await build({
   entryPoints: ["src/index.ts"],
   external: ["react", "react-dom", "react/jsx-runtime"],
   jsx: "automatic",
+  // The screenshot library sits behind a dynamic import; splitting makes it its own file, loaded on first use.
+  splitting: true,
   // Next.js App Router needs the directive at the top of the bundle; esbuild drops it from sources.
   banner: { js: '"use client";' },
 });
