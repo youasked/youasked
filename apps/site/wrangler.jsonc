@@ -9,7 +9,9 @@
     { "pattern": "youasked.dev", "custom_domain": true },
     { "pattern": "www.youasked.dev", "custom_domain": true }
   ],
-  "vars": { "SITE_URL": "https://youasked.dev", "API_URL": "https://api.youasked.dev" },
+  "vars": {
+    // "1" draws a share card per shipped request. Needs Workers Paid (CPU); see worker/index.ts.
+    "SHARE_CARDS": "0", "SITE_URL": "https://youasked.dev", "API_URL": "https://api.youasked.dev" },
   // The worker runs first for pages (to redirect www and the old host, and to serve public boards), and
   // skips the built assets and the Markdown/text files, which stay reachable on every host.
   "assets": {

@@ -5,7 +5,13 @@
 import { boardPage, shell, shippedPage, type BoardApp, type Req, type Tab } from "./board";
 import { renderCard } from "./og";
 
-type Env = { ASSETS: Fetcher; API_URL?: string; SITE_URL?: string };
+type Env = {
+  ASSETS: Fetcher;
+  API_URL?: string;
+  SITE_URL?: string;
+  /** "1" draws a card per shipped request. Drawing needs more CPU than the Workers free plan allows (error 1102), so it's off until the account is on Workers Paid; until then cards use the site's own preview image. */
+  SHARE_CARDS?: string;
+};
 
 const SITE_DEFAULT = "https://youasked.dev";
 const API_DEFAULT = "https://api.youasked.dev";
@@ -46,6 +52,9 @@ async function board(env: Env, request: Request, slug: string, tab: string | und
 }
 
 async function card(env: Env, request: Request, ctx: ExecutionContext, slug: string, n: string) {
+  if (env.SHARE_CARDS !== "1") {
+    return new Response(null, { status: 302, headers: { location: "/og.png", "cache-control": "public, max-age=3600" } });
+  }
   const cache = (caches as unknown as { default: Cache }).default;
   const key = new Request(new URL(request.url).origin + `/og/${slug}/${n}.png`);
   const hit = await cache.match(key);
