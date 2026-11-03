@@ -28,7 +28,7 @@ export type DemoClient = Client & {
   onNotice: (fn: (n: Notice) => void) => () => void;
 };
 
-export function createDemoClient(appName = "Graiden"): DemoClient {
+export function createDemoClient(appName = "Your App"): DemoClient {
   const t0 = Date.now();
   let seq = 100;
   const listeners = new Set<(n: Notice) => void>();
@@ -77,7 +77,7 @@ export function createDemoClient(appName = "Graiden"): DemoClient {
       shippedAt: t0 - 2 * DAY,
       creditName: "Sam",
     }),
-    seed(14, "Import my DBS statement PDF", "Some of my older expenses never came through email.", 6, "open"),
+    seed(14, "Import my bank statement PDF", "Some of my older expenses never came through email.", 6, "open"),
     seed(15, "Recurring expenses (Netflix, rent)", "", 4, "open"),
     seed(16, "Widget for the home screen", "Just today's total would be enough.", 3, "open"),
     seed(9, "Show which card I paid with", "", 5, "shipped", {

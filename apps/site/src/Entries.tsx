@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { AskAbout, AskBar, AskForIt, FeatureBoard, FeatureCard, RequestButton, YouAsked, useYouAsked } from "@youasked/react";
-import { GRAIDEN_LOOK } from "./Hero";
+import { APP_LOOK } from "./Hero";
 import { Reveal } from "./ui";
 
 const ENTRIES = [
@@ -56,7 +56,7 @@ export function Entries() {
             ))}
           </div>
           <div className="entry-frame">
-            <YouAsked demo cards={false} offset={84} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
+            <YouAsked demo cards={false} offset={84} trigger="none" appearance={APP_LOOK} appName="Your App" appIcon={false}>
               <Preview k={key} />
             </YouAsked>
             <div className="code-chip">{codeFor(entry.key)}</div>
@@ -149,17 +149,17 @@ function Preview({ k }: { k: Key }) {
   const expenses = (
     <div className="app-card host host-box" style={{ padding: "6px 16px" }}>
       <div className="app-row">
-        <span className="ic">🛒</span>FairPrice<span className="amt">$86.40</span>
+        <span className="ic">🛒</span>Groceries<span className="amt">$86.40</span>
       </div>
       <div className="app-row">
-        <span className="ic">🚕</span>Grab<span className="amt">$18.20</span>
+        <span className="ic">🚕</span>Taxi<span className="amt">$18.20</span>
       </div>
     </div>
   );
   return (
     <div className="mock-app">
       <div className="mock-top">
-        <b className="host">Graiden</b>
+        <b className="host">Your App</b>
         <div className="mock-icons">
           {k === "buttons" && <RequestButton variant="icon" />}
           <span className="mock-circle host host-box" aria-hidden="true">

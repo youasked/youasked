@@ -8,8 +8,8 @@ import { Check, CopyIcon, Mark, reducedMotion, useCopied } from "./ui";
 
 gsap.registerPlugin(MotionPathPlugin);
 
-// Graiden's look, so the phone shows the widget the way it sits inside a real app.
-export const GRAIDEN_LOOK = {
+// A typical app's look, so the phone shows the widget the way it sits inside a real app.
+export const APP_LOOK = {
   accent: "#5b3df5",
   background: "#ffffff",
   foreground: "#000000",
@@ -194,7 +194,7 @@ function HeroStage() {
                 <i />
               </span>
             </div>
-            <YouAsked demo cards={false} offset={84} trigger="none" appearance={GRAIDEN_LOOK} appName="Graiden" appIcon={false}>
+            <YouAsked demo cards={false} offset={84} trigger="none" appearance={APP_LOOK} appName="Your App" appIcon={false}>
               <FeatureBoard height="100%" className="phone-board" />
             </YouAsked>
             <div className="live-toast" aria-hidden="true">
@@ -218,14 +218,14 @@ function TelegramCard() {
       <div className="tg-head">
         <span className="tg-ava">G</span>
         <div>
-          <div className="tg-name">Graiden requests</div>
+          <div className="tg-name">Your App requests</div>
           <div className="tg-sub">bot · in your Telegram</div>
         </div>
       </div>
       <div className="tg-body">
         <div className="tg-card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           <div className="tg-msg">
-            💡 New request · <b>Graiden</b> · YA-12<span className="tg-status" />
+            💡 New request · <b>Your App</b> · YA-12<span className="tg-status" />
             <br />
             <b>Split a bill with my partner</b>
             <br />

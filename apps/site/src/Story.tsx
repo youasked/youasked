@@ -156,7 +156,7 @@ function AppHome() {
   return (
     <div className="app">
       <div className="app-head">
-        <b>Graiden</b>
+        <b>Your App</b>
       </div>
       <div className="app-body">
         <div className="app-card">
@@ -165,10 +165,10 @@ function AppHome() {
         </div>
         <div className="app-card" style={{ padding: "6px 16px" }}>
           <div className="app-row">
-            <span className="ic">🛒</span>FairPrice<span className="amt">$86.40</span>
+            <span className="ic">🛒</span>Groceries<span className="amt">$86.40</span>
           </div>
           <div className="app-row">
-            <span className="ic">🚕</span>Grab<span className="amt">$18.20</span>
+            <span className="ic">🚕</span>Taxi<span className="amt">$18.20</span>
           </div>
           <div className="app-row">
             <span className="ic">☕</span>Starbucks<span className="amt">$7.90</span>
@@ -204,11 +204,10 @@ function SceneAsk({ active }: { active: boolean }) {
         <AppHome />
         <div className="chat-sheet">
           <div className="grab" />
-          <div className="ch-head">
-            Graiden<span>Ideas, votes and what's new</span>
+          <div className="ch-head">Your App<span>Ideas, votes and what's new</span>
           </div>
           <div className="chat-msgs">
-            <div className="bub in">Hey! What would make Graiden better for you?</div>
+            <div className="bub in">Hey! What would make Your App better for you?</div>
             <div className="bub in s1-reply">
               Added your vote to <b>Split a bill with my partner</b>. We'll tell you right here when it ships.
             </div>
@@ -253,14 +252,14 @@ function SceneHear({ active }: { active: boolean }) {
         <div className="tg-head">
           <span className="tg-ava">G</span>
           <div>
-            <div className="tg-name">Graiden requests</div>
+            <div className="tg-name">Your App requests</div>
             <div className="tg-sub">bot</div>
           </div>
         </div>
         <div className="tg-body" style={{ minHeight: 420 }}>
           <div className="s2-card">
             <div className="tg-msg">
-              💡 New request · <b>Graiden</b> · YA-12<span className="s2-status" />
+              💡 New request · <b>Your App</b> · YA-12<span className="s2-status" />
               <br />
               <b>Split a bill with my partner</b>
               <br />
@@ -318,7 +317,7 @@ function SceneShip({ active }: { active: boolean }) {
           </div>
           <div className="s3-line b dim">&nbsp;&nbsp;YA-12 Split a bill with my partner · 15 votes · planned</div>
           <div className="s3-line b dim">&nbsp;&nbsp;YA-9&nbsp; Monthly budget per category · 11 votes</div>
-          <div className="s3-line b dim">&nbsp;&nbsp;YA-14 Import my DBS statement PDF · 6 votes</div>
+          <div className="s3-line b dim">&nbsp;&nbsp;YA-14 Import my bank statement PDF · 6 votes</div>
           <div className="s3-line c" style={{ marginTop: 10 }}>
             <span className="hl">› </span>
             <span className="s3-typed" />

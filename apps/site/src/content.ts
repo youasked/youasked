@@ -1,7 +1,7 @@
 export const SITE = "https://youasked.adenteo.workers.dev";
 export const API = "https://youasked-api.adenteo.workers.dev";
 
-/** Publishable key of the public demo app (sample Graiden requests, anonymous visitors allowed). */
+/** Publishable key of the public demo app (sample Your App requests, anonymous visitors allowed). */
 export const DEMO_KEY = "ya_pub_da93si9r7h98u8v8jta1t1v6";
 
 export const INSTALL_CMD = "npx youasked init";
