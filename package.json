@@ -3,8 +3,9 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "build": "npm run build -w @youasked/react",
+    "build": "npm run build -w @youasked/react && npm run build -w @youasked/mcp",
     "dev:api": "npm run dev -w @youasked/api",
-    "deploy:api": "npm run deploy -w @youasked/api"
+    "deploy:api": "npm run deploy -w @youasked/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   }
 }

@@ -3,6 +3,8 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { addTeamComment, loadRequestById, mergeRequests, setStatus } from "./actions";
 import { adminPage } from "./admin-page";
+import agent from "./agent";
+import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
 import { loadIntegrations, notifyTeam, tg } from "./notify";
@@ -138,6 +140,7 @@ app.onError((err, c) => {
 app.get("/", (c) => c.text("youasked api"));
 app.get("/admin", (c) => c.html(adminPage));
 app.route("/v1/hooks", hooks);
+app.route("/v1", signup);
 
 // ---------------------------------------------------------------- bootstrap
 
@@ -424,6 +427,7 @@ admin.delete("/integrations/:kind", async (c) => {
 });
 
 app.use("/v1/admin/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }));
+app.route("/v1/admin", agent);
 app.route("/v1/admin", admin);
 
 // ---------------------------------------------------------------- public (widget, publishable key)
