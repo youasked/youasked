@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "YouAsked example",
+    "slug": "youasked-rn-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "dev.youasked.example" },
+    "android": { "package": "dev.youasked.example" },
+    "web": { "bundler": "metro" }
+  }
+}

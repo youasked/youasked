@@ -1,0 +1,70 @@
+{
+  "name": "@youasked/react-native",
+  "version": "0.1.0",
+  "description": "Feature requests your users can vote on, as a native bottom sheet for React Native and Expo, with a 'you asked, it's live' moment when you ship.",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "react-native": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "react-native": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.72",
+    "expo-haptics": "*",
+    "@react-native-async-storage/async-storage": "*",
+    "react-native-safe-area-context": "*"
+  },
+  "peerDependenciesMeta": {
+    "expo-haptics": { "optional": true },
+    "@react-native-async-storage/async-storage": { "optional": true },
+    "react-native-safe-area-context": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.0.0",
+    "react-native": "^0.79.0",
+    "typescript": "^5.9.3"
+  },
+  "author": "Aden Teo",
+  "homepage": "https://youasked.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youasked/youasked.git",
+    "directory": "packages/react-native"
+  },
+  "bugs": {
+    "url": "https://github.com/youasked/youasked/issues"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "feature-requests",
+    "feedback",
+    "roadmap",
+    "changelog",
+    "bottom-sheet",
+    "voting"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
