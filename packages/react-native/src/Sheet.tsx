@@ -1,6 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   Animated,
+  BackHandler,
   Easing,
   Keyboard,
   LayoutAnimation,
@@ -27,8 +39,14 @@ export function useInsets(): Insets {
   const { width, height } = useWindowDimensions();
   if (real) return real;
   if (Platform.OS === "ios") {
-    const notched = Math.max(width, height) >= 812 && Math.min(width, height) < 700;
-    return { top: notched ? 47 : 20, bottom: notched && height > width ? 34 : 0, left: 0, right: 0 };
+    const notched =
+      Math.max(width, height) >= 812 && Math.min(width, height) < 700;
+    return {
+      top: notched ? 47 : 20,
+      bottom: notched && height > width ? 34 : 0,
+      left: 0,
+      right: 0,
+    };
   }
   return { top: StatusBar.currentHeight ?? 24, bottom: 0, left: 0, right: 0 };
 }
@@ -49,27 +67,48 @@ function useKeyboardPad(rootRef: RefObject<View | null>): [number, () => void] {
   }, [rootRef]);
   useEffect(() => {
     const ios = Platform.OS === "ios";
-    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => {
-      if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
-      const top = e.endCoordinates.screenY;
-      if (top > 0) setKeyboardTop(top);
-      else setFallback(e.endCoordinates.height);
-      remeasure();
-    });
-    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", (e) => {
-      if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
-      setKeyboardTop(null);
-      setFallback(0);
-    });
+    const show = Keyboard.addListener(
+      ios ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        if (ios)
+          LayoutAnimation.configureNext({
+            duration: e.duration || 250,
+            update: { type: "keyboard" },
+          });
+        const top = e.endCoordinates.screenY;
+        if (top > 0) setKeyboardTop(top);
+        else setFallback(e.endCoordinates.height);
+        remeasure();
+      },
+    );
+    const hide = Keyboard.addListener(
+      ios ? "keyboardWillHide" : "keyboardDidHide",
+      (e) => {
+        if (ios)
+          LayoutAnimation.configureNext({
+            duration: e.duration || 250,
+            update: { type: "keyboard" },
+          });
+        setKeyboardTop(null);
+        setFallback(0);
+      },
+    );
     return () => {
       show.remove();
       hide.remove();
     };
   }, [remeasure]);
-  const pad = keyboardTop === null ? fallback : rootBottom > 0 ? Math.max(0, Math.round(rootBottom - keyboardTop)) : 0;
+  const pad =
+    keyboardTop === null
+      ? fallback
+      : rootBottom > 0
+        ? Math.max(0, Math.round(rootBottom - keyboardTop))
+        : 0;
   useEffect(() => {
     if (__DEV__ && Platform.OS === "android" && keyboardTop !== null) {
-      console.log(`[YouAsked] keyboard top ${Math.round(keyboardTop)}, sheet bottom ${Math.round(rootBottom)}, lift ${pad}`);
+      console.log(
+        `[YouAsked] keyboard top ${Math.round(keyboardTop)}, sheet bottom ${Math.round(rootBottom)}, lift ${pad}`,
+      );
     }
   }, [keyboardTop, rootBottom, pad]);
   return [pad, remeasure];
@@ -108,14 +147,24 @@ export function Sheet({
 
   useEffect(() => {
     if (!mounted) return;
-    Animated.timing(ty, { toValue: 0, duration: 340, easing: Easing.bezier(0.2, 0.9, 0.25, 1), useNativeDriver: useNative }).start();
+    Animated.timing(ty, {
+      toValue: 0,
+      duration: 340,
+      easing: Easing.bezier(0.2, 0.9, 0.25, 1),
+      useNativeDriver: useNative,
+    }).start();
   }, [mounted, ty]);
 
   const dismiss = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
     Keyboard.dismiss();
-    Animated.timing(ty, { toValue: winH, duration: 230, easing: Easing.in(Easing.cubic), useNativeDriver: useNative }).start(() => {
+    Animated.timing(ty, {
+      toValue: winH,
+      duration: 230,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: useNative,
+    }).start(() => {
       setMounted(false);
       onClosed();
     });
@@ -128,17 +177,29 @@ export function Sheet({
   // finger is clearly moving down, using the capture phase so a button under the finger can't keep it.
   const { grab, header } = useMemo(() => {
     const settle = () =>
-      Animated.spring(ty, { toValue: 0, bounciness: 4, speed: 16, useNativeDriver: useNative }).start();
-    const downward = (g: { dy: number; dx: number }) => g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2;
+      Animated.spring(ty, {
+        toValue: 0,
+        bounciness: 4,
+        speed: 16,
+        useNativeDriver: useNative,
+      }).start();
+    const downward = (g: { dy: number; dx: number }) =>
+      g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2;
     const handlers = {
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => ty.stopAnimation(),
-      onPanResponderMove: (_: unknown, g: { dy: number }) => ty.setValue(g.dy < 0 ? Math.max(-18, g.dy * 0.2) : g.dy),
-      onPanResponderRelease: (_: unknown, g: { dy: number; vy: number }) => (g.dy > sheetH * 0.25 || g.vy > 0.5 ? dismiss() : settle()),
+      onPanResponderMove: (_: unknown, g: { dy: number }) =>
+        ty.setValue(g.dy < 0 ? Math.max(-18, g.dy * 0.2) : g.dy),
+      onPanResponderRelease: (_: unknown, g: { dy: number; vy: number }) =>
+        g.dy > sheetH * 0.25 || g.vy > 0.5 ? dismiss() : settle(),
       onPanResponderTerminate: settle,
     };
     return {
-      grab: PanResponder.create({ onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: (_, g) => downward(g), ...handlers }),
+      grab: PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, g) => downward(g),
+        ...handlers,
+      }),
       header: PanResponder.create({
         // Buttons in the header claim their own taps first; anywhere else on the header starts a drag.
         onStartShouldSetPanResponder: () => true,
@@ -151,6 +212,92 @@ export function Sheet({
 
   const bottomInset = pad > 0 ? 0 : insets.bottom;
 
+  // On Android the sheet is drawn inside the app's own window rather than a Modal. A Modal is a
+  // separate Android window, and when the keyboard opens Android pans that whole window up to reveal
+  // the text field, on top of our own lift, leaving a see-through gap above the keyboard. In the app's
+  // window nothing moves on its own, so the measured lift is the only one. Back is handled here instead.
+  const overlay = Platform.OS === "android";
+  useEffect(() => {
+    if (!overlay || !mounted) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      dismiss();
+      return true;
+    });
+    return () => sub.remove();
+  }, [overlay, mounted, dismiss]);
+
+  const body = (
+    <View
+      style={s.sheetRoot}
+      ref={rootRef}
+      collapsable={false}
+      onLayout={remeasureRoot}
+    >
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={dismiss}
+        accessibilityLabel="Close"
+        accessibilityRole="button"
+      >
+        <Animated.View
+          style={[
+            s.backdrop,
+            {
+              opacity: ty.interpolate({
+                inputRange: [0, sheetH],
+                outputRange: [1, 0],
+                extrapolate: "clamp",
+              }),
+            },
+          ]}
+        />
+      </Pressable>
+      <View
+        style={{
+          width: "100%",
+          flex: 1,
+          justifyContent: "flex-end",
+          alignItems: "center",
+          paddingBottom: pad,
+          paddingTop: insets.top + 8,
+        }}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          accessibilityViewIsModal
+          style={[
+            s.sheet,
+            {
+              height: sheetH,
+              maxHeight: "100%",
+              paddingBottom: bottomInset,
+              transform: [{ translateY: ty }],
+            },
+          ]}
+        >
+          <View {...grab.panHandlers} style={s.grabZone} collapsable={false}>
+            <View style={s.grab} />
+          </View>
+          <DragContext.Provider
+            value={header.panHandlers as unknown as Record<string, unknown>}
+          >
+            <View style={{ flex: 1 }}>{children}</View>
+          </DragContext.Provider>
+        </Animated.View>
+      </View>
+    </View>
+  );
+
+  if (overlay) {
+    return mounted ? (
+      <View
+        style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]}
+        pointerEvents="box-none"
+      >
+        {body}
+      </View>
+    ) : null;
+  }
   return (
     <Modal
       visible={mounted}
@@ -160,29 +307,7 @@ export function Sheet({
       onRequestClose={dismiss}
       supportedOrientations={["portrait", "landscape"]}
     >
-      <View style={s.sheetRoot} ref={rootRef} collapsable={false} onLayout={remeasureRoot}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} accessibilityLabel="Close" accessibilityRole="button">
-          <Animated.View
-            style={[s.backdrop, { opacity: ty.interpolate({ inputRange: [0, sheetH], outputRange: [1, 0], extrapolate: "clamp" }) }]}
-          />
-        </Pressable>
-        <View
-          style={{ width: "100%", flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: pad, paddingTop: insets.top + 8 }}
-          pointerEvents="box-none"
-        >
-          <Animated.View
-            accessibilityViewIsModal
-            style={[s.sheet, { height: sheetH, maxHeight: "100%", paddingBottom: bottomInset, transform: [{ translateY: ty }] }]}
-          >
-            <View {...grab.panHandlers} style={s.grabZone} collapsable={false}>
-              <View style={s.grab} />
-            </View>
-            <DragContext.Provider value={header.panHandlers as unknown as Record<string, unknown>}>
-              <View style={{ flex: 1 }}>{children}</View>
-            </DragContext.Provider>
-          </Animated.View>
-        </View>
-      </View>
+      {body}
     </Modal>
   );
 }
