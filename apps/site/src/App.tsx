@@ -1,11 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { YouAsked } from "@youasked/react";
 import { API, SITE_KEY } from "./content";
-import { Entries } from "./Entries";
-import { Hero } from "./Hero";
-import { Agents, Faq, Final, Nav, Pricing } from "./Sections";
-import { Story } from "./Story";
-import { Theming } from "./Theming";
+import { Nav, SubFooter } from "./Sections";
+import { routeFor } from "./routes";
 
 // The site runs YouAsked on itself: the launcher in the corner is a real board for YouAsked.
 const SITE_LOOK = {
@@ -20,7 +17,10 @@ const SITE_LOOK = {
   mode: "light" as const,
 };
 
-export function App() {
+/** The whole site: the page for this path, inside the shared nav and the live YouAsked launcher. */
+export function Site({ path }: { path: string }) {
+  const route = routeFor(path);
+  const Page = route.component;
   // Icon-only launcher on phones, so it doesn't sit over the content.
   const wide = useSyncExternalStore(
     (onChange) => {
@@ -42,16 +42,16 @@ export function App() {
       label={wide ? "Ask us" : undefined}
     >
       <Nav />
-      <main>
-        <Hero />
-        <Story />
-        <Entries />
-        <Theming />
-        <Agents />
-        <Pricing />
-        <Faq />
-      </main>
-      <Final />
+      {route.path === "/" ? (
+        <Page />
+      ) : (
+        <>
+          <main>
+            <Page />
+          </main>
+          <SubFooter />
+        </>
+      )}
     </YouAsked>
   );
 }

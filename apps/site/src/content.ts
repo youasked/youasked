@@ -1,5 +1,5 @@
-export const SITE = "https://youasked.adenteo.workers.dev";
-export const API = "https://youasked-api.adenteo.workers.dev";
+export const SITE = "https://youasked.dev";
+export const API = "https://api.youasked.dev";
 
 /** Publishable key of the public demo app (sample Acme requests, anonymous visitors allowed). */
 export const DEMO_KEY = "ya_pub_da93si9r7h98u8v8jta1t1v6";

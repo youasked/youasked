@@ -1,9 +1,19 @@
-// Build-time render of the landing page, so crawlers and AI agents that don't run
-// JavaScript still get the full page. scripts/prerender.mjs injects it into dist/index.html.
+// Build-time render of every page, so crawlers and AI agents that don't run JavaScript still get the
+// full content. scripts/prerender.mjs writes each one to its own HTML file in dist/.
 import { renderToString } from "react-dom/server";
-import { App } from "./App";
-export { SITE } from "./content";
+import { Site } from "./App";
+import { ROUTES, NOT_FOUND, jsonLdFor } from "./routes";
+export { API, SITE } from "./content";
 
-export function render() {
-  return renderToString(<App />);
+export const pages = [...ROUTES, NOT_FOUND].map((r) => ({
+  path: r.path,
+  title: r.title,
+  description: r.description,
+  hidden: Boolean(r.hidden),
+  priority: r.priority ?? 0.5,
+  jsonLd: jsonLdFor(r),
+}));
+
+export function render(path: string) {
+  return renderToString(<Site path={path} />);
 }

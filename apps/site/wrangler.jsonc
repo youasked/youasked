@@ -1,10 +1,21 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "youasked",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
   "routes": [
     { "pattern": "youasked.dev", "custom_domain": true },
     { "pattern": "www.youasked.dev", "custom_domain": true }
   ],
-  "assets": { "directory": "./dist", "not_found_handling": "single-page-application" }
+  "vars": { "SITE_URL": "https://youasked.dev", "API_URL": "https://api.youasked.dev" },
+  // The worker runs first for pages (to redirect www and the old host, and to serve public boards), and
+  // skips the built assets and the Markdown/text files, which stay reachable on every host.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/*", "!/assets/*", "!/*.md", "!/*.txt", "!/*.svg", "!/og.png", "!/apple-touch-icon.png", "!/sitemap.xml"]
+  },
+  // Fonts for the share cards are bundled as raw bytes.
+  "rules": [{ "type": "Data", "globs": ["**/*.woff"], "fallthrough": true }]
 }

@@ -47,6 +47,9 @@ export type AppRow = {
   allowed_origins: string | null;
   workspace_id: string | null;
   claim_token: string | null;
+  slug: string | null;
+  public_board: number;
+  description: string | null;
 };
 
 export type UserRow = {

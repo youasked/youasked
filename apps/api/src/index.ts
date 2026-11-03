@@ -6,6 +6,7 @@ import { adminPage } from "./admin-page";
 import agent from "./agent";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
+import publicBoards, { publicSettings, publicUrl, shareFields } from "./public";
 import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
 import { loadIntegrations, notifyTeam, tg } from "./notify";
 import {
@@ -234,12 +235,24 @@ admin.get("/app", (c) => {
     watermark: Boolean(a.watermark),
     requireSignature: Boolean(a.require_signature),
     allowedOrigins: a.allowed_origins ? JSON.parse(a.allowed_origins) : null,
+    slug: a.slug,
+    publicBoard: Boolean(a.public_board),
+    description: a.description,
+    publicUrl: publicUrl(c.env, a),
   });
 });
 
 admin.patch("/app", async (c) => {
-  const body = await c.req.json<{ watermark?: boolean; requireSignature?: boolean; allowedOrigins?: string[] | null }>();
+  const body = await c.req.json<{
+    watermark?: boolean;
+    requireSignature?: boolean;
+    allowedOrigins?: string[] | null;
+    slug?: string | null;
+    publicBoard?: boolean;
+    description?: string | null;
+  }>();
   const a = c.get("app");
+  const pubSettings = await publicSettings(c.env, a, body);
   const origins =
     body.allowedOrigins === undefined
       ? a.allowed_origins
@@ -254,6 +267,11 @@ admin.patch("/app", async (c) => {
       a.id,
     )
     .run();
+  if (pubSettings) {
+    await c.env.DB.prepare("UPDATE apps SET slug = ?, public_board = ?, description = ? WHERE id = ?")
+      .bind(pubSettings.slug, pubSettings.public_board, pubSettings.description, a.id)
+      .run();
+  }
   return c.json({ ok: true });
 });
 
@@ -278,6 +296,7 @@ admin.get("/requests", async (c) => {
   return c.json({
     requests: results.map((r) => ({
       ...publicRequest(r, null),
+      ...shareFields(c.env, c.get("app"), r),
       attachments: files.get(r.id) ?? [],
       earlyAccess: r.early_count,
       credit: Boolean(r.credit),
@@ -308,7 +327,7 @@ admin.get("/requests/:id", async (c) => {
     .bind(r.id)
     .all();
   const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
-  return c.json({ request: publicRequest(r, null), attachments: files.get(r.id) ?? [], comments, voters, earlyAccess: early });
+  return c.json({ request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r) }, attachments: files.get(r.id) ?? [], comments, voters, earlyAccess: early });
 });
 
 admin.patch("/requests/:id", async (c) => {
@@ -328,7 +347,8 @@ admin.patch("/requests/:id", async (c) => {
   }
   const shipNote = body.shipNote !== undefined ? cleanText(body.shipNote, 500) || null : undefined;
   const { notified } = await setStatus(c.env.DB, r, status, shipNote);
-  return c.json({ request: publicRequest(await loadRequest(c, r.id), null), notified: notified > 0, told: notified });
+  const after = await loadRequest(c, r.id);
+  return c.json({ request: { ...publicRequest(after, null), ...shareFields(c.env, c.get("app"), after) }, notified: notified > 0, told: notified });
 });
 
 admin.post("/requests/:id/comments", async (c) => {
@@ -859,6 +879,8 @@ pub.post("/notifications/seen", async (c) => {
   return c.json({ ok: true });
 });
 
+// Before the widget routes below, which demand a key on everything under /v1.
+app.route("/v1/public", publicBoards);
 app.route("/v1", pub);
 
 export default {
