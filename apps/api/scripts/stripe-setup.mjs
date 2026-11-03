@@ -127,7 +127,12 @@ const portalParams = {
     customer_update: { enabled: true, allowed_updates: ["email", "name"] },
     invoice_history: { enabled: true },
     payment_method_update: { enabled: true },
-    subscription_cancel: { enabled: true, mode: "at_period_end", cancellation_reason: { enabled: false } },
+    subscription_cancel: {
+      enabled: true,
+      mode: "at_period_end",
+      // Asking why people leave is cheap churn research.
+      cancellation_reason: { enabled: true, options: ["too_expensive", "missing_features", "switched_service", "unused", "other"] },
+    },
     subscription_update: {
       enabled: true,
       default_allowed_updates: ["price"],
