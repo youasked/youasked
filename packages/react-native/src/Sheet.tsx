@@ -34,39 +34,45 @@ export function useInsets(): Insets {
 }
 
 /**
- * How far to lift the sheet so it sits right on the keyboard: how much the keyboard's top edge overlaps
- * the sheet's root, which fills the screen inside the Modal. This is how KeyboardAvoidingView works. It
- * is right whether or not Android resized the window (edge-to-edge Android 15+ doesn't), and it never
- * uses the keyboard's reported height, which on edge-to-edge Android doesn't match what's on screen.
+ * How far to lift the sheet so it sits right on the keyboard: how much the keyboard's top edge still
+ * overlaps the sheet's root, re-measured whenever the root's layout changes. Some Android setups
+ * (edge-to-edge Android 15+ with a Modal) also shrink the root by part of the keyboard after it opens;
+ * re-measuring means the two never add up. The keyboard's reported height isn't used: on edge-to-edge
+ * Android it doesn't match what's on screen.
  */
-function useKeyboardPad(rootRef: RefObject<View | null>): number {
-  const [pad, setPad] = useState(0);
+function useKeyboardPad(rootRef: RefObject<View | null>): [number, () => void] {
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const [fallback, setFallback] = useState(0);
+  const [rootBottom, setRootBottom] = useState(0);
+  const remeasure = useCallback(() => {
+    rootRef.current?.measureInWindow((_x, y, _w, h) => setRootBottom(y + h));
+  }, [rootRef]);
   useEffect(() => {
     const ios = Platform.OS === "ios";
     const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => {
       if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
       const top = e.endCoordinates.screenY;
-      const node = rootRef.current;
-      if (!node || !(top > 0)) {
-        setPad(e.endCoordinates.height);
-        return;
-      }
-      node.measureInWindow((_x, y, _w, h) => {
-        const lift = Math.max(0, Math.round(y + h - top));
-        if (__DEV__ && !ios) console.log(`[YouAsked] keyboard top ${Math.round(top)}, sheet bottom ${Math.round(y + h)}, reported height ${Math.round(e.endCoordinates.height)}, lift ${lift}`);
-        setPad(lift);
-      });
+      if (top > 0) setKeyboardTop(top);
+      else setFallback(e.endCoordinates.height);
+      remeasure();
     });
     const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", (e) => {
       if (ios) LayoutAnimation.configureNext({ duration: e.duration || 250, update: { type: "keyboard" } });
-      setPad(0);
+      setKeyboardTop(null);
+      setFallback(0);
     });
     return () => {
       show.remove();
       hide.remove();
     };
-  }, [rootRef]);
-  return pad;
+  }, [remeasure]);
+  const pad = keyboardTop === null ? fallback : rootBottom > 0 ? Math.max(0, Math.round(rootBottom - keyboardTop)) : 0;
+  useEffect(() => {
+    if (__DEV__ && Platform.OS === "android" && keyboardTop !== null) {
+      console.log(`[YouAsked] keyboard top ${Math.round(keyboardTop)}, sheet bottom ${Math.round(rootBottom)}, lift ${pad}`);
+    }
+  }, [keyboardTop, rootBottom, pad]);
+  return [pad, remeasure];
 }
 
 export function Sheet({
@@ -89,7 +95,7 @@ export function Sheet({
   const [mounted, setMounted] = useState(false);
   const closing = useRef(false);
   const rootRef = useRef<View>(null);
-  const pad = useKeyboardPad(rootRef);
+  const [pad, remeasureRoot] = useKeyboardPad(rootRef);
 
   useEffect(() => {
     if (active && !mounted) {
@@ -154,7 +160,7 @@ export function Sheet({
       onRequestClose={dismiss}
       supportedOrientations={["portrait", "landscape"]}
     >
-      <View style={s.sheetRoot} ref={rootRef} collapsable={false}>
+      <View style={s.sheetRoot} ref={rootRef} collapsable={false} onLayout={remeasureRoot}>
         <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} accessibilityLabel="Close" accessibilityRole="button">
           <Animated.View
             style={[s.backdrop, { opacity: ty.interpolate({ inputRange: [0, sheetH], outputRange: [1, 0], extrapolate: "clamp" }) }]}
