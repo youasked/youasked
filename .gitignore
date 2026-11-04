@@ -10,3 +10,4 @@ packages/react/playground/out
 .claude/worktrees
 packages/react-native/example/web/out
 apps/site/worker/vendor
+launch/
