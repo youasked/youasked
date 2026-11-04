@@ -10,20 +10,43 @@
   "unpkg": "./dist/youasked.js",
   "jsdelivr": "./dist/youasked.js",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./script": "./dist/youasked.js"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": true,
   "scripts": {
     "build": "rm -rf dist && node build.mjs && cp src/index.d.ts dist/index.d.ts",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["feature requests", "feedback", "roadmap", "vue", "svelte", "angular", "web component", "script tag"],
+  "keywords": [
+    "feature requests",
+    "feedback",
+    "roadmap",
+    "vue",
+    "svelte",
+    "angular",
+    "web component",
+    "script tag"
+  ],
   "homepage": "https://youasked.dev/docs#web",
-  "repository": { "type": "git", "url": "git+https://github.com/youasked/youasked.git", "directory": "packages/js" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youasked/youasked.git",
+    "directory": "packages/js"
+  },
   "devDependencies": {
     "@youasked/react": "*",
     "preact": "10.29.8"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
