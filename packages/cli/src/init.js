@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_API, signup, checkPublicKey } from "./api.js";
-import { detectProject, ensureIgnored, exists, firstExisting, hasDependency, installCommand, read, readEnv, upsertEnv } from "./project.js";
+import { detectProject, detectNative, ensureIgnored, exists, firstExisting, hasDependency, installCommand, read, readEnv, upsertEnv } from "./project.js";
 import {
   AGENTS_MARKER,
   agentsSection,
@@ -43,9 +43,9 @@ export async function init({ flags, cwd }) {
 
   say(`\n${bold("YouAsked")} ${dim("· feature requests your users can vote on")}`);
 
-  const project = detectProject(cwd);
+  const project = detectProject(cwd) ?? detectNative(cwd);
   if (!project) {
-    bad("No package.json in this folder. Run this from the root of your project.");
+    bad("No package.json, Xcode project or Gradle build in this folder. Run this from the root of your project.");
     process.exitCode = 1;
     return;
   }
@@ -113,7 +113,14 @@ export async function init({ flags, cwd }) {
 
     // ------------------------------------------------------------ package
     step("2. Install");
-    if (flags["no-install"]) {
+    const native = project.kind === "ios" || project.kind === "android";
+    if (native) {
+      say(
+        project.kind === "ios"
+          ? `  In Xcode: File > Add Package Dependencies, paste ${cyan("https://github.com/youasked/youasked")} and add the ${bold("YouAsked")} library.`
+          : `  Add ${cyan('maven("https://jitpack.io")')} to your repositories, then ${cyan('implementation("com.github.youasked.youasked:youasked:0.1.0")')}.`,
+      );
+    } else if (flags["no-install"]) {
       say(`  ${dim("Skipped (--no-install).")} Install it yourself: ${cyan(installLine(project))}`);
     } else if (hasDependency(project, project.sdk)) {
       ok(`${project.sdk} is already in package.json`);
@@ -140,6 +147,10 @@ export async function init({ flags, cwd }) {
     // ------------------------------------------------------------ what to add
     if (project.kind === "unknown") {
       printManual(project, publicKey, manual);
+    } else if (project.kind === "ios" || project.kind === "android") {
+      printNative(project, publicKey, manual);
+    } else if (project.kind === "web") {
+      printWeb(project, publicKey, manual);
     } else if (project.kind === "expo") {
       step("3. Where should people ask?");
       /** @type {string[]} */
@@ -245,7 +256,9 @@ export async function init({ flags, cwd }) {
     say(
       project.kind === "expo"
         ? `  1. Start the app (${cyan("npx expo start")}), open an entry point, add a request and vote on it. Dev builds count as test mode.`
-        : `  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`,
+        : project.kind === "ios" || project.kind === "android"
+          ? `  1. Run a debug build (it's in test mode) and tap the bubble in the corner. Add a request, vote on it.`
+          : `  1. Start your dev server and look for the chat bubble in the corner. Add a request, vote on it.`,
     );
     if (claimUrl) {
       say(`  2. Try it now on localhost. To go live, claim it: ${cyan(claimUrl)}`);
@@ -482,6 +495,50 @@ function addFeedbackPage(/** @type {Project} */ p, changes, /** @type {string[]}
 }
 
 /** For projects we don't recognise: no guessing, just what to paste. */
+/** Native iOS and Android: the publishable key is safe in the app; the secret stays on your server. */
+function printNative(/** @type {Project} */ p, /** @type {string} */ publicKey, /** @type {string[]} */ manual) {
+  step("3. Add it to your app");
+  if (p.kind === "ios") {
+    manual.push(
+      `Configure once and add the modifier to your root view:\n\nimport YouAsked\n\n@main struct MyApp: App {\n    init() { YouAsked.configure(appKey: "${publicKey}") }\n    var body: some Scene {\n        WindowGroup { ContentView().youAsked() }\n    }\n}`,
+      `Put entry points where people already look: YARequestButton(.row) in settings, YARequestButton(.icon) in a toolbar, YAFeatureCard() on a home screen, YAAskAbout(topic: "charts") next to a feature. Or YouAsked.open() from any button.`,
+      `If people sign in, sign their id on your server with YOUASKED_SECRET_KEY (never in the app) and call YouAsked.identify(user:signature:). See https://youasked.dev/docs#ios`,
+    );
+  } else {
+    manual.push(
+      `Configure once in Application.onCreate, and wrap your UI:\n\nYouAsked.configure(this, appKey = "${publicKey}")\n\nsetContent {\n    YouAskedHost {\n        AppContent()\n    }\n}`,
+      `Put entry points where people already look: RequestButton(variant = Row) in settings, FeatureCard() on a home screen, AskAbout(topic = "charts") next to a feature. Or YouAsked.open() from any button.`,
+      `If people sign in, sign their id on your server with YOUASKED_SECRET_KEY (never in the app) and call YouAsked.identify(user, signature). See https://youasked.dev/docs#android`,
+    );
+  }
+  manual.push(`Keep the secret key (${p.secretVar}, saved in ${p.envFile} when there is one) on your server. Never ship it in the app.`);
+}
+
+/** Vue, Svelte, Angular, Nuxt, Astro and plain Vite sites: @youasked/js, with the key inlined (it's publishable). */
+function printWeb(/** @type {Project} */ p, /** @type {string} */ publicKey, /** @type {string[]} */ manual) {
+  step("3. Add it to your app");
+  say(`  ${dim(`${p.label} isn't React, so this uses @youasked/js. It draws the same widget with its own renderer.`)}`);
+  const where =
+    p.label === "Nuxt"
+      ? "a client plugin (plugins/youasked.client.ts)"
+      : p.label === "Angular"
+        ? "your root component's ngOnInit"
+        : p.label === "SvelteKit" || p.label === "Svelte"
+          ? "onMount in your root layout"
+          : p.label === "Vue"
+            ? "main.ts, or onMounted in App.vue"
+            : p.label === "Astro"
+              ? "a <script> in your base layout"
+              : "your entry file";
+  manual.push(
+    `Start it in ${where}. The publishable key is safe in client code:\n\nimport { init } from "@youasked/js";\n\ninit({ appKey: "${publicKey}", label: "Ask us" });`,
+    `Put entry points anywhere in your markup. They're custom elements:\n\n<youasked-feature-card limit="3"></youasked-feature-card>\n<youasked-request-button variant="row"></youasked-request-button>\n<a href="#" data-youasked-open>Request a feature</a>`,
+  );
+  if (p.label === "Vue" || p.label === "Nuxt") manual.push(`Tell Vue the youasked- tags are custom elements, in vite.config (or nuxt.config vue.compilerOptions):\n\nvue({ template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith("youasked-") } } })`);
+  if (p.label === "Angular") manual.push(`Add CUSTOM_ELEMENTS_SCHEMA to the schemas of any component that uses the youasked- elements.`);
+  manual.push(`If people sign in, sign their id on your server and pass it in: identify({ id: user.id }, signature). See https://youasked.dev/docs#identity`);
+}
+
 function printManual(/** @type {Project} */ p, /** @type {string} */ publicKey, /** @type {string[]} */ manual) {
   step("3. Add it to your app");
   warn("I don't recognise this project, so I haven't touched any code.");

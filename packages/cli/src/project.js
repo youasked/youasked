@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * @typedef {"next-app" | "next-pages" | "vite" | "remix" | "cra" | "expo" | "unknown"} Kind
+ * @typedef {"next-app" | "next-pages" | "vite" | "remix" | "cra" | "expo" | "web" | "ios" | "android" | "unknown"} Kind
  * @typedef {{
  *   cwd: string, kind: Kind, label: string, pkg: any, ts: boolean, src: boolean, sdk: string,
  *   pm: "npm" | "pnpm" | "yarn" | "bun", envFile: string,
@@ -59,6 +59,22 @@ export function detectProject(/** @type {string} */ cwd) {
   } else if (has("react-scripts")) {
     kind = "cra";
     label = "React (Create React App)";
+  } else if (has("nuxt") || has("vue") || has("@sveltejs/kit") || has("svelte") || has("@angular/core") || has("astro") || has("vite")) {
+    // Not React: the script-tag / ESM build, which carries its own renderer.
+    kind = "web";
+    label = has("nuxt")
+      ? "Nuxt"
+      : has("vue")
+        ? "Vue"
+        : has("@sveltejs/kit")
+          ? "SvelteKit"
+          : has("svelte")
+            ? "Svelte"
+            : has("@angular/core")
+              ? "Angular"
+              : has("astro")
+                ? "Astro"
+                : "a Vite site";
   }
 
   const vars =
@@ -68,13 +84,51 @@ export function detectProject(/** @type {string} */ cwd) {
       ? { envFile: ".env.local", keyVar: "NEXT_PUBLIC_YOUASKED_KEY", apiVar: "NEXT_PUBLIC_YOUASKED_API_URL", keyExpr: "process.env.NEXT_PUBLIC_YOUASKED_KEY", apiExpr: "process.env.NEXT_PUBLIC_YOUASKED_API_URL" }
       : kind === "unknown"
         ? { envFile: ".env", keyVar: "YOUASKED_KEY", apiVar: "YOUASKED_API_URL", keyExpr: "process.env.YOUASKED_KEY", apiExpr: "process.env.YOUASKED_API_URL" }
+        : kind === "web"
+        ? { envFile: ".env", keyVar: "YOUASKED_KEY", apiVar: "YOUASKED_API_URL", keyExpr: "", apiExpr: "" }
         : kind === "cra"
         ? { envFile: ".env", keyVar: "REACT_APP_YOUASKED_KEY", apiVar: "REACT_APP_YOUASKED_API_URL", keyExpr: "process.env.REACT_APP_YOUASKED_KEY", apiExpr: "process.env.REACT_APP_YOUASKED_API_URL" }
         : { envFile: ".env", keyVar: "VITE_YOUASKED_KEY", apiVar: "VITE_YOUASKED_API_URL", keyExpr: "import.meta.env.VITE_YOUASKED_KEY", apiExpr: "import.meta.env.VITE_YOUASKED_API_URL" };
 
   /** The widget package for this platform. */
-  const sdk = kind === "expo" ? "@youasked/react-native" : "@youasked/react";
+  const sdk = kind === "expo" ? "@youasked/react-native" : kind === "web" ? "@youasked/js" : "@youasked/react";
   return { cwd, kind, label, pkg, ts, src, sdk, pm: detectPm(cwd, pkg), secretVar: "YOUASKED_SECRET_KEY", ...vars };
+}
+
+/**
+ * A native iOS or Android project (no package.json). The SDK comes from Swift Package Manager or
+ * Gradle, so the CLI only creates the app, saves the secret and prints the steps.
+ * @returns {Project | null}
+ */
+export function detectNative(/** @type {string} */ cwd) {
+  let names = [];
+  try {
+    names = fs.readdirSync(cwd);
+  } catch {
+    return null;
+  }
+  const ios = names.some((n) => n.endsWith(".xcodeproj") || n.endsWith(".xcworkspace")) || names.includes("Package.swift");
+  const android = names.some((n) => /^(settings|build)\.gradle(\.kts)?$/.test(n));
+  if (!ios && !android) return null;
+  const kind = ios ? "ios" : "android";
+  const xcode = names.find((n) => n.endsWith(".xcodeproj"));
+  const name = xcode ? xcode.replace(/\.xcodeproj$/, "") : path.basename(cwd);
+  return /** @type {Project} */ ({
+    cwd,
+    kind,
+    label: ios ? "an iOS project (Swift)" : "an Android project (Kotlin)",
+    pkg: { name, dependencies: {} },
+    ts: false,
+    src: false,
+    sdk: ios ? "https://github.com/youasked/youasked" : "com.github.youasked.youasked:youasked",
+    pm: "npm",
+    secretVar: "YOUASKED_SECRET_KEY",
+    envFile: ".env",
+    keyVar: "YOUASKED_KEY",
+    apiVar: "YOUASKED_API_URL",
+    keyExpr: "",
+    apiExpr: "",
+  });
 }
 
 /** First existing file out of the candidates (relative to cwd), or null. */

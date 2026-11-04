@@ -11,3 +11,12 @@ packages/react/playground/out
 packages/react-native/example/web/out
 apps/site/worker/vendor
 launch/
+packages/android/build
+packages/android/.gradle
+packages/android/*/build
+packages/android/local.properties
+
+# Swift SDK
+.build/
+.swiftpm/
+packages/swift/Example/*.xcodeproj

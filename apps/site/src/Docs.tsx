@@ -14,6 +14,9 @@ const TOC: [string, string][] = [
   ["mcp", "MCP server"],
   ["cli", "CLI"],
   ["react-native", "React Native"],
+  ["ios", "iOS (Swift)"],
+  ["android", "Android (Kotlin)"],
+  ["web", "Any website"],
   ["self-host", "Self-hosting"],
 ];
 
@@ -244,7 +247,72 @@ export default function RootLayout() {
   );
 }`}</Code>
           <p>
-            Then add <code>&lt;RequestButton variant="row" /&gt;</code> to a settings screen, <code>&lt;RequestButton variant="icon" /&gt;</code> to a header or <code>&lt;FeatureCard /&gt;</code> to a home screen. Sign users on your server, never in the app. Dev builds work in test mode. Swift and Flutter come next.
+            Then add <code>&lt;RequestButton variant="row" /&gt;</code> to a settings screen, <code>&lt;RequestButton variant="icon" /&gt;</code> to a header or <code>&lt;FeatureCard /&gt;</code> to a home screen. Sign users on your server, never in the app. Dev builds work in test mode.
+          </p>
+
+          <h2 id="ios">iOS: Swift and SwiftUI</h2>
+          <p>
+            A native SwiftUI sheet with detents, a keyboard-aware composer, Dynamic Type and VoiceOver, and no third-party dependencies. iOS 15 and up. Add the package in Xcode (File, Add Package Dependencies) with <code>https://github.com/youasked/youasked</code>, then:
+          </p>
+          <Code label="MyApp.swift">{`import SwiftUI
+import YouAsked
+
+@main
+struct MyApp: App {
+    init() {
+        YouAsked.configure(appKey: "ya_pub_…")
+    }
+    var body: some Scene {
+        WindowGroup {
+            ContentView().youAsked()   // launcher, cards, the occasional prompt and the sheet
+        }
+    }
+}`}</Code>
+          <p>
+            Open it from anywhere with <code>YouAsked.open()</code> or <code>YouAsked.open(topic: "charts")</code>. The entry points are <code>YAAskBar</code>, <code>YAFeatureCard</code>, <code>YARequestButton(.row)</code> and <code>YAAskAbout(topic:)</code>. Sign people in with <code>YouAsked.identify(user:signature:)</code>, using a signature from your server. Set <code>YouAsked.appearance</code> to match your app, with the same fields as the web, including <code>buttonRadius: .pill</code>. Debug builds run in test mode.
+          </p>
+
+          <h2 id="android">Android: Kotlin and Jetpack Compose</h2>
+          <p>
+            A Material 3 bottom sheet that sits on the keyboard with edge-to-edge on, the back button, TalkBack labels, and no networking libraries. minSdk 24. Add JitPack to your repositories, then the dependency:
+          </p>
+          <Code label="build.gradle.kts">{`// settings.gradle.kts: repositories { maven("https://jitpack.io") }
+implementation("com.github.youasked.youasked:youasked:0.1.0")`}</Code>
+          <Code label="Kotlin">{`// Application.onCreate
+YouAsked.configure(this, appKey = "ya_pub_…")
+
+// your activity
+setContent {
+    YouAskedHost {          // launcher, cards, the occasional prompt and the sheet
+        AppContent()
+    }
+}`}</Code>
+          <p>
+            Open it from anywhere with <code>YouAsked.open()</code> or <code>YouAsked.open(topic = "charts")</code>. The composables are <code>AskBar</code>, <code>FeatureCard</code>, <code>RequestButton</code>, <code>AskAbout</code> and <code>FeatureBoard</code>. Sign people in with <code>YouAsked.identify(user, signature)</code>, and theme it with <code>YouAskedHost(appearance = YouAskedAppearance(…))</code>. Debuggable builds run in test mode.
+          </p>
+
+          <h2 id="web">Any website: Vue, Svelte, Angular, plain HTML</h2>
+          <p>
+            <code>@youasked/js</code> is the same widget bundled with Preact, so your site doesn't need React. It works in Vue, Svelte, Angular, Nuxt, Astro, plain HTML and no-code builders like Webflow, Framer and WordPress. With no build step, it's one script tag:
+          </p>
+          <Code label="HTML">{`<script src="https://cdn.jsdelivr.net/npm/@youasked/js"
+        data-app-key="ya_pub_…" data-label="Ask us" defer></script>`}</Code>
+          <p>
+            The tag also takes <code>data-accent</code>, <code>data-mode</code>, <code>data-radius</code>, <code>data-button-radius</code>, <code>data-trigger="none"</code>, <code>data-position</code> and <code>data-nudge="off"</code>. With a bundler:
+          </p>
+          <Code label="TS">{`import { init, identify, open } from "@youasked/js";
+
+init({ appKey: "ya_pub_…", label: "Ask us" });
+identify({ id: user.id }, signatureFromYourServer);
+open({ topic: "charts" });`}</Code>
+          <p>The entry points are custom elements, and any link with <code>data-youasked-open</code> opens the sheet:</p>
+          <Code label="HTML">{`<youasked-ask-bar></youasked-ask-bar>
+<youasked-feature-card limit="3"></youasked-feature-card>
+<youasked-request-button variant="row"></youasked-request-button>
+<youasked-ask-about topic="charts"></youasked-ask-about>
+<a href="#" data-youasked-open>Request a feature</a>`}</Code>
+          <p>
+            In Vue, tell the compiler the <code>youasked-</code> tags are custom elements (<code>isCustomElement: (t) =&gt; t.startsWith("youasked-")</code>). In Angular, add <code>CUSTOM_ELEMENTS_SCHEMA</code>. Call <code>init</code> in the browser only, for example in <code>onMounted</code>.
           </p>
 
           <h2 id="self-host">Self-hosting</h2>

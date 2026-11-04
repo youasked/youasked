@@ -1,0 +1,23 @@
+name: YouAskedExample
+options:
+  bundleIdPrefix: dev.youasked.example
+  deploymentTarget:
+    iOS: "15.0"
+packages:
+  YouAsked:
+    path: ../../..
+targets:
+  YouAskedExample:
+    type: application
+    platform: iOS
+    sources: [Example]
+    dependencies:
+      - package: YouAsked
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: YouAsked Example
+        PRODUCT_BUNDLE_IDENTIFIER: dev.youasked.example.app
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"

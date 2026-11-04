@@ -131,7 +131,7 @@ export function CannyPage() {
               ["Roadmap and changelog", "Yes", "Yes, as a public board per app"],
               ["AI", "Autopilot pulls feedback from tools such as Intercom, Zendesk and Gong", "AI duplicate matching and a weekly digest, plus agents that read requests through MCP"],
               ["Agents and MCP", "An MCP server has been reported for paid plans", "MCP server, one-command CLI install, llms.txt, install guide and Claude Code skill, “closes YA-12” ships from a commit"],
-              ["Mobile SDK", "None native", "React Native and Expo SDK, plus React and Next.js on the web"],
+              ["Mobile SDK", "None native", "Native iOS (Swift) and Android (Kotlin), plus React Native and Expo"],
               ["Open source", "No", "Widget, CLI and MCP are MIT. The server is source-available (FSL) and can be self-hosted"],
               ["Track record", "Established, with a long track record", "New and in beta"],
             ]}
@@ -163,7 +163,7 @@ export function CannyPage() {
           />
 
           <Callout title="Honest caveats">
-            YouAsked is in beta. It has no free tier, no SSO, no Linear or Jira sync yet, and it supports React and Next.js first. If any of those is a blocker, Canny is the better choice today.
+            YouAsked is in beta. It has no free tier, no SSO, and no Linear or Jira sync yet. If any of those is a blocker, Canny is the better choice today.
           </Callout>
 
           <h2>Questions</h2>
@@ -266,7 +266,7 @@ export function FeaturebasePage() {
           />
 
           <Callout title="Honest caveats">
-            YouAsked is in beta, supports React and Next.js first, and has no help center, SSO or Linear sync yet. If you need a support suite, Featurebase is the better fit.
+            YouAsked is in beta and has no help center, SSO or Linear sync yet. If you need a support suite, Featurebase is the better fit.
           </Callout>
 
           <h2>Questions</h2>

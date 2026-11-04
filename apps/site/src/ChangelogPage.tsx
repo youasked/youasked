@@ -6,6 +6,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 export const ENTRIES: Entry[] = [
   {
     date: "2026-11-04",
+    title: "Native iOS and Android, and any website",
+    body: "YouAsked now has a SwiftUI SDK for iOS (Swift Package Manager), a Jetpack Compose SDK for Android (JitPack), and @youasked/js for websites that aren't React: Vue, Svelte, Angular, Nuxt, Astro, plain HTML and no-code builders, as a script tag or ES module. Same sheet, votes, in-app notices and occasional prompt everywhere, on one board. npx youasked init picks the right one.",
+    tags: ["New", "iOS", "Android", "Web"],
+  },
+  {
+    date: "2026-11-04",
     title: "Button corners, separately from cards",
     body: "appearance now takes buttonRadius for buttons, the ask bar, the composer and chips: a number, any CSS length, or \"pill\". radius keeps shaping cards, rows and the sheet. Both work in React and React Native (@youasked/react 0.7.0, @youasked/react-native 0.2.0).",
     tags: ["New", "Theming"],

@@ -8,6 +8,7 @@ import { GUARANTEE_DAYS, money, price } from "../plans-view";
 import { CopyButton } from "../ui";
 import { Agents, Demo, Faq, PricingRow, SiteFooter, SiteNav } from "../v3/HomeV3";
 import { CARDS, Phone, type Card } from "./Phone";
+import { Platforms, WorksWith } from "./Platforms";
 import { Shader } from "./Shader";
 import { Showcase } from "./Showcase";
 import "../v3/v3.css";
@@ -20,6 +21,7 @@ export function HomeV5() {
       <main>
         <Hero />
         <Try />
+        <Platforms />
         <MakeItYours />
         <Places />
         <Agents />
@@ -59,6 +61,7 @@ function Hero() {
           Free while you build on localhost. Plans from {money(price("solo", "month", true))} a month, with a {GUARANTEE_DAYS}‑day
           money-back guarantee.
         </p>
+        <WorksWith />
         <div className="h5-show" id="how">
           <Showcase />
         </div>

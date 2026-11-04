@@ -43,7 +43,7 @@ export const LANDING_FAQ: Faq[] = [
   },
   {
     q: "Which platforms does it support?",
-    a: "React and Next.js today. React Native and Expo are coming next, then Swift and Flutter, all on the same API.",
+    a: "The web (React, Next.js, and a script tag for Vue, Svelte, Angular, Nuxt, Astro, plain HTML, Webflow and WordPress), React Native and Expo, native iOS in Swift and SwiftUI, and native Android in Kotlin and Jetpack Compose. They all share one board, so a request from your iPhone app and one from your website add up.",
   },
   {
     q: "Do I have to use Telegram?",

@@ -6,9 +6,15 @@ Add YouAsked feature requests to your app in one command.
 npx youasked init
 ```
 
-It works out what you're running (Next.js app or pages router, Vite + React, Remix / React Router, Create React App), creates an app for you, saves the keys to your env file (and git-ignores it), installs `@youasked/react` with your package manager, and wraps your app in the widget. Every file it touches is listed with what changed. If it can't edit something safely it prints the exact code to paste instead.
+It works out what you're running, creates an app for you, saves the keys to your env file (and git-ignores it), installs the right SDK and wires it in. Every file it touches is listed with what changed. If it can't edit something safely it prints the exact code to paste instead.
 
-React Native / Expo isn't supported yet; `init` says so and stops without changing anything.
+| Project | SDK | What `init` does |
+|---|---|---|
+| Next.js (app or pages router), Vite + React, Remix / React Router, Create React App | `@youasked/react` | Installs it and wraps your app |
+| Expo / React Native | `@youasked/react-native` | Installs it, adds the provider, and prints where each entry point goes |
+| Vue, Nuxt, Svelte, SvelteKit, Angular, Astro, plain Vite | `@youasked/js` | Installs it and prints the `init` call and elements for your framework |
+| iOS (an `.xcodeproj` or `Package.swift`) | Swift package | Creates the app and prints the Swift Package and SwiftUI steps |
+| Android (a Gradle build) | `com.github.youasked.youasked:youasked` | Creates the app and prints the Gradle and Compose steps |
 
 ## Commands
 

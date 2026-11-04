@@ -4,7 +4,11 @@ Feature requests your users can vote on, and a "you asked, it's live" moment whe
 
 - `apps/api`: Hono on Cloudflare Workers + D1. Public widget API (`/v1/*`, publishable key), admin API
   (`/v1/admin/*`, secret key) and a test dashboard at `/admin`.
-- `packages/react`: `@youasked/react`, the widget, plus `@youasked/react/server` (`signUser`).
+- `packages/react`: `@youasked/react`, the widget for React and Next.js, plus `@youasked/react/server` (`signUser`).
+- `packages/js`: `@youasked/js`, the same widget for any other website (Vue, Svelte, Angular, Nuxt, Astro, plain HTML), as a script tag or ES module.
+- `packages/react-native`: `@youasked/react-native`, native views for React Native and Expo.
+- `packages/swift`: the iOS SDK in SwiftUI, installed with Swift Package Manager from this repo (`Package.swift` at the root).
+- `packages/android`: the Android SDK in Jetpack Compose, installed from JitPack (`com.github.youasked.youasked:youasked`).
 
 - `packages/cli`: `youasked`, the setup command. `npx youasked init` creates an app, saves the keys and wires up the widget.
 - `packages/mcp`: `@youasked/mcp`, an MCP server so a coding agent can list requests, reply, set status and merge.
@@ -75,4 +79,4 @@ Create an app: `npx youasked init --api http://localhost:8787`, or `POST /v1/sig
 
 ## License
 
-The packages under `packages/` (`@youasked/react`, `youasked`, `@youasked/mcp`) are MIT. The hosted API, dashboard and website under `apps/` are [FSL-1.1-MIT](https://fsl.software): you can read, run and self-host them for your own apps, but not offer them as a competing hosted service. Each release becomes MIT two years after it ships. See [LICENSE](LICENSE).
+The SDKs and tools under `packages/` (React, JS, React Native, Swift, Android, the CLI and the MCP server) are MIT. The hosted API, dashboard and website under `apps/` are [FSL-1.1-MIT](https://fsl.software): you can read, run and self-host them for your own apps, but not offer them as a competing hosted service. Each release becomes MIT two years after it ships. See [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 # Install YouAsked
 
-This guide is written for coding agents (Claude Code, Codex, Cursor) and the people working with them. Follow it from start to finish. It covers React and Next.js web apps, React Native and Expo apps, and products that have both.
+This guide is written for coding agents (Claude Code, Codex, Cursor) and the people working with them. Follow it from start to finish. It covers React and Next.js web apps, other websites (Vue, Svelte, Angular, Nuxt, Astro, plain HTML, no-code builders), React Native and Expo apps, native iOS (Swift) and Android (Kotlin) apps, and products that have more than one.
 
 YouAsked puts feature requests inside the app. People ask and vote in a sheet that feels built in. The team hears about it in Telegram, Slack or Discord. When it ships, everyone who asked is told inside the app.
 
@@ -18,8 +18,11 @@ YouAsked puts feature requests inside the app. People ask and vote in a sheet th
 Work out and write down:
 
 1. **Platforms:**
-   - **Web:** Next.js App Router, Next.js Pages Router, Vite, Remix or CRA.
-   - **React Native:** Expo or bare.
+   - **Web, React:** Next.js App Router, Next.js Pages Router, Vite, Remix or CRA. Use `@youasked/react`.
+   - **Web, not React:** Vue, Nuxt, Svelte, SvelteKit, Angular, Astro, plain HTML, Webflow, WordPress. Use `@youasked/js` (same widget, its own renderer).
+   - **React Native:** Expo or bare. Use `@youasked/react-native`.
+   - **iOS native:** SwiftUI or UIKit. Use the Swift package from `https://github.com/youasked/youasked`.
+   - **Android native:** Jetpack Compose. Use `com.github.youasked.youasked:youasked` from JitPack.
    - **Both:** for example a PWA plus an Expo app, possibly in separate repos. If the other platform lives in another repo, say so and ask whether to do it too.
 2. **Layout:**
    - the home or dashboard screen
@@ -72,13 +75,24 @@ Expo bakes `EXPO_PUBLIC_*` values in at build time. Set them for every EAS build
 ## 4. Install
 
 ```sh
-# Web
+# Web, React and Next.js
 npm i @youasked/react
+
+# Web, anything else (Vue, Svelte, Angular, Nuxt, Astro…)
+npm i @youasked/js
+# or, with no build step, in <head>:
+# <script defer src="https://cdn.jsdelivr.net/npm/@youasked/js" data-app-key="ya_pub_…"></script>
 
 # React Native / Expo
 npm i @youasked/react-native
 npx expo install expo-haptics @react-native-async-storage/async-storage   # optional: haptics, remembered anonymous id
 ```
+
+**iOS (Swift):** in Xcode, File > Add Package Dependencies, `https://github.com/youasked/youasked`, add the `YouAsked` library. Then `YouAsked.configure(appKey:)` in the `App` init and `.youAsked()` on the root view. Entry points: `YAAskBar`, `YAFeatureCard`, `YARequestButton(.row)`, `YAAskAbout(topic:)`; open with `YouAsked.open()`. Full guide: https://youasked.dev/docs#ios
+
+**Android (Kotlin):** add `maven("https://jitpack.io")` to the repositories in `settings.gradle.kts`, then `implementation("com.github.youasked.youasked:youasked:0.1.0")`. Call `YouAsked.configure(this, appKey = …)` in `Application.onCreate` and wrap the UI in `YouAskedHost { … }`. Composables: `AskBar`, `FeatureCard`, `RequestButton`, `AskAbout`, `FeatureBoard`; open with `YouAsked.open()`. Full guide: https://youasked.dev/docs#android
+
+**Not React on the web:** `init({ appKey })` from `@youasked/js` once in the browser (`onMounted`, `onMount`, `ngOnInit`, a Nuxt client plugin), then use the elements `<youasked-ask-bar>`, `<youasked-feature-card>`, `<youasked-request-button variant="row">`, `<youasked-ask-about topic="…">`, or `data-youasked-open` on any link. Tell Vue they're custom elements (`isCustomElement: (t) => t.startsWith("youasked-")`); in Angular add `CUSTOM_ELEMENTS_SCHEMA`. Steps 5 and 6 below are written for React; follow the same choices with these elements. Full guide: https://youasked.dev/docs#web
 
 ## 5. Add the provider once, near the root
 

@@ -57,6 +57,6 @@ The first 100 paying workspaces keep the founding price while they stay subscrib
 
 - **Can a request make an AI change my code?** No. Requests are text people wrote, never instructions. Nothing ships without your commit.
 - **What do you get about my users?** Only what you pass: a signed user ID. Email and name are optional; anonymous works too.
-- **Platforms?** React and Next.js today; React Native and Expo next, then Swift and Flutter.
+- **Platforms?** React and Next.js; any other website through a script tag (Vue, Svelte, Angular, Nuxt, Astro, plain HTML, Webflow, WordPress); React Native and Expo; native iOS (Swift, SwiftUI); native Android (Kotlin, Jetpack Compose). One board across all of them.
 - **Is there a free plan?** No. It is free to try on localhost (test mode), and every plan has a 14-day money-back guarantee.
 - **Can I self-host?** Yes. The server is source-available under FSL-1.1-MIT; the packages are MIT.

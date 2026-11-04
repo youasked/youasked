@@ -36,7 +36,7 @@ export const ROUTES: Route[] = [
     path: "/",
     title: "YouAsked: in-app feature requests that tell users when you ship",
     description:
-      "Feature requests inside your React and React Native apps. Users ask and vote, you hear it on Telegram, Slack or Discord, and everyone who asked is told when you ship.",
+      "Feature requests inside your web, iOS and Android apps (React, React Native, Swift, Kotlin, Vue, Svelte and more). Users ask and vote, you hear it on Telegram, Slack or Discord, and everyone who asked is told when you ship.",
     component: HomeV5,
     faq: LANDING_FAQ,
     priority: 1,
