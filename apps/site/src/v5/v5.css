@@ -532,3 +532,34 @@
   .m5-group .m5-label b { display: inline; margin-left: 6px; }
 }
 .m5-group > .m5-seg, .m5-group > .m5-swatches { justify-self: start; }
+
+/* ------------------------------------------------------------------ the prompt, configured live */
+
+.nc { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 460px); justify-content: center; align-items: center; gap: 56px; width: 100%; text-align: left; }
+.p5-tile.wide .p5-stage > .nc { width: 100%; }
+.nc-stage { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 380px; padding: 14px; overflow: hidden; border-radius: 34px; background: linear-gradient(180deg, #f6f7fb, #eef0f7); box-shadow: inset 0 0 0 1px var(--line); }
+.nc-stage[data-pos="top"] { justify-content: flex-start; }
+.nc-skel { position: absolute; inset: 22px 22px auto; display: grid; gap: 12px; opacity: 0.9; }
+.nc-skel i { display: block; height: 54px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.04); }
+.nc-skel i:first-child { width: 55%; height: 22px; border-radius: 8px; background: #e3e6ef; box-shadow: none; }
+.nc-stage[data-pos="top"] .nc-skel { inset: auto 22px 22px; }
+.nc-card { position: relative; z-index: 1; left: auto; right: auto; bottom: auto; animation: none; transition: transform 0.4s var(--spring); }
+.nc-card .ph-card-actions span { display: inline-flex; align-items: center; height: 36px; padding: 0 15px; border-radius: 999px; background: #f1f2f6; font: 600 13.5px Switzer, system-ui, sans-serif; }
+.nc-card .ph-card-actions span.primary { background: #2b4bee; color: #fff; }
+.nc-card .ph-card-title { overflow-wrap: anywhere; }
+.nc-sentence { font-size: 19px; line-height: 2.05; color: var(--ink-2); }
+.nc-pick { position: relative; display: inline-flex; align-items: center; height: 36px; padding: 0 30px 0 14px; border-radius: 999px; background: var(--wash); color: var(--cobalt); font-weight: 600; white-space: nowrap; vertical-align: middle; line-height: 1; box-shadow: inset 0 0 0 1px rgba(43, 75, 238, 0.18); }
+.nc-pick::after { content: ""; position: absolute; right: 13px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.nc-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.nc-pick:focus-within { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+.nc-field { display: block; margin-top: 20px; }
+.nc-field span { display: block; margin-bottom: 8px; font: 600 13.5px Switzer, system-ui, sans-serif; color: var(--muted); }
+.nc-field input { width: 100%; height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 500 16px Switzer, system-ui, sans-serif; box-shadow: inset 0 0 0 1px var(--line-2); }
+.nc-field input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--cobalt); }
+.nc-note { margin-top: 16px; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
+.nc-code { margin-top: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 860px) {
+  .nc { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .nc-stage { height: 320px; }
+  .nc-sentence { font-size: 17px; }
+}

@@ -261,16 +261,8 @@ function Places() {
                 <AskAbout topic="charts" prompt="Want more from charts?" />
               </div>
             </Tile>
-            <Tile title="An occasional prompt" code="<YouAsked nudge />" wide>
-              <div className="p5-nudge">
-                <NudgePreview />
-                <ul className="p5-nudge-rules" aria-label="Default settings, all changeable in the dashboard">
-                  <li>Once a week at most</li>
-                  <li>After 30 seconds of use</li>
-                  <li>Never on a first visit</li>
-                  <li>Backs off when dismissed</li>
-                </ul>
-              </div>
+            <Tile title="An occasional prompt, on your terms" code="<YouAsked nudge={…} />" wide>
+              <NudgeConfig />
             </Tile>
           </div>
         </Demo>
@@ -279,29 +271,95 @@ function Places() {
   );
 }
 
-/** The prompt as the SDK draws it, standing still so it can be read. */
-function NudgePreview() {
+const EVERY = [1, 3, 7, 14, 30];
+const AFTER = [10, 30, 60, 120];
+const SKIP = [0, 1, 2, 4];
+
+/** The prompt's settings, as the dashboard (or the nudge prop) takes them, with a live preview. */
+function NudgeConfig() {
+  const [everyDays, setEvery] = useState(7);
+  const [activeSeconds, setAfter] = useState(30);
+  const [skipVisits, setSkip] = useState(1);
+  const [position, setPosition] = useState<"bottom" | "top">("bottom");
+  const [message, setMessage] = useState("Got an idea for your app?");
+  const days = (n: number) => (n === 1 ? "day" : n === 7 ? "week" : n === 14 ? "2 weeks" : n === 30 ? "month" : `${n} days`);
+  const secs = (n: number) => (n < 60 ? `${n} seconds` : n === 60 ? "a minute" : "2 minutes");
+  // skipVisits n means it can first show on visit n + 1.
+  const visits = (n: number) => ["first", "second", "third", "fourth", "fifth"][n] ?? `${n + 1}th`;
+  const custom = message.trim() && message.trim() !== "Got an idea for your app?";
   return (
-    <div className="ph-card p5-nudge-card" aria-label="The occasional prompt">
-      <div className="ph-card-top">
-        <span className="ph-card-kicker">Help shape your app</span>
-        <span className="ph-card-x" aria-hidden="true" />
+    <div className="nc">
+      <div className="nc-stage" data-pos={position} aria-label="Preview of the prompt">
+        <div className="nc-skel" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="ph-card nc-card">
+          <div className="ph-card-top">
+            <span className="ph-card-kicker">Help shape your app</span>
+            <span className="ph-card-x" aria-hidden="true" />
+          </div>
+          <div className="ph-card-nudge">
+            <span className="ph-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
+                <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <p className="ph-card-title">{message.trim() || "Got an idea for your app?"}</p>
+          </div>
+          <p className="ph-card-body">Ask for a feature or vote on what others want.</p>
+          <div className="ph-card-actions">
+            <span className="primary">Share an idea</span>
+            <span>Not now</span>
+          </div>
+        </div>
       </div>
-      <div className="ph-card-nudge">
-        <span className="ph-card-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
-            <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        <p className="ph-card-title">Got an idea for your app?</p>
-      </div>
-      <p className="ph-card-body">Ask for a feature or vote on what others want.</p>
-      <div className="ph-card-actions">
-        <span className="primary">Share an idea</span>
-        <span>Not now</span>
+      <div className="nc-panel">
+        <p className="nc-sentence">
+          Show it at most once every{" "}
+          <Pick label="How often" value={everyDays} options={EVERY} text={days} onChange={setEvery} />, after{" "}
+          <Pick label="After how long" value={activeSeconds} options={AFTER} text={secs} onChange={setAfter} /> of use, from their{" "}
+          <Pick label="First visit it can show on" value={skipVisits} options={SKIP} text={visits} onChange={setSkip} /> visit, at the{" "}
+          <Pick label="Where" value={position} options={["bottom", "top"]} text={(v) => `${v} of the screen`} onChange={(v) => setPosition(v as "bottom" | "top")} />.
+        </p>
+        <label className="nc-field">
+          <span>Headline</span>
+          <input value={message} maxLength={60} onChange={(e) => setMessage(e.target.value)} aria-label="Headline" />
+        </label>
+        <p className="nc-note">It also steps back each time someone dismisses it, and stays away from people who opened the sheet recently. Change any of this in your dashboard, without a release.</p>
+        <pre className="m5-code nc-code" aria-label="The code for these settings">
+          <span className="k">{"<YouAsked"}</span> nudge={"{{"}
+          {"\n  "}everyDays: <span className="n">{everyDays}</span>, activeSeconds: <span className="n">{activeSeconds}</span>,
+          {"\n  "}skipVisits: <span className="n">{skipVisits}</span>, position: <span className="s">"{position}"</span>,
+          {custom ? (
+            <>
+              {"\n  "}message: <span className="s">"{message.trim().replace(/"/g, "\\\"")}"</span>,
+            </>
+          ) : null}
+          {"\n"}
+          {"}}"} <span className="k">{"/>"}</span>
+        </pre>
       </div>
     </div>
+  );
+}
+
+/** A choice inside a sentence: looks like part of the text, opens like a select. */
+function Pick<T extends string | number>({ label, value, options, text, onChange }: { label: string; value: T; options: T[]; text: (v: T) => string; onChange: (v: T) => void }) {
+  return (
+    <span className="nc-pick">
+      <select aria-label={label} value={String(value)} onChange={(e) => onChange((typeof value === "number" ? Number(e.target.value) : e.target.value) as T)}>
+        {options.map((o) => (
+          <option key={String(o)} value={String(o)}>
+            {text(o)}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden="true">{text(value)}</span>
+    </span>
   );
 }
 
