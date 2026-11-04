@@ -58,8 +58,8 @@ function Hero() {
           <CopyButton text={AGENT_PROMPT} label="Copy setup prompt" />
         </div>
         <p className="h5-note">
-          Free while you build on localhost. Plans from {money(price("solo", "month", true))} a month, with a {GUARANTEE_DAYS}‑day
-          money-back guarantee.
+          Free while you build on localhost. Plans from {money(price("solo", "year", true) / 12)} a month billed yearly, with a{" "}
+          {GUARANTEE_DAYS}‑day money-back guarantee.
         </p>
         <WorksWith />
         <div className="h5-show" id="how">

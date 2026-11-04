@@ -96,21 +96,27 @@ for (const plan of Object.keys(PLANS)) {
       const amount = cents(founding ? PRICES[plan].founding[interval] : PRICES[plan][interval]);
       const found = (await api("GET", "/prices", { lookup_keys: [lk], limit: 1 })).data[0];
       let price = found;
-      if (found) {
-        if (found.unit_amount !== amount || found.product !== product.id) {
-          log(`WARNING ${lk}: Stripe has ${found.unit_amount} cents, plans.ts says ${amount}. Prices can't be edited; make a new price and move the lookup key by hand.`);
-        } else log(`price ${lk} exists`);
+      const changed = found && (found.unit_amount !== amount || found.product !== product.id);
+      if (found && !changed) {
+        log(`price ${lk} exists`);
       } else {
+        // Stripe prices can't be edited. A changed amount gets a new price that takes over the lookup
+        // key (so checkout picks it up), and the old one is archived. Existing subscriptions keep theirs.
         price = await api("POST", "/prices", {
           product: product.id,
           currency: "usd",
           unit_amount: amount,
           recurring: { interval },
           lookup_key: lk,
+          transfer_lookup_key: true,
           nickname: `${PLANS[plan].name} ${interval === "year" ? "yearly" : "monthly"}${founding ? " (founding)" : ""}`,
           metadata: { youasked_plan: plan, founding: founding ? "1" : "0" },
         });
         log(`created price ${lk} (${amount / 100} USD)`);
+        if (changed) {
+          await api("POST", `/prices/${found.id}`, { active: false });
+          log(`archived the old ${lk} (${found.unit_amount / 100} USD)`);
+        }
       }
       if (!founding) portalPrices[plan].push(price.id);
     }

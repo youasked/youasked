@@ -22,9 +22,10 @@ export const PLANS: Record<Plan, {
 };
 
 export const PRICES: Record<Plan, Record<Interval, number> & { founding: Record<Interval, number> }> = {
-  solo: { month: 15, year: 150, founding: { month: 9, year: 90 } },
-  pro: { month: 39, year: 390, founding: { month: 24, year: 240 } },
-  studio: { month: 79, year: 790, founding: { month: 49, year: 490 } },
+  // Yearly is about a third off (four months free), and a round number a month.
+  solo: { month: 15, year: 120, founding: { month: 9, year: 72 } },
+  pro: { month: 39, year: 312, founding: { month: 24, year: 192 } },
+  studio: { month: 79, year: 624, founding: { month: 49, year: 384 } },
 };
 
 /** The first this-many paying workspaces keep the founding price for as long as they stay subscribed. */

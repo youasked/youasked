@@ -8,6 +8,8 @@ import {
   PLAN_ORDER,
   comparisonRows,
   monthsFree,
+  priceView,
+  yearlyTag,
   money,
   perMonth,
   planFeatures,
@@ -24,7 +26,7 @@ function Toggle({ value, onChange }: { value: Interval; onChange: (v: Interval) 
         Monthly
       </button>
       <button type="button" aria-pressed={value === "year"} onClick={() => onChange("year")}>
-        Yearly <span className="seg-tag">2 months free</span>
+        Yearly <span className="seg-tag">{yearlyTag()}</span>
       </button>
     </div>
   );
@@ -48,7 +50,7 @@ function Notes() {
 
 /** The plan cards with the Monthly/Yearly toggle. Shared by the landing page and /pricing. */
 export function Plans() {
-  const [interval, setInterval] = useState<Interval>("month");
+  const [interval, setInterval] = useState<Interval>("year");
   return (
     <>
       <div className="plans-bar">
@@ -60,8 +62,7 @@ export function Plans() {
       <div className="plans">
         {PLAN_ORDER.map((key) => {
           const p = PLANS[key];
-          const founding = price(key, interval, true);
-          const regular = price(key, interval, false);
+          const v = priceView(key, interval);
           return (
             <div className="plan" key={key} data-plan={key}>
               <div className="plan-top">
@@ -70,17 +71,23 @@ export function Plans() {
               </div>
               <div className="plan-amt">
                 <span className="amt">
-                  {money(founding)}
-                  <small>/{interval === "month" ? "month" : "year"}</small>
+                  {money(v.perMonth)}
+                  <small>/month</small>
                 </span>
-                <span className="was">
-                  <s>{money(regular)}</s> regular
-                </span>
+                {v.was !== null && (
+                  <span className="was">
+                    <s>{money(v.was)}</s>
+                  </span>
+                )}
               </div>
               <p className="plan-sub">
-                {interval === "year"
-                  ? `${money(perMonth(founding))} a month, billed yearly. ${monthsFree(key)} months free.`
-                  : "Billed monthly. Cancel any time."}
+                {v.billed !== null ? (
+                  <>
+                    <b>{money(v.billed)} billed yearly.</b> You save {money(v.saves)} a year.
+                  </>
+                ) : (
+                  "Founding price, billed monthly. Cancel any time."
+                )}
               </p>
               <ul>
                 {planFeatures(key).map((f) => (
@@ -173,7 +180,8 @@ export function PricingPage() {
             Prices in US dollars. Founding prices: {money(price("solo", "month", true))}, {money(price("pro", "month", true))} and{" "}
             {money(price("studio", "month", true))} a month for the first {FOUNDING_SLOTS} paying workspaces, locked for as long as they stay subscribed. Regular
             prices are {money(price("solo", "month", false))}, {money(price("pro", "month", false))} and {money(price("studio", "month", false))} a month.
-            Yearly is {monthsFree("solo")} months free.
+            Yearly is {monthsFree("solo")} months free: {money(price("solo", "year", true))}, {money(price("pro", "year", true))} and{" "}
+            {money(price("studio", "year", true))} a year at the founding price.
           </p>
         </div>
       </section>

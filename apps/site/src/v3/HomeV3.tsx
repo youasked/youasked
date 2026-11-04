@@ -5,7 +5,7 @@ import { AskAbout, AskBar, FeatureBoard, FeatureCard, RequestButton, YouAsked } 
 import { AGENT_PROMPT, MCP_CMD } from "../content";
 import { LANDING_FAQ } from "../faq";
 import { Logo } from "../Logos";
-import { FOUNDING_SLOTS, GUARANTEE_DAYS, PLANS, PLAN_ORDER, money, perMonth, price, type Interval } from "../plans-view";
+import { FOUNDING_SLOTS, GUARANTEE_DAYS, PLANS, PLAN_ORDER, money, price, priceView, yearlyTag, type Interval } from "../plans-view";
 import { CopyButton } from "../ui";
 import { Film } from "./Film";
 import { Wordmark } from "./Mark";
@@ -287,24 +287,29 @@ export function PricingRow() {
             Monthly
           </button>
           <button type="button" role="tab" aria-selected={interval === "year"} onClick={() => setInterval("year")}>
-            Yearly <em>2 months free</em>
+            Yearly <em>{yearlyTag()}</em>
           </button>
         </div>
         <div className="v3-plans">
           {PLAN_ORDER.map((p) => {
-            const full = price(p, interval, false);
-            const founding = price(p, interval, true);
+            const v = priceView(p, interval);
             const plan = PLANS[p];
             return (
               <div className={p === "pro" ? "v3-plan pick" : "v3-plan"} key={p}>
                 <h3>{plan.name}</h3>
                 <div className="amt">
-                  {money(interval === "year" ? perMonth(founding) : founding)}
+                  {money(v.perMonth)}
                   <span>/month</span>
+                  {v.was !== null && <s className="was-price">{money(v.was)}</s>}
                 </div>
                 <p className="was">
-                  Founding price. Regularly {money(interval === "year" ? perMonth(full) : full)}
-                  {interval === "year" ? ", billed yearly" : ""}
+                  {v.billed !== null ? (
+                    <>
+                      <b>{money(v.billed)} billed yearly.</b> You save {money(v.saves)} a year.
+                    </>
+                  ) : (
+                    "Founding price, billed monthly."
+                  )}
                 </p>
                 <ul>
                   <li>{Number.isFinite(plan.apps) ? `${plan.apps} app${plan.apps > 1 ? "s" : ""}` : "Unlimited apps"}</li>

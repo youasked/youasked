@@ -21,11 +21,28 @@ export function price(plan: Plan, interval: Interval, founding: boolean) {
 /** What a yearly price works out to per month. */
 export const perMonth = (yearly: number) => yearly / 12;
 
-/** Months saved on the yearly price (the plans give two months free). */
+/** Months saved on the yearly price, against paying the regular monthly price all year. */
 export function monthsFree(plan: Plan) {
   const p = PRICES[plan];
   return Math.round((p.month * 12 - p.year) / p.month);
 }
+
+/**
+ * How a plan card shows its price. Monthly: the price a month with the regular one struck through.
+ * Yearly: what it works out to a month, the regular monthly price struck through, the amount
+ * actually billed each year, and what that saves against paying monthly at the regular price.
+ */
+export function priceView(plan: Plan, interval: Interval, founding = true) {
+  const now = price(plan, interval, founding);
+  const list = PRICES[plan].month;
+  if (interval === "month") {
+    return { perMonth: now, was: founding && now < list ? list : null, billed: null as number | null, saves: 0 };
+  }
+  return { perMonth: now / 12, was: list, billed: now, saves: list * 12 - now };
+}
+
+/** The yearly toggle's tag, e.g. "4 months free". */
+export const yearlyTag = () => `${monthsFree("solo")} months free`;
 
 /** Bullet points on a plan card. */
 export function planFeatures(plan: Plan): string[] {

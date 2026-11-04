@@ -114,7 +114,7 @@ export function Billing() {
       <div className="plans-head">
         <div className="seg" role="group" aria-label="Billing interval">
           <button data-on={interval === "month" || undefined} onClick={() => setInterval_("month")}>Monthly</button>
-          <button data-on={interval === "year" || undefined} onClick={() => setInterval_("year")}>Yearly <span className="free">2 months free</span></button>
+          <button data-on={interval === "year" || undefined} onClick={() => setInterval_("year")}>Yearly <span className="free">{Math.round((PRICES.solo.month * 12 - PRICES.solo.year) / PRICES.solo.month)} months free</span></button>
         </div>
         {w.foundingLeft > 0 && !cur.founding && (
           <p className="founding" role="note">
@@ -139,10 +139,16 @@ export function Billing() {
                 <p className="muted">{BLURB[p]}</p>
               </div>
               <div className="plan-price">
-                <b>{money(now)}</b>
-                <span>/{interval === "year" ? "year" : "month"}</span>
-                {founding && <s>{money(list)}</s>}
-                {interval === "year" && <small>{money(now / 12)} a month, billed yearly</small>}
+                <b>{money(interval === "year" ? now / 12 : now)}</b>
+                <span>/month</span>
+                {(interval === "year" || founding) && price.month > (interval === "year" ? now / 12 : now) && <s>{money(price.month)}</s>}
+                {interval === "year" ? (
+                  <small>
+                    <strong>{money(now)} billed yearly.</strong> You save {money(price.month * 12 - now)} a year.
+                  </small>
+                ) : (
+                  founding && <small>Founding price, billed monthly.</small>
+                )}
               </div>
               <ul className="plan-feats">
                 <li>{Number.isFinite(L.apps) ? `${L.apps} ${L.apps === 1 ? "app" : "apps"}` : "Unlimited apps"}</li>

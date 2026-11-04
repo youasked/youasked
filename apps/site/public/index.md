@@ -45,11 +45,11 @@ All of them follow your colours, font, corners and dark mode (shadcn tokens auto
 
 ## Pricing
 
-Flat plans with unlimited end users and votes, monthly or yearly (two months free):
+Flat plans with unlimited end users and votes, monthly or yearly (four months free):
 
-- Solo: $15/month ($9 founding price). 1 app, 1 team member, "Feedback by YouAsked" line shown.
-- Pro: $39/month ($24 founding). 5 apps, 5 team members, branding removable, Heard elsewhere on 1 app.
-- Studio: $79/month ($49 founding). Unlimited apps, 15 team members, Heard elsewhere on 5 apps.
+- Solo: $15/month ($9 founding), or $120/year ($72 founding, $6 a month). 1 app, 1 team member, "Feedback by YouAsked" line shown.
+- Pro: $39/month ($24 founding), or $312/year ($192 founding, $16 a month). 5 apps, 5 team members, branding removable, Heard elsewhere on 1 app.
+- Studio: $79/month ($49 founding), or $624/year ($384 founding, $32 a month). Unlimited apps, 15 team members, Heard elsewhere on 5 apps.
 
 The first 100 paying workspaces keep the founding price while they stay subscribed. There is no free tier: until you subscribe, YouAsked runs in test mode and answers only from localhost, so you can try it in your own app for free. Every plan has a 14-day money-back guarantee. Details: https://youasked.dev/pricing
 

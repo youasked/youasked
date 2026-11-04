@@ -621,3 +621,9 @@
   .pf-install code { white-space: normal; overflow-wrap: anywhere; line-height: 1.55; padding-top: 6px; }
   .pf-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 }
+
+/* plan prices: the struck-through regular price sits beside the amount */
+.v5 .v3-plan .amt { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 4px; }
+.v5 .v3-plan .amt .was-price { margin-left: 8px; font: 500 20px/1 Switzer, system-ui, sans-serif; color: var(--muted); text-decoration-thickness: 1.5px; }
+.v5 .v3-plan .was { margin-top: 10px; font-size: 14px; line-height: 1.45; }
+.v5 .v3-plan .was b { color: var(--ink); font-weight: 600; }
