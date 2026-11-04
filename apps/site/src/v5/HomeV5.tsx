@@ -1,12 +1,13 @@
 // The homepage. A shader-lit hero with the glass mark and one generic product card that plays the
 // whole loop (ask, vote, ship, tell); then the real components, the agent setup, pricing and FAQ.
 // No app names and no phone mockups: the product is the card, and the components below are live.
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AskAbout, AskBar, FeatureCard, RequestButton } from "@youasked/react";
 import { AGENT_PROMPT } from "../content";
 import { GUARANTEE_DAYS, money, price } from "../plans-view";
 import { CopyButton } from "../ui";
 import { Agents, Demo, Faq, PricingRow, SiteFooter, SiteNav } from "../v3/HomeV3";
+import { CARDS, Phone, type Card } from "./Phone";
 import { Shader } from "./Shader";
 import { Showcase } from "./Showcase";
 import "../v3/v3.css";
@@ -18,6 +19,7 @@ export function HomeV5() {
       <SiteNav startDark />
       <main>
         <Hero />
+        <Try />
         <Places />
         <Agents />
         <PricingRow />
@@ -58,6 +60,70 @@ function Hero() {
         </p>
         <div className="h5-show" id="how">
           <Showcase />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** The real sheet on a phone, live, with a few things to try and the in-app cards on demand. */
+function Try() {
+  const [card, setCard] = useState<{ kind: Card; n: number } | null>(null);
+  const n = useRef(0);
+  const show = (kind: Card) => setCard({ kind, n: ++n.current });
+  const root = useRef<HTMLDivElement>(null);
+  // The first time the phone comes into view, it shows what being told looks like.
+  useEffect(() => {
+    const el = root.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        t = setTimeout(() => setCard((c) => c ?? { kind: "shipped", n: ++n.current }), 2200);
+      },
+      { threshold: 0.45 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      clearTimeout(t);
+    };
+  }, []);
+  return (
+    <section className="v3-section t5" id="try">
+      <div className="v3-wrap t5-in">
+        <div className="t5-copy">
+          <h2>Try it. It's the real thing.</h2>
+          <p>This is the actual YouAsked sheet, the one the people who use your app would see, running here in demo mode. Nothing you do in it is saved.</p>
+          <ul className="t5-list">
+            <li>
+              <b>Type “dark mode”</b>
+              <span>It finds the request that already exists, so you vote instead of asking twice.</span>
+            </li>
+            <li>
+              <b>Open a request</b>
+              <span>Votes, comments and the team's reply, all in one thread.</span>
+            </li>
+            <li>
+              <b>Get told in the app</b>
+              <span>When you reply or ship, a card shows up the next time they open your app. No email, no push setup.</span>
+            </li>
+          </ul>
+        </div>
+        <div className="t5-phone" ref={root}>
+          <Phone card={card} onClose={() => setCard(null)} />
+        </div>
+        <div className="t5-send">
+          <span>Send one to the phone</span>
+          <div className="t5-send-row">
+            {(Object.keys(CARDS) as Card[]).map((k) => (
+              <button key={k} type="button" className={card?.kind === k ? "on" : undefined} onClick={() => show(k)}>
+                {CARDS[k].label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </section>
