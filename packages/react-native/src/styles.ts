@@ -10,6 +10,8 @@ const shadow = (opacity: number, radius: number, y: number, elevation: number) =
 
 export function makeStyles(t: Theme) {
   const r = t.radius;
+  // Buttons, the ask bar, the composer and chips can take their own radius (appearance.buttonRadius).
+  const b = t.buttonRadius;
   return StyleSheet.create({
     // ---- header
     head: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 10, paddingRight: 12, paddingBottom: 10, paddingLeft: 18 },
@@ -75,7 +77,7 @@ export function makeStyles(t: Theme) {
     newsYou: { fontSize: 12, fontWeight: "700", color: t.green },
     typing: { flexDirection: "row", gap: 4, paddingVertical: 14, paddingHorizontal: 16, alignItems: "center" },
     typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: t.muted },
-    chip: { alignSelf: "center", marginTop: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: t.tint },
+    chip: { alignSelf: "center", marginTop: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: b ?? 999, backgroundColor: t.tint },
     chipText: { fontSize: 13.5, fontWeight: "600", color: t.accent },
     section: { marginTop: 12 },
     sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
@@ -95,14 +97,14 @@ export function makeStyles(t: Theme) {
     composerWrap: { paddingTop: 8, paddingHorizontal: 12, paddingBottom: 10, backgroundColor: t.bg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },
     tray: { padding: 10, marginBottom: 8, borderRadius: r + 2, backgroundColor: t.tint },
     trayH: { fontSize: 13, fontWeight: "700", marginHorizontal: 2, marginBottom: 8, color: t.fg },
-    composer: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingVertical: 4, paddingLeft: 16, paddingRight: 4, borderRadius: 24, backgroundColor: t.surface, borderWidth: 1.5, borderColor: "transparent" },
+    composer: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingVertical: 4, paddingLeft: 16, paddingRight: 4, borderRadius: b ?? 24, backgroundColor: t.surface, borderWidth: 1.5, borderColor: "transparent" },
     composerFocus: { borderColor: mix(t.accent, t.surface, 0.55) },
     composerBar: { marginHorizontal: 12, marginTop: 8, marginBottom: 10 },
     input: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22, color: t.fg, paddingTop: Platform.OS === "ios" ? 9 : 7, paddingBottom: Platform.OS === "ios" ? 9 : 7, margin: 0, maxHeight: 132, ...(Platform.OS === "web" ? ({ outlineStyle: "none", outlineWidth: 0 } as object) : null) },
     send: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: t.accent },
     sendOff: { opacity: 0.3 },
     tools: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8, minHeight: 32 },
-    tool: { flexDirection: "row", alignItems: "center", gap: 6, height: 32, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: t.tint },
+    tool: { flexDirection: "row", alignItems: "center", gap: 6, height: 32, paddingLeft: 10, paddingRight: 12, borderRadius: b ?? 999, backgroundColor: t.tint },
     toolText: { fontSize: 13.5, fontWeight: "600", color: t.accent },
     switchRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4, paddingLeft: 8 },
     switchLabel: { fontSize: 13, fontWeight: "600", color: t.muted },
@@ -121,9 +123,9 @@ export function makeStyles(t: Theme) {
     tabText: { fontSize: 14, fontWeight: "600", color: t.muted },
     tabTextOn: { color: t.fg },
     foot: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border, backgroundColor: t.bg },
-    btn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 48, paddingHorizontal: 18, borderRadius: r, backgroundColor: t.accent },
+    btn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 48, paddingHorizontal: 18, borderRadius: b ?? r, backgroundColor: t.accent },
     btnText: { fontWeight: "700", fontSize: 15, color: t.accentFg },
-    btnSm: { height: 38, paddingHorizontal: 14, borderRadius: Math.max(r - 3, 8) },
+    btnSm: { height: 38, paddingHorizontal: 14, borderRadius: b ?? Math.max(r - 3, 8) },
     btnSmText: { fontSize: 14 },
     btnGhost: { backgroundColor: t.surface },
     btnGhostText: { color: t.fg },
@@ -134,7 +136,7 @@ export function makeStyles(t: Theme) {
     detailTitle: { fontSize: 21, fontWeight: "700", letterSpacing: -0.3, lineHeight: 27, marginTop: 10, marginBottom: 8, color: t.fg },
     text: { fontSize: 15, lineHeight: 21, color: t.fg },
     textMuted: { color: t.muted },
-    bigVote: { alignSelf: "flex-start", marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingLeft: 12, paddingRight: 16, borderRadius: 999, borderWidth: 1, borderColor: t.border },
+    bigVote: { alignSelf: "flex-start", marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingLeft: 12, paddingRight: 16, borderRadius: b ?? 999, borderWidth: 1, borderColor: t.border },
     bigVoteOn: { backgroundColor: t.accent, borderColor: t.accent },
     bigVoteText: { fontWeight: "700", fontSize: 14.5, color: t.fg, fontVariant: ["tabular-nums"] },
     early: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12, paddingVertical: 10, paddingLeft: 12, paddingRight: 14, borderRadius: r, backgroundColor: t.surface },
@@ -190,7 +192,7 @@ export function makeStyles(t: Theme) {
     toastActions: { flexDirection: "row", gap: 8, marginTop: 12 },
 
     // ---- inline entry points
-    askbar: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, paddingLeft: 10, paddingRight: 8, borderRadius: 999, backgroundColor: t.bg, borderWidth: 1, borderColor: t.border },
+    askbar: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, paddingLeft: 10, paddingRight: 8, borderRadius: b ?? 999, backgroundColor: t.bg, borderWidth: 1, borderColor: t.border },
     askbarGlyph: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: t.tint },
     askbarText: { flex: 1, minWidth: 0, fontSize: 15.5, color: t.muted },
     askbarSend: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: t.accent },
@@ -200,7 +202,7 @@ export function makeStyles(t: Theme) {
     cardSub: { fontSize: 13, color: t.muted, marginTop: 1 },
     cardWin: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: r, backgroundColor: t.greenTint },
     cardActions: { flexDirection: "row", gap: 8 },
-    pillBtn: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingLeft: 13, paddingRight: 16, borderRadius: 999, backgroundColor: t.tint },
+    pillBtn: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingLeft: 13, paddingRight: 16, borderRadius: b ?? 999, backgroundColor: t.tint },
     pillBtnText: { fontWeight: "700", fontSize: 14.5, color: t.accent },
     iconBtnRound: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: t.surface },
     menuRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: r, backgroundColor: t.bg },
@@ -208,7 +210,7 @@ export function makeStyles(t: Theme) {
     askAboutText: { fontSize: 13.5, color: t.muted },
     askForIt: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, paddingVertical: 4, alignSelf: "flex-start" },
     askForItText: { fontSize: 14.5, color: t.muted },
-    askForItCta: { flexDirection: "row", alignItems: "center", paddingVertical: 3, paddingLeft: 12, paddingRight: 6, borderRadius: 999, backgroundColor: t.tint },
+    askForItCta: { flexDirection: "row", alignItems: "center", paddingVertical: 3, paddingLeft: 12, paddingRight: 6, borderRadius: b ?? 999, backgroundColor: t.tint },
     askForItCtaText: { fontWeight: "700", fontSize: 14.5, color: t.accent },
     embed: { backgroundColor: t.bg, borderRadius: r + 6, overflow: "hidden", borderWidth: 1, borderColor: t.border },
   });

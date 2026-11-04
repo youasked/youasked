@@ -171,8 +171,10 @@ React Native works the same way: fetch the identity from the app's backend with 
 - **Otherwise:** pass the app's own tokens rather than hard-coded colours where possible:
 
 ```tsx
-<YouAsked appearance={{ accent: "#5b3df5", background: "#ffffff", foreground: "#111111", radius: 16, fontFamily: "inherit" }} />
+<YouAsked appearance={{ accent: "#5b3df5", background: "#ffffff", foreground: "#111111", radius: 16, buttonRadius: "pill", fontFamily: "inherit" }} />
 ```
+
+- **Corners:** `radius` shapes cards, rows and the sheet. `buttonRadius` shapes buttons, the ask bar, the composer and chips, separately: a number (px on web, points on React Native), any CSS length on web, or `"pill"`. Match the app: if its buttons are pills, pass `"pill"`; if they're square, pass a small number.
 
 - **Dark mode:** on web it follows the page's `.dark` class or `data-theme`. On React Native it follows `useColorScheme()`, or pass `mode`. If the app has its own dark theme, pass both palettes through `appearance` from the theme provider.
 

@@ -178,7 +178,8 @@ Light or dark follows the phone. To change colours, pass `appearance`:
   appKey="ya_pub_…"
   appearance={{
     accent: "#5b3df5",
-    radius: 16,
+    radius: 16,              // cards, rows and the sheet
+    buttonRadius: "pill",    // buttons, the ask bar, the composer and chips: points, or "pill"
     fontFamily: "Inter_500Medium",
     // mode: "dark",         // force a mode ("auto" follows the phone)
     // background, foreground, surface, border, muted, accentForeground

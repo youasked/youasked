@@ -151,8 +151,17 @@ export async function GET() {
             YouAsked reads shadcn tokens (<code>--primary</code>, <code>--background</code>, <code>--radius</code>) on its own, and follows your <code>.dark</code> class or <code>data-theme</code>. Otherwise, pass an <code>appearance</code>:
           </p>
           <Code label="TSX">{`<YouAsked
-  appearance={{ accent: "var(--accent)", background: "var(--card)", radius: 16, fontFamily: "inherit" }}
+  appearance={{
+    accent: "var(--accent)",
+    background: "var(--card)",
+    radius: 16,           // cards, rows and the sheet
+    buttonRadius: "pill", // buttons, the ask bar, the composer and chips: a number, any CSS length, or "pill"
+    fontFamily: "inherit",
+  }}
 />`}</Code>
+          <p>
+            Leave <code>buttonRadius</code> out and each control keeps its own shape: buttons follow <code>radius</code>, and the ask bar and chips are round. The same <code>appearance</code> works in React Native, with numbers in points.
+          </p>
 
           <h2 id="integrations">Integrations</h2>
           <ul>

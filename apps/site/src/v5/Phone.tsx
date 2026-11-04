@@ -1,4 +1,4 @@
-import { FeatureBoard, YouAsked } from "@youasked/react";
+import { FeatureBoard, YouAsked, type Appearance } from "@youasked/react";
 import { useEffect, useRef, useState } from "react";
 
 /*
@@ -51,7 +51,9 @@ export const CARDS: Record<Card, { label: string; kicker: string; title: string;
   },
 };
 
-export function Phone({ card, onClose }: { card: { kind: Card; n: number } | null; onClose: () => void }) {
+export function Phone({ card = null, onClose = () => {}, look }: { card?: { kind: Card; n: number } | null; onClose?: () => void; look?: Appearance }) {
+  const appearance = { ...LOOK, ...look };
+  const dark = appearance.mode === "dark";
   const screen = useRef<HTMLDivElement>(null);
   // "Share an idea" on the prompt does what it does in an app: puts you in the composer.
   const ask = () => screen.current?.querySelector<HTMLElement>("textarea, input")?.focus({ preventScroll: true });
@@ -62,14 +64,14 @@ export function Phone({ card, onClose }: { card: { kind: Card; n: number } | nul
       <i className="ph-btn ph-vol-down" aria-hidden="true" />
       <i className="ph-btn ph-power" aria-hidden="true" />
       <div className="ph-bezel">
-        <div className="ph-screen" ref={screen}>
+        <div className="ph-screen" ref={screen} data-dark={dark || undefined} style={{ background: appearance.background, color: appearance.foreground }}>
           <StatusBar />
           <div className="ph-app">
             <YouAsked
               demo
               cards={false}
               trigger="none"
-              appearance={LOOK}
+              appearance={appearance}
               appName="Your app"
               appIcon={false}
               greeting="Hey! What would make this better for you?"

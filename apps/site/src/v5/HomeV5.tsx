@@ -20,6 +20,7 @@ export function HomeV5() {
       <main>
         <Hero />
         <Try />
+        <MakeItYours />
         <Places />
         <Agents />
         <PricingRow />
@@ -127,6 +128,104 @@ function Try() {
         </div>
       </div>
     </section>
+  );
+}
+
+const ACCENTS = [
+  { name: "Cobalt", value: "#2b4bee" },
+  { name: "Violet", value: "#6c4cf6" },
+  { name: "Coral", value: "#f0533f" },
+  { name: "Emerald", value: "#0e9f6e" },
+  { name: "Amber", value: "#d97f06" },
+  { name: "Ink", value: "#15171c" },
+];
+const FONTS = [
+  { name: "Switzer", value: "Switzer, system-ui, sans-serif", code: "Switzer, sans-serif" },
+  { name: "System", value: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", code: "system-ui" },
+  { name: "Serif", value: "Fraunces, Georgia, serif", code: "Fraunces, serif" },
+  { name: "Mono", value: '"JetBrains Mono", ui-monospace, monospace', code: "JetBrains Mono, monospace" },
+];
+const BUTTONS = [
+  { name: "Pill", value: "pill" as const },
+  { name: "Rounded", value: 12 },
+  { name: "Square", value: 4 },
+];
+const DARK = { background: "#11141f", foreground: "#f3f5fb", surface: "#1c2131", border: "#272d40", muted: "#8e94aa" };
+const LIGHT = { background: "#ffffff", foreground: "#0b0d12", surface: "#f3f4f8", border: "#e8e9ef", muted: "#6e7385" };
+
+/** Theme the real sheet live: colours, corners, button shape, font and dark mode, and the one prop it takes. */
+function MakeItYours() {
+  const [accent, setAccent] = useState(ACCENTS[1].value);
+  const [mode, setMode] = useState<"light" | "dark">("light");
+  const [radius, setRadius] = useState(18);
+  const [button, setButton] = useState<(typeof BUTTONS)[number]>(BUTTONS[0]);
+  const [font, setFont] = useState(FONTS[0]);
+  const look = { ...(mode === "dark" ? DARK : LIGHT), accent, mode, radius, buttonRadius: button.value, fontFamily: font.value };
+  const q = (v: string | number) => (typeof v === "number" ? String(v) : `"${v}"`);
+  return (
+    <section className="v3-section m5" id="theming">
+      <div className="v3-wrap m5-in">
+        <div className="t5-phone m5-phone">
+          <Phone look={look} />
+        </div>
+        <div className="m5-head">
+          <h2>It looks like your app, because it's yours.</h2>
+          <p>
+            It picks up shadcn colours on its own. Everything else is one prop: colours, corners, button shape, font and dark mode. The same prop works on the web and in React Native.
+          </p>
+        </div>
+        <div className="m5-controls">
+            <div className="m5-group">
+              <span className="m5-label">Accent</span>
+              <div className="m5-swatches">
+                {ACCENTS.map((a) => (
+                  <button key={a.value} type="button" className="m5-swatch" style={{ background: a.value }} aria-label={a.name} aria-pressed={accent === a.value} onClick={() => setAccent(a.value)} />
+                ))}
+              </div>
+            </div>
+            <div className="m5-group">
+              <span className="m5-label">Mode</span>
+              <Seg options={["light", "dark"]} value={mode} label={(v) => (v === "light" ? "Light" : "Dark")} onChange={(v) => setMode(v as "light" | "dark")} />
+            </div>
+            <div className="m5-group">
+              <label className="m5-label" htmlFor="m5-radius">
+                Card corners <b>{radius}px</b>
+              </label>
+              <input id="m5-radius" className="m5-range" type="range" min={0} max={28} value={radius} onChange={(e) => setRadius(Number(e.target.value))} style={{ ["--p" as string]: `${(radius / 28) * 100}%` }} />
+            </div>
+            <div className="m5-group">
+              <span className="m5-label">Buttons</span>
+              <Seg options={BUTTONS.map((b) => b.name)} value={button.name} label={(v) => v} onChange={(v) => setButton(BUTTONS.find((b) => b.name === v)!)} />
+            </div>
+            <div className="m5-group m5-wide">
+              <span className="m5-label">Font</span>
+              <Seg options={FONTS.map((f) => f.name)} value={font.name} label={(v) => v} onChange={(v) => setFont(FONTS.find((f) => f.name === v)!)} />
+            </div>
+          </div>
+        <pre className="m5-code" aria-label="The code for this look">
+            <span className="k">{"<YouAsked"}</span> appearance={"{{"}
+            {"\n  "}accent: <span className="s">{q(accent)}</span>,
+            {"\n  "}mode: <span className="s">{q(mode)}</span>,
+            {"\n  "}radius: <span className="n">{radius}</span>,
+            {"\n  "}buttonRadius: <span className={typeof button.value === "number" ? "n" : "s"}>{q(button.value)}</span>,
+            {"\n  "}fontFamily: <span className="s">{q(font.code)}</span>,
+            {"\n"}
+            {"}}"} <span className="k">{"/>"}</span>
+          </pre>
+      </div>
+    </section>
+  );
+}
+
+function Seg({ options, value, label, onChange }: { options: string[]; value: string; label: (v: string) => string; onChange: (v: string) => void }) {
+  return (
+    <div className="m5-seg" role="radiogroup">
+      {options.map((o) => (
+        <button key={o} type="button" role="radio" aria-checked={o === value} onClick={() => onChange(o)}>
+          {label(o)}
+        </button>
+      ))}
+    </div>
   );
 }
 

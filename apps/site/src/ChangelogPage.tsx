@@ -5,6 +5,18 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 // Newest first. Static for now: see the note at the bottom of the page.
 export const ENTRIES: Entry[] = [
   {
+    date: "2026-11-04",
+    title: "Button corners, separately from cards",
+    body: "appearance now takes buttonRadius for buttons, the ask bar, the composer and chips: a number, any CSS length, or \"pill\". radius keeps shaping cards, rows and the sheet. Both work in React and React Native (@youasked/react 0.7.0, @youasked/react-native 0.2.0).",
+    tags: ["New", "Theming"],
+  },
+  {
+    date: "2026-11-04",
+    title: "The occasional prompt, and fixes for the Android keyboard",
+    body: "A small “Got an idea?” card invites people to share, at most once a week by default, after 30 seconds of use and never on a first visit. Set how often in the dashboard. On Android the React Native sheet now sits right on the keyboard.",
+    tags: ["New", "React Native"],
+  },
+  {
     date: "2026-11-03",
     title: "Public boards, roadmaps and changelogs",
     body: "Any app can turn on a public board at youasked.dev/your-app, with tabs for top requests, the roadmap and a changelog. Pages are rendered on the server so search engines can read them. Public pages show titles, votes, statuses and ship notes, and never emails or request text.",

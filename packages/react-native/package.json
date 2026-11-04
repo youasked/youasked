@@ -1,6 +1,6 @@
 {
   "name": "@youasked/react-native",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Feature requests your users can vote on, as a native bottom sheet for React Native and Expo, with a 'you asked, it's live' moment when you ship.",
   "license": "MIT",
   "sideEffects": false,

@@ -67,8 +67,10 @@ Then pass `user={{ id: userId }} signature={signature} ready={loaded}` to `<YouA
 It reads shadcn tokens (`--primary`, `--background`, `--radius` and so on) on its own. Otherwise pass `appearance`:
 
 ```tsx
-<YouAsked appKey="ya_pub_…" appearance={{ accent: "#5b3df5", radius: 16, fontFamily: "inherit" }} />
+<YouAsked appKey="ya_pub_…" appearance={{ accent: "#5b3df5", radius: 16, buttonRadius: "pill", fontFamily: "inherit" }} />
 ```
+
+`radius` shapes cards, rows and the sheet; `buttonRadius` shapes buttons, the ask bar, the composer and chips (a number in px, any CSS length, or `"pill"`). Leave `buttonRadius` out and each control keeps its own shape.
 
 Dark mode follows the page's `.dark` class or `data-theme`.
 

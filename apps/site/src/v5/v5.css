@@ -457,3 +457,78 @@
 @media (max-width: 760px) {
   .p5-nudge { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
+
+/* the phone follows the theme it's given */
+.ph-screen[data-dark] .ph-home { background: transparent; }
+.ph-status { color: inherit; }
+.ph-home { background: transparent; }
+.ph-home i { background: currentColor; }
+
+/* ------------------------------------------------------------------ make it yours: live theming */
+
+.m5 { background: #fff; }
+.m5-in { display: grid; grid-template-columns: minmax(0, 372px) minmax(0, 480px); grid-template-areas: "phone head" "phone controls" "phone code"; grid-template-rows: auto auto 1fr; justify-content: center; column-gap: 104px; }
+.m5-phone { grid-area: phone; align-self: center; }
+.m5-head { grid-area: head; align-self: end; }
+.m5-controls { grid-area: controls; }
+.m5-code { grid-area: code; align-self: start; }
+.m5-head h2 { font: 600 clamp(36px, 4.2vw, 54px)/1.03 Fraunces, Georgia, serif; font-variation-settings: "opsz" 144, "SOFT" 30; letter-spacing: -0.018em; text-wrap: balance; }
+.m5-head > p { margin-top: 18px; font-size: 17.5px; line-height: 1.6; color: var(--ink-2); }
+.m5-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; margin-top: 32px; }
+.m5-wide { grid-column: 1 / -1; }
+.m5-label { display: block; margin-bottom: 10px; font: 600 13.5px Switzer, system-ui, sans-serif; color: var(--muted); }
+.m5-label b { margin-left: 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.m5-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.m5-swatch { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); transition: transform 0.2s var(--spring), box-shadow 0.2s; }
+.m5-swatch:hover { transform: scale(1.08); }
+.m5-swatch[aria-pressed="true"] { box-shadow: 0 0 0 3px #fff, 0 0 0 5px currentColor, inset 0 0 0 1px rgba(0, 0, 0, 0.08); color: var(--ink); }
+.m5-swatch:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 4px; }
+.m5-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 999px; background: var(--tint); box-shadow: inset 0 0 0 1px var(--line); }
+.m5-seg button { height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font: 600 14px Switzer, system-ui, sans-serif; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+.m5-seg button[aria-checked="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(11, 13, 18, 0.1), 0 0 0 1px var(--line); }
+.m5-seg button:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+.m5-range { width: 100%; height: 34px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.m5-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--cobalt) var(--p), #e3e6ee var(--p)); }
+.m5-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--cobalt) var(--p), #e3e6ee var(--p)); }
+.m5-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.12), 0 2px 6px rgba(11, 13, 18, 0.2); -webkit-appearance: none; appearance: none; }
+.m5-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.12), 0 2px 6px rgba(11, 13, 18, 0.2); }
+.m5-range:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 4px; border-radius: 6px; }
+.m5-code { margin: 28px 0 0; padding: 18px 20px; overflow-x: auto; border-radius: 18px; background: #0a0c14; color: #c7cde2; font: 400 13.5px/1.7 "JetBrains Mono", ui-monospace, monospace; white-space: pre; }
+.m5-code .k { color: #9db0ff; }
+.m5-code .s { color: #a6e9c4; }
+.m5-code .n { color: #ffc98a; }
+
+@media (max-width: 900px) {
+  .m5-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "controls" "phone" "code"; grid-template-rows: none; row-gap: 0; }
+  .m5-head, .m5-controls, .m5-code { width: 100%; max-width: 560px; margin-left: auto; margin-right: auto; }
+  .m5-controls { margin-top: 28px; }
+  .m5-phone { margin-top: 36px; }
+  .m5-phone .ph { width: min(300px, 100%); }
+}
+@media (max-width: 480px) {
+  .m5-controls { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .m5-seg button { padding: 0 13px; }
+}
+
+/* the status bar fits whatever width the phone is drawn at */
+.ph-screen { container-type: inline-size; }
+@container (max-width: 320px) {
+  .ph-status { padding: 4px 18px 0 26px; font-size: 14px; }
+  .ph-island { width: 31%; height: 30px; top: 10px; }
+  .ph-icons { gap: 4px; }
+  .ph-icons svg { width: auto; height: 10px; }
+}
+
+/* theming controls: one row per setting, label on the left */
+.m5-controls { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.m5-group { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 12px; }
+.m5-group .m5-label { margin: 0; }
+.m5-group .m5-label b { display: block; margin: 2px 0 0; }
+.m5-wide { grid-column: auto; }
+.m5-seg button { padding: 0 13px; }
+.m5-swatch { width: 30px; height: 30px; }
+@media (max-width: 480px) {
+  .m5-group { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .m5-group .m5-label b { display: inline; margin-left: 6px; }
+}
+.m5-group > .m5-seg, .m5-group > .m5-swatches { justify-self: start; }

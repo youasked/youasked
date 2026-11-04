@@ -9,7 +9,14 @@ export type Appearance = {
   muted?: string;
   surface?: string;
   border?: string;
+  /** Corner radius of cards, rows and the sheet. A number is px; any CSS length works. */
   radius?: string | number;
+  /**
+   * Corner radius of buttons, the ask bar, the composer and chips, separately from cards.
+   * A number is px, any CSS length works, and "pill" makes them fully round. Leave it out and
+   * each keeps its own shape (buttons follow `radius`, the ask bar and chips are round).
+   */
+  buttonRadius?: string | number | "pill";
   fontFamily?: string;
   /** Set false to ignore the host's shadcn-style tokens (--primary, --background, …). */
   inherit?: boolean;
@@ -25,6 +32,7 @@ type Tokens = {
   surface?: string;
   border?: string;
   radius: string;
+  buttonRadius?: string;
   fontFamily: string;
 };
 
@@ -103,12 +111,15 @@ function defined<T extends object>(obj: T): Partial<T> {
 export function resolveTokens(appearance: Appearance = {}): Tokens {
   const mode = appearance.mode === "dark" || (appearance.mode !== "light" && hostIsDark()) ? "dark" : "light";
   const host = appearance.inherit === false ? {} : readHost();
-  const { mode: _m, inherit: _i, radius, ...colours } = appearance;
+  const { mode: _m, inherit: _i, radius, buttonRadius, ...colours } = appearance;
   const merged: Tokens = {
     ...DEFAULTS[mode],
     ...defined(host),
     ...defined(colours),
     ...(radius !== undefined ? { radius: typeof radius === "number" ? `${radius}px` : radius } : {}),
+    ...(buttonRadius !== undefined
+      ? { buttonRadius: buttonRadius === "pill" ? "999px" : typeof buttonRadius === "number" ? `${buttonRadius}px` : buttonRadius }
+      : {}),
     mode,
   };
   if (!merged.accentForeground) {
@@ -129,6 +140,7 @@ export function tokenStyle(t: Tokens): Record<string, string> {
     "--ya-fg": t.foreground,
     "--ya-radius": t.radius,
   };
+  if (t.buttonRadius) style["--ya-button-radius"] = t.buttonRadius;
   if (t.fontFamily && t.fontFamily !== "inherit") style["--ya-font"] = t.fontFamily;
   if (t.muted) style["--ya-muted"] = t.muted;
   if (t.surface) style["--ya-surface"] = t.surface;

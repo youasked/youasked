@@ -9,8 +9,13 @@ export type Appearance = {
   muted?: string;
   surface?: string;
   border?: string;
-  /** Corner radius of cards and buttons, in points. */
+  /** Corner radius of cards, rows and the sheet, in points. */
   radius?: number | string;
+  /**
+   * Corner radius of buttons, the ask bar, the composer and chips, separately from cards.
+   * A number in points, or "pill" for fully round. Leave it out and each keeps its own shape.
+   */
+  buttonRadius?: number | "pill";
   /** Applied to every piece of text, e.g. "Inter_600SemiBold" or "System". */
   fontFamily?: string;
 };
@@ -32,6 +37,8 @@ export type Theme = {
   red: string;
   redTint: string;
   radius: number;
+  /** Undefined means each control keeps its own shape. */
+  buttonRadius?: number;
   fontFamily?: string;
 };
 
@@ -133,6 +140,7 @@ export function resolveTheme(appearance: Appearance = {}, scheme: "light" | "dar
     red,
     redTint: mix(red, bg, 0.12),
     radius,
+    buttonRadius: appearance.buttonRadius === "pill" ? 999 : typeof appearance.buttonRadius === "number" ? appearance.buttonRadius : undefined,
     fontFamily: appearance.fontFamily,
   };
 }
