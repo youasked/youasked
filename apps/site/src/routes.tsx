@@ -6,6 +6,7 @@ import { ChangelogPage, ENTRIES } from "./ChangelogPage";
 import { DocsPage } from "./Docs";
 import { Home } from "./Home";
 import { HomeV3 } from "./v3/HomeV3";
+import { HomeV5 } from "./v5/HomeV5";
 import { PrivacyPage, TermsPage } from "./Legal";
 import { MCP_FAQ, McpPage } from "./McpPage";
 import { NotFoundPage } from "./NotFound";
@@ -36,9 +37,17 @@ export const ROUTES: Route[] = [
     title: "YouAsked: in-app feature requests that tell users when you ship",
     description:
       "Feature requests inside your React and React Native apps. Users ask and vote, you hear it on Telegram, Slack or Discord, and everyone who asked is told when you ship.",
-    component: HomeV3,
+    component: HomeV5,
     faq: LANDING_FAQ,
     priority: 1,
+    bare: true,
+  },
+  {
+    path: "/lab/v4",
+    title: "YouAsked (v4 homepage)",
+    description: "The v4 YouAsked homepage, kept for comparison.",
+    component: HomeV3,
+    hidden: true,
     bare: true,
   },
   {

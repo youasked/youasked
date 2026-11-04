@@ -12,22 +12,22 @@ import { Wordmark } from "./Mark";
 import "./v3.css";
 import "./film.css";
 
-// The widgets below wear Graiden's look (its purple and Plus Jakarta Sans), the app in the hero film.
-const GRAIDEN = {
-  accent: "#5c3ef5",
+// The widgets below wear a plain, generic look: YouAsked's cobalt on white. They take your app's look.
+const LOOK = {
+  accent: "#2b4bee",
   background: "#ffffff",
-  foreground: "#14121f",
-  muted: "#6f6c80",
-  surface: "#f4f3f8",
-  border: "#e9e7f0",
-  radius: 16,
-  fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+  foreground: "#0b0d12",
+  muted: "#6e7385",
+  surface: "#f3f4f8",
+  border: "#e8e9ef",
+  radius: 18,
+  fontFamily: "Switzer, system-ui, sans-serif",
   mode: "light" as const,
 };
 
-function Demo({ children }: { children: ReactNode }) {
+export function Demo({ children }: { children: ReactNode }) {
   return (
-    <YouAsked demo cards={false} trigger="none" appearance={GRAIDEN} appName="Graiden" appIcon="/film/graiden-icon.png" nudge={false}>
+    <YouAsked demo cards={false} trigger="none" appearance={LOOK} appIcon={false} nudge={false}>
       {children}
     </YouAsked>
   );
@@ -134,7 +134,7 @@ function Spec({ title, code, children, wide }: { title: string; code: string; ch
   );
 }
 
-function Entries() {
+export function Entries() {
   return (
     <section className="v3-section v3-rule" id="entry-points">
       <div className="v3-wrap">
@@ -236,7 +236,7 @@ const AGENTS = [
   ["cursor", "Cursor"],
 ] as const;
 
-function Agents() {
+export function Agents() {
   return (
     <section className="v3-section v3-rule" id="agents">
       <div className="v3-wrap v3-agents">
@@ -271,7 +271,7 @@ function Agents() {
 
 /* ---------------------------------------------------------------- pricing */
 
-function PricingRow() {
+export function PricingRow() {
   const [interval, setInterval] = useState<Interval>("year");
   return (
     <section className="v3-section v3-rule v3-tint" id="pricing">
@@ -328,7 +328,7 @@ function PricingRow() {
 
 /* ---------------------------------------------------------------- faq, closing, footer */
 
-function Faq() {
+export function Faq() {
   return (
     <section className="v3-section v3-rule" id="faq">
       <div className="v3-wrap v3-faq">

@@ -28,7 +28,7 @@ export type DemoClient = Client & {
   onNotice: (fn: (n: Notice) => void) => () => void;
 };
 
-export function createDemoClient(appName = "Acme"): DemoClient {
+export function createDemoClient(appName = "this app"): DemoClient {
   const t0 = Date.now();
   let seq = 100;
   const listeners = new Set<(n: Notice) => void>();
@@ -65,33 +65,34 @@ export function createDemoClient(appName = "Acme"): DemoClient {
   const team = (id: string, body: string, ago: number): RequestComment => ({ id, body, team: true, author: null, mine: false, createdAt: t0 - ago });
 
   const store: Stored[] = [
-    seed(12, "Split a bill with my partner", "We share groceries and rent. Would love to tag an expense as 50/50 and see who owes who.", 14, "planned", {
+    seed(12, "Dark mode", "Easier on the eyes at night, and it'd match the rest of my phone.", 14, "planned", {
       comments_: [
-        { id: "c1", body: "Yes! Even just splitting one expense would help.", team: false, author: "Raj", mine: false, createdAt: t0 - 3 * DAY },
-        team("c2", "On the list for December. Would a simple “who owes who” total be enough to start?", 2 * DAY),
+        { id: "c1", body: "Yes please. I use it every night.", team: false, author: "Raj", mine: false, createdAt: t0 - 3 * DAY },
+        team("c2", "On the list for December. Would following your phone's setting be enough to start?", 2 * DAY),
       ],
     }),
-    seed(13, "Monthly budget per category", "Set $400 for food and get a heads-up when I'm close.", 11, "in_progress"),
-    seed(7, "Dark mode for the charts", "", 8, "shipped", {
-      shipNote: "Charts now follow your theme. Settings → Appearance.",
+    seed(13, "Export to CSV", "So I can open everything in a spreadsheet.", 11, "in_progress"),
+    seed(7, "Keyboard shortcuts", "", 8, "shipped", {
+      shipNote: "Press ? anywhere to see them all.",
       shippedAt: t0 - 2 * DAY,
       creditName: "Sam",
     }),
-    seed(14, "Import my bank statement PDF", "Some of my older expenses never came through email.", 6, "open"),
-    seed(15, "Recurring expenses (Netflix, rent)", "", 4, "open"),
-    seed(16, "Widget for the home screen", "Just today's total would be enough.", 3, "open"),
-    seed(9, "Show which card I paid with", "", 5, "shipped", {
-      shipNote: "Each expense now shows the card's last 4 digits.",
+    seed(14, "Offline mode", "I use it on the train and keep losing signal.", 6, "open"),
+    seed(15, "Share a link with a friend", "", 4, "open"),
+    seed(16, "Widget for the home screen", "Just today's number would be enough.", 3, "open"),
+    seed(9, "Sign in with Apple", "", 5, "shipped", {
+      shipNote: "You can now sign in with your Apple ID.",
       shippedAt: t0 - 4 * 60 * MIN,
       mine: true,
       voted: true,
     }),
-    seed(17, "Export expenses to Excel", "For my accountant at tax time.", 2, "open", {
+    seed(17, "A reminder the day before", "A nudge the day before something is due would do.", 2, "open", {
       mine: true,
       voted: true,
-      comments_: [team("c3", "Good one. Would a CSV that opens in Excel work, or do you need .xlsx?", 3 * 60 * MIN)],
+      comments_: [team("c3", "Good one. Would a push notification work, or would you rather get an email?", 3 * 60 * MIN)],
     }),
   ];
+
 
   const find = (id: string) => store.find((r) => r.id === id);
   const view = (r: Stored): FeatureRequest => {
