@@ -118,7 +118,7 @@ export async function init({ flags, cwd }) {
       say(
         project.kind === "ios"
           ? `  In Xcode: File > Add Package Dependencies, paste ${cyan("https://github.com/youasked/youasked")} and add the ${bold("YouAsked")} library.`
-          : `  Add ${cyan('maven("https://jitpack.io")')} to your repositories, then ${cyan('implementation("com.github.youasked.youasked:youasked:0.1.0")')}.`,
+          : `  Add ${cyan('maven("https://jitpack.io")')} to your repositories, then ${cyan('implementation("com.github.youasked:youasked:0.1.0")')}.`,
       );
     } else if (flags["no-install"]) {
       say(`  ${dim("Skipped (--no-install).")} Install it yourself: ${cyan(installLine(project))}`);

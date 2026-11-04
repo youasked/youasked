@@ -277,7 +277,7 @@ struct MyApp: App {
             A Material 3 bottom sheet that sits on the keyboard with edge-to-edge on, the back button, TalkBack labels, and no networking libraries. minSdk 24. Add JitPack to your repositories, then the dependency:
           </p>
           <Code label="build.gradle.kts">{`// settings.gradle.kts: repositories { maven("https://jitpack.io") }
-implementation("com.github.youasked.youasked:youasked:0.1.0")`}</Code>
+implementation("com.github.youasked:youasked:0.1.0")`}</Code>
           <Code label="Kotlin">{`// Application.onCreate
 YouAsked.configure(this, appKey = "ya_pub_…")
 

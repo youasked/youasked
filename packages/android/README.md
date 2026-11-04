@@ -25,11 +25,11 @@ dependencyResolutionManagement {
 }
 ```
 
-Then the dependency (use a release tag from https://github.com/youasked/youasked/tags):
+Then the dependency (versions are the tags at https://github.com/youasked/youasked/tags):
 
 ```kotlin
 dependencies {
-    implementation("com.github.youasked.youasked:youasked:<tag>")
+    implementation("com.github.youasked:youasked:0.1.0")
 }
 ```
 

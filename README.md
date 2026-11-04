@@ -8,7 +8,7 @@ Feature requests your users can vote on, and a "you asked, it's live" moment whe
 - `packages/js`: `@youasked/js`, the same widget for any other website (Vue, Svelte, Angular, Nuxt, Astro, plain HTML), as a script tag or ES module.
 - `packages/react-native`: `@youasked/react-native`, native views for React Native and Expo.
 - `packages/swift`: the iOS SDK in SwiftUI, installed with Swift Package Manager from this repo (`Package.swift` at the root).
-- `packages/android`: the Android SDK in Jetpack Compose, installed from JitPack (`com.github.youasked.youasked:youasked`).
+- `packages/android`: the Android SDK in Jetpack Compose, installed from JitPack (`com.github.youasked:youasked`).
 
 - `packages/cli`: `youasked`, the setup command. `npx youasked init` creates an app, saves the keys and wires up the widget.
 - `packages/mcp`: `@youasked/mcp`, an MCP server so a coding agent can list requests, reply, set status and merge.

@@ -22,7 +22,7 @@ Work out and write down:
    - **Web, not React:** Vue, Nuxt, Svelte, SvelteKit, Angular, Astro, plain HTML, Webflow, WordPress. Use `@youasked/js` (same widget, its own renderer).
    - **React Native:** Expo or bare. Use `@youasked/react-native`.
    - **iOS native:** SwiftUI or UIKit. Use the Swift package from `https://github.com/youasked/youasked`.
-   - **Android native:** Jetpack Compose. Use `com.github.youasked.youasked:youasked` from JitPack.
+   - **Android native:** Jetpack Compose. Use `com.github.youasked:youasked` from JitPack.
    - **Both:** for example a PWA plus an Expo app, possibly in separate repos. If the other platform lives in another repo, say so and ask whether to do it too.
 2. **Layout:**
    - the home or dashboard screen
@@ -90,7 +90,7 @@ npx expo install expo-haptics @react-native-async-storage/async-storage   # opti
 
 **iOS (Swift):** in Xcode, File > Add Package Dependencies, `https://github.com/youasked/youasked`, add the `YouAsked` library. Then `YouAsked.configure(appKey:)` in the `App` init and `.youAsked()` on the root view. Entry points: `YAAskBar`, `YAFeatureCard`, `YARequestButton(.row)`, `YAAskAbout(topic:)`; open with `YouAsked.open()`. Full guide: https://youasked.dev/docs#ios
 
-**Android (Kotlin):** add `maven("https://jitpack.io")` to the repositories in `settings.gradle.kts`, then `implementation("com.github.youasked.youasked:youasked:0.1.0")`. Call `YouAsked.configure(this, appKey = …)` in `Application.onCreate` and wrap the UI in `YouAskedHost { … }`. Composables: `AskBar`, `FeatureCard`, `RequestButton`, `AskAbout`, `FeatureBoard`; open with `YouAsked.open()`. Full guide: https://youasked.dev/docs#android
+**Android (Kotlin):** add `maven("https://jitpack.io")` to the repositories in `settings.gradle.kts`, then `implementation("com.github.youasked:youasked:0.1.0")`. Call `YouAsked.configure(this, appKey = …)` in `Application.onCreate` and wrap the UI in `YouAskedHost { … }`. Composables: `AskBar`, `FeatureCard`, `RequestButton`, `AskAbout`, `FeatureBoard`; open with `YouAsked.open()`. Full guide: https://youasked.dev/docs#android
 
 **Not React on the web:** `init({ appKey })` from `@youasked/js` once in the browser (`onMounted`, `onMount`, `ngOnInit`, a Nuxt client plugin), then use the elements `<youasked-ask-bar>`, `<youasked-feature-card>`, `<youasked-request-button variant="row">`, `<youasked-ask-about topic="…">`, or `data-youasked-open` on any link. Tell Vue they're custom elements (`isCustomElement: (t) => t.startsWith("youasked-")`); in Angular add `CUSTOM_ELEMENTS_SCHEMA`. Steps 5 and 6 below are written for React; follow the same choices with these elements. Full guide: https://youasked.dev/docs#web
 

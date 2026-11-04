@@ -120,7 +120,7 @@ export function detectNative(/** @type {string} */ cwd) {
     pkg: { name, dependencies: {} },
     ts: false,
     src: false,
-    sdk: ios ? "https://github.com/youasked/youasked" : "com.github.youasked.youasked:youasked",
+    sdk: ios ? "https://github.com/youasked/youasked" : "com.github.youasked:youasked",
     pm: "npm",
     secretVar: "YOUASKED_SECRET_KEY",
     envFile: ".env",

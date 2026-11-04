@@ -71,7 +71,7 @@ dependencies {
 }
 
 // JitPack: `./gradlew :youasked:publishToMavenLocal` (see /jitpack.yml at the repo root).
-// JitPack serves it as com.github.youasked.youasked:youasked:<tag>.
+// JitPack serves it as com.github.youasked:youasked:<tag>.
 publishing {
     publications {
         register<MavenPublication>("release") {

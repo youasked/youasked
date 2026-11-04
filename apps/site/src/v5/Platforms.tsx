@@ -96,7 +96,7 @@ export default function Layout() {
     label: "Android",
     logo: "kotlin",
     pkg: "Jetpack Compose",
-    install: '"com.github.youasked.youasked:youasked:0.1.0"',
+    install: '"com.github.youasked:youasked:0.1.0"',
     docs: "/docs#android",
     code: `// Application.onCreate
 YouAsked.configure(this, appKey = "ya_pub_…")

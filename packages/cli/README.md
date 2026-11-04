@@ -14,7 +14,7 @@ It works out what you're running, creates an app for you, saves the keys to your
 | Expo / React Native | `@youasked/react-native` | Installs it, adds the provider, and prints where each entry point goes |
 | Vue, Nuxt, Svelte, SvelteKit, Angular, Astro, plain Vite | `@youasked/js` | Installs it and prints the `init` call and elements for your framework |
 | iOS (an `.xcodeproj` or `Package.swift`) | Swift package | Creates the app and prints the Swift Package and SwiftUI steps |
-| Android (a Gradle build) | `com.github.youasked.youasked:youasked` | Creates the app and prints the Gradle and Compose steps |
+| Android (a Gradle build) | `com.github.youasked:youasked` | Creates the app and prints the Gradle and Compose steps |
 
 ## Commands
 
