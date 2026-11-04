@@ -165,7 +165,7 @@ function Ask({ t }: { t: number }) {
         </div>
       </div>
       <div className={text ? "sc-input typing" : "sc-input"}>
-        <span className={text ? "" : "ph"}>{text || "Ask for a feature…"}</span>
+        <span className={text ? "" : "sc-placeholder"}>{text || "Ask for a feature…"}</span>
         {!voted && text.length < TYPED.length && <i className="sc-caret" />}
         <span className="sc-send" />
       </div>

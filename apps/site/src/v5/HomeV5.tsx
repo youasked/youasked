@@ -72,7 +72,7 @@ function Try() {
   const n = useRef(0);
   const show = (kind: Card) => setCard({ kind, n: ++n.current });
   const root = useRef<HTMLDivElement>(null);
-  // The first time the phone comes into view, it shows what being told looks like.
+  // The first time the phone comes into view, it shows the prompt that invites people in.
   useEffect(() => {
     const el = root.current;
     if (!el || !("IntersectionObserver" in window)) return;
@@ -81,7 +81,7 @@ function Try() {
       ([e]) => {
         if (!e.isIntersecting) return;
         io.disconnect();
-        t = setTimeout(() => setCard((c) => c ?? { kind: "shipped", n: ++n.current }), 2200);
+        t = setTimeout(() => setCard((c) => c ?? { kind: "nudge", n: ++n.current }), 1800);
       },
       { threshold: 0.45 },
     );
@@ -99,12 +99,12 @@ function Try() {
           <p>This is the actual YouAsked sheet, the one the people who use your app would see, running here in demo mode. Nothing you do in it is saved.</p>
           <ul className="t5-list">
             <li>
-              <b>Type “dark mode”</b>
-              <span>It finds the request that already exists, so you vote instead of asking twice.</span>
+              <b>It asks for you</b>
+              <span>Every so often a small card says “Got an idea?”, so people don't have to go looking. You choose how often.</span>
             </li>
             <li>
-              <b>Open a request</b>
-              <span>Votes, comments and the team's reply, all in one thread.</span>
+              <b>Type “dark mode”</b>
+              <span>It finds the request that already exists, so you vote instead of asking twice.</span>
             </li>
             <li>
               <b>Get told in the app</b>
@@ -118,7 +118,7 @@ function Try() {
         <div className="t5-send">
           <span>Send one to the phone</span>
           <div className="t5-send-row">
-            {(Object.keys(CARDS) as Card[]).map((k) => (
+            {(["nudge", "shipped", "reply"] as Card[]).map((k) => (
               <button key={k} type="button" className={card?.kind === k ? "on" : undefined} onClick={() => show(k)}>
                 {CARDS[k].label}
               </button>
@@ -162,6 +162,17 @@ function Places() {
                 <AskAbout topic="charts" prompt="Want more from charts?" />
               </div>
             </Tile>
+            <Tile title="An occasional prompt" code="<YouAsked nudge />" wide>
+              <div className="p5-nudge">
+                <NudgePreview />
+                <ul className="p5-nudge-rules" aria-label="Default settings, all changeable in the dashboard">
+                  <li>Once a week at most</li>
+                  <li>After 30 seconds of use</li>
+                  <li>Never on a first visit</li>
+                  <li>Backs off when dismissed</li>
+                </ul>
+              </div>
+            </Tile>
           </div>
         </Demo>
       </div>
@@ -169,9 +180,35 @@ function Places() {
   );
 }
 
-function Tile({ title, code, tall, children }: { title: string; code: string; tall?: boolean; children: ReactNode }) {
+/** The prompt as the SDK draws it, standing still so it can be read. */
+function NudgePreview() {
   return (
-    <figure className={tall ? "p5-tile tall" : "p5-tile"}>
+    <div className="ph-card p5-nudge-card" aria-label="The occasional prompt">
+      <div className="ph-card-top">
+        <span className="ph-card-kicker">Help shape your app</span>
+        <span className="ph-card-x" aria-hidden="true" />
+      </div>
+      <div className="ph-card-nudge">
+        <span className="ph-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
+            <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <p className="ph-card-title">Got an idea for your app?</p>
+      </div>
+      <p className="ph-card-body">Ask for a feature or vote on what others want.</p>
+      <div className="ph-card-actions">
+        <span className="primary">Share an idea</span>
+        <span>Not now</span>
+      </div>
+    </div>
+  );
+}
+
+function Tile({ title, code, tall, wide, children }: { title: string; code: string; tall?: boolean; wide?: boolean; children: ReactNode }) {
+  return (
+    <figure className={["p5-tile", tall && "tall", wide && "wide"].filter(Boolean).join(" ")}>
       <div className="p5-stage">{children}</div>
       <figcaption>
         <b>{title}</b>

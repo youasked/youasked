@@ -43,15 +43,18 @@ export const CARDS: Record<Card, { label: string; kicker: string; title: string;
     actions: ["Reply", "Later"],
   },
   nudge: {
-    label: "The occasional prompt",
-    kicker: "Got an idea?",
-    title: "What would make this better?",
-    body: "Tell us what to build next. It takes a few seconds.",
-    actions: ["Suggest an idea", "Not now"],
+    label: "“Got an idea?”",
+    kicker: "Help shape your app",
+    title: "Got an idea for your app?",
+    body: "Ask for a feature or vote on what others want.",
+    actions: ["Share an idea", "Not now"],
   },
 };
 
 export function Phone({ card, onClose }: { card: { kind: Card; n: number } | null; onClose: () => void }) {
+  const screen = useRef<HTMLDivElement>(null);
+  // "Share an idea" on the prompt does what it does in an app: puts you in the composer.
+  const ask = () => screen.current?.querySelector<HTMLElement>("textarea, input")?.focus({ preventScroll: true });
   return (
     <figure className="ph" aria-label="The YouAsked sheet on a phone. It's live: tap, type and vote.">
       <i className="ph-btn ph-action" aria-hidden="true" />
@@ -59,7 +62,7 @@ export function Phone({ card, onClose }: { card: { kind: Card; n: number } | nul
       <i className="ph-btn ph-vol-down" aria-hidden="true" />
       <i className="ph-btn ph-power" aria-hidden="true" />
       <div className="ph-bezel">
-        <div className="ph-screen">
+        <div className="ph-screen" ref={screen}>
           <StatusBar />
           <div className="ph-app">
             <YouAsked
@@ -75,7 +78,7 @@ export function Phone({ card, onClose }: { card: { kind: Card; n: number } | nul
               <FeatureBoard height="100%" />
             </YouAsked>
           </div>
-          {card && <InAppCard key={card.n} kind={card.kind} onClose={onClose} />}
+          {card && <InAppCard key={card.n} kind={card.kind} onClose={onClose} onPrimary={card.kind === "nudge" ? ask : undefined} />}
           <div className="ph-home" aria-hidden="true">
             <i />
           </div>
@@ -86,7 +89,7 @@ export function Phone({ card, onClose }: { card: { kind: Card; n: number } | nul
 }
 
 /** The in-app card, as the SDK shows it: slides up over the app, closes itself after a while. */
-function InAppCard({ kind, onClose }: { kind: Card; onClose: () => void }) {
+function InAppCard({ kind, onClose, onPrimary }: { kind: Card; onClose: () => void; onPrimary?: () => void }) {
   const c = CARDS[kind];
   const [leaving, setLeaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -111,10 +114,29 @@ function InAppCard({ kind, onClose }: { kind: Card; onClose: () => void }) {
         </span>
         <button type="button" className="ph-card-x" aria-label="Dismiss" onClick={close} />
       </div>
-      <p className="ph-card-title">{c.title}</p>
+      {kind === "nudge" ? (
+        <div className="ph-card-nudge">
+          <span className="ph-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
+              <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <p className="ph-card-title">{c.title}</p>
+        </div>
+      ) : (
+        <p className="ph-card-title">{c.title}</p>
+      )}
       <p className={c.quote ? "ph-card-body quote" : "ph-card-body"}>{c.quote ? `“${c.body}”` : c.body}</p>
       <div className="ph-card-actions">
-        <button type="button" className="primary" onClick={close}>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            close();
+            onPrimary?.();
+          }}
+        >
           {c.actions[0]}
         </button>
         <button type="button" onClick={close}>
