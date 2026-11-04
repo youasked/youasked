@@ -15,7 +15,7 @@
   --night-2: #0c1121;
   --night-line: rgba(255, 255, 255, 0.08);
   --night-muted: #8f97b2;
-  --display: Switzer, ui-sans-serif, system-ui, sans-serif;
+  --display: Fraunces, Georgia, serif;
   --body: Switzer, ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -453,3 +453,4 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .works .logo-row { justify-content: center; }
 .ai-link svg { width: 15px; height: 15px; }
 .ai-links { margin-top: 24px; }
+.h2 { font-variation-settings: "opsz" 144, "SOFT" 30; letter-spacing: -0.022em; }

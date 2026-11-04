@@ -6,7 +6,7 @@
   "workers_dev": true,
   "routes": [{ "pattern": "api.youasked.dev", "custom_domain": true }],
   // "off" until Cloudflare Email Sending is enabled for youasked.dev; then remove it.
-  "vars": { "EMAIL_SIGN_IN": "off" },
+  "vars": {},
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
   // Weekly digest to connected Telegram chats: Mondays 01:00 UTC (09:00 Singapore).

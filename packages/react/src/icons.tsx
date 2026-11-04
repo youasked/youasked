@@ -67,9 +67,10 @@ export const IconSpark = () => (
   </svg>
 );
 /** YouAsked's own mark for asking: a speech bubble with an up arrow (ask, and vote it up). */
-export const IconIdea = () => (
-  <svg {...base}>
-    <path d="M12 3.5c-4.97 0-9 3.47-9 7.75 0 2.3 1.17 4.37 3.03 5.8L5.2 20.5l4.1-2.06c.86.2 1.76.31 2.7.31 4.97 0 9-3.47 9-7.75S16.97 3.5 12 3.5Z" />
-    <path d="M8.2 13.2 12 9.4l3.8 3.8" strokeWidth={2.6} />
+/** The ask mark: a speech bubble holding the vote arrow. `ink` colours the arrow; by default the background. */
+export const IconIdea = ({ ink = "var(--_bg)" }: { ink?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
+    <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke={ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

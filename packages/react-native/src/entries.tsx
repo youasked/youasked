@@ -20,7 +20,7 @@ export function AskBar({ placeholder = "Ask for a feature…", style }: Common &
         <AppAvatar icon={appIcon} size={30} />
       ) : (
         <View style={s.askbarGlyph}>
-          <IconIdea color={theme.accent} size={18} />
+          <IconIdea color={theme.accent} ink={theme.bg} size={18} />
         </View>
       )}
       <T style={s.askbarText} numberOfLines={1}>
@@ -49,7 +49,7 @@ export function FeatureCard({
     <View style={[s.card, style]}>
       <View style={s.cardHead}>
         <View style={s.cardIcon}>
-          <IconIdea color={theme.accent} size={20} />
+          <IconIdea color={theme.accent} ink={theme.bg} size={20} />
         </View>
         <View style={{ flex: 1 }}>
           <T style={s.cardTitle}>{heading}</T>
@@ -109,7 +109,7 @@ export function RequestButton({
   if (variant === "icon") {
     return (
       <Tap onPress={() => open()} accessibilityLabel={label} style={[s.iconBtnRound, style]}>
-        <IconIdea color={theme.fg} size={22} />
+        <IconIdea color={theme.fg} ink={theme.bg} size={22} />
         {unseenCount > 0 && <View style={[s.dot, s.dotAbs]} />}
       </Tap>
     );
@@ -118,7 +118,7 @@ export function RequestButton({
     return (
       <Tap onPress={() => open()} style={[s.menuRow, style]}>
         <View style={[s.cardIcon, { width: 32, height: 32 }]}>
-          <IconIdea color={theme.accent} size={18} />
+          <IconIdea color={theme.accent} ink={theme.bg} size={18} />
         </View>
         <View style={s.menuText}>
           <T style={s.menuLabel}>{label}</T>
@@ -131,7 +131,7 @@ export function RequestButton({
   }
   return (
     <Tap onPress={() => open()} style={[s.pillBtn, style]}>
-      <IconIdea color={theme.accent} size={18} />
+      <IconIdea color={theme.accent} ink={theme.bg} size={18} />
       <T style={s.pillBtnText}>{label}</T>
       {unseenCount > 0 && <Badge count={unseenCount} />}
     </Tap>
@@ -147,7 +147,7 @@ export function AskAbout({ topic, prompt, style }: Common & { topic: string; pro
   if (disabled) return null;
   return (
     <Tap onPress={() => open({ view: "new", topic })} style={[s.askAbout, style]}>
-      <IconIdea color={theme.accent} size={15} />
+      <IconIdea color={theme.accent} ink={theme.bg} size={15} />
       <T style={s.askAboutText}>{prompt ?? `Want more from ${topic}?`}</T>
     </Tap>
   );

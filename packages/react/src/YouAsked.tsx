@@ -573,7 +573,7 @@ function Launcher({
       aria-label={isOpen ? "Close feature requests" : label || "Feature requests"}
       aria-expanded={isOpen}
     >
-      <span className="ya-fab-icon">{isOpen ? <IconClose /> : <IconIdea />}</span>
+      <span className="ya-fab-icon">{isOpen ? <IconClose /> : <IconIdea ink="var(--_accent)" />}</span>
       {label && !isOpen && <span>{label}</span>}
       {badge && !isOpen && <span className="ya-dot" aria-hidden="true" />}
     </button>

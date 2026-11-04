@@ -298,7 +298,7 @@ function Launcher({
         accessibilityLabel={label || "Feature requests"}
         style={[s.fab, label ? s.fabLabel : null]}
       >
-        <IconIdea color={theme.accentFg} size={26} />
+        <IconIdea color={theme.accentFg} ink={theme.accent} size={26} />
         {label ? <T style={s.fabText}>{label}</T> : null}
         {badge && <View style={[s.dot, s.dotAbs, { borderColor: theme.accent }]} />}
       </Tap>

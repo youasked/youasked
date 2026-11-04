@@ -99,23 +99,29 @@ export function IconSend({ color, size = 18 }: P) {
   );
 }
 
-/** A small light bulb. */
-export function IconIdea({ color, size = 22 }: P) {
-  const d = size * 0.58;
+/** The ask mark: a speech bubble holding the vote arrow. `ink` colours the arrow. */
+export function IconIdea({ color, size = 22, ink = "#fff" }: P & { ink?: string }) {
+  const u = size / 24;
   return (
-    <View style={box(size)}>
+    <View style={{ width: size, height: size }}>
+      <View style={{ position: "absolute", left: 1.5 * u, top: 2.25 * u, width: 21 * u, height: 17.25 * u, borderRadius: 4.5 * u, backgroundColor: color }} />
+      {/* The tail: a right triangle under the bubble's bottom-left. */}
       <View
         style={{
-          width: d,
-          height: d,
-          borderRadius: d / 2,
-          borderWidth: 2.2,
-          borderColor: color,
-          marginTop: -size * 0.14,
+          position: "absolute",
+          left: 6 * u,
+          top: 19.4 * u,
+          width: 0,
+          height: 0,
+          borderTopWidth: 3.85 * u,
+          borderTopColor: color,
+          borderRightWidth: 5.25 * u,
+          borderRightColor: "transparent",
         }}
       />
-      <Bar w={size * 0.3} h={2.2} color={color} y={size * 0.27} />
-      <Bar w={size * 0.2} h={2.2} color={color} y={size * 0.38} />
+      <View style={{ position: "absolute", left: 0, top: -1.1 * u, width: size, height: size * 0.9, alignItems: "center", justifyContent: "center" }}>
+        <IconChevron color={ink} size={size * 0.5} dir="up" stroke={Math.max(2, 2.6 * u)} />
+      </View>
     </View>
   );
 }
