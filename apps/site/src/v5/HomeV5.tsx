@@ -271,26 +271,66 @@ function Places() {
   );
 }
 
-const EVERY = [1, 3, 7, 14, 30];
-const AFTER = [10, 30, 60, 120];
-const SKIP = [0, 1, 2, 4];
+// Each setting rolls through a few of its options, one setting at a time, starting from the defaults.
+const ROLL = {
+  everyDays: [7, 14, 30, 1, 3],
+  activeSeconds: [30, 60, 120, 10],
+  skipVisits: [1, 2, 4, 0],
+  position: ["bottom", "top"] as const,
+  message: ["Got an idea for your app?", "What should we build next?", "Missing something?", "How can we make this better?"],
+};
+type RollKey = keyof typeof ROLL;
+const ORDER: RollKey[] = ["everyDays", "activeSeconds", "skipVisits", "position", "message"];
+const TICK = 2400;
 
-/** The prompt's settings, as the dashboard (or the nudge prop) takes them, with a live preview. */
+const days = (n: number) => (n === 1 ? "day" : n === 7 ? "week" : n === 14 ? "2 weeks" : n === 30 ? "month" : `${n} days`);
+const secs = (n: number) => (n < 60 ? `${n} seconds` : n === 60 ? "a minute" : "2 minutes");
+// skipVisits n means it can first show on visit n + 1.
+const visit = (n: number) => ["first", "second", "third", "fourth", "fifth"][n] ?? `${n + 1}th`;
+
+/** The prompt's settings rolling through their options, with the preview and the code following along. */
 function NudgeConfig() {
-  const [everyDays, setEvery] = useState(7);
-  const [activeSeconds, setAfter] = useState(30);
-  const [skipVisits, setSkip] = useState(1);
-  const [position, setPosition] = useState<"bottom" | "top">("bottom");
-  const [message, setMessage] = useState("Got an idea for your app?");
-  const days = (n: number) => (n === 1 ? "day" : n === 7 ? "week" : n === 14 ? "2 weeks" : n === 30 ? "month" : `${n} days`);
-  const secs = (n: number) => (n < 60 ? `${n} seconds` : n === 60 ? "a minute" : "2 minutes");
-  // skipVisits n means it can first show on visit n + 1.
-  const visits = (n: number) => ["first", "second", "third", "fourth", "fifth"][n] ?? `${n + 1}th`;
-  const custom = message.trim() && message.trim() !== "Got an idea for your app?";
+  const [step, setStep] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const el = root.current;
+    if (still || !el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!visible || paused) return;
+    const t = setInterval(() => setStep((n) => n + 1), TICK);
+    return () => clearInterval(t);
+  }, [visible, paused]);
+
+  // How many times each setting has moved on after `step` ticks.
+  const at = (k: RollKey) => {
+    const i = ORDER.indexOf(k);
+    return step > i ? Math.floor((step - 1 - i) / ORDER.length) + 1 : 0;
+  };
+  const val = <K extends RollKey>(k: K) => ROLL[k][at(k) % ROLL[k].length] as (typeof ROLL)[K][number];
+  const hot: RollKey | null = step > 0 ? ORDER[(step - 1) % ORDER.length] : null;
+  const everyDays = val("everyDays") as number;
+  const activeSeconds = val("activeSeconds") as number;
+  const skipVisits = val("skipVisits") as number;
+  const position = val("position") as "bottom" | "top";
+  const message = val("message") as string;
+  const tok = (k: RollKey, text: string) => (
+    <span className={hot === k ? "nc-tok hot" : "nc-tok"}>
+      <span key={text}>{text}</span>
+    </span>
+  );
+  const line = (k: RollKey) => (hot === k ? "hot" : undefined);
+
   return (
-    <div className="nc">
-      <div className="nc-stage" data-pos={position} aria-label="Preview of the prompt">
-        <div className="nc-skel" aria-hidden="true">
+    <div className="nc" ref={root} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div className="nc-stage" data-pos={position} aria-hidden="true">
+        <div className="nc-skel">
           <i />
           <i />
           <i />
@@ -299,16 +339,18 @@ function NudgeConfig() {
         <div className="ph-card nc-card">
           <div className="ph-card-top">
             <span className="ph-card-kicker">Help shape your app</span>
-            <span className="ph-card-x" aria-hidden="true" />
+            <span className="ph-card-x" />
           </div>
           <div className="ph-card-nudge">
-            <span className="ph-card-icon" aria-hidden="true">
+            <span className="ph-card-icon">
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
                 <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            <p className="ph-card-title">{message.trim() || "Got an idea for your app?"}</p>
+            <p className="ph-card-title" key={message}>
+              {message}
+            </p>
           </div>
           <p className="ph-card-body">Ask for a feature or vote on what others want.</p>
           <div className="ph-card-actions">
@@ -318,48 +360,41 @@ function NudgeConfig() {
         </div>
       </div>
       <div className="nc-panel">
-        <p className="nc-sentence">
-          Show it at most once every{" "}
-          <Pick label="How often" value={everyDays} options={EVERY} text={days} onChange={setEvery} />, after{" "}
-          <Pick label="After how long" value={activeSeconds} options={AFTER} text={secs} onChange={setAfter} /> of use, from their{" "}
-          <Pick label="First visit it can show on" value={skipVisits} options={SKIP} text={visits} onChange={setSkip} /> visit, at the{" "}
-          <Pick label="Where" value={position} options={["bottom", "top"]} text={(v) => `${v} of the screen`} onChange={(v) => setPosition(v as "bottom" | "top")} />.
+        <p className="nc-sentence" aria-live="off">
+          Show it at most once every {tok("everyDays", days(everyDays))}, after {tok("activeSeconds", secs(activeSeconds))} of use, from their{" "}
+          {tok("skipVisits", visit(skipVisits))} visit, at the {tok("position", position)} of the screen.
         </p>
-        <label className="nc-field">
-          <span>Headline</span>
-          <input value={message} maxLength={60} onChange={(e) => setMessage(e.target.value)} aria-label="Headline" />
-        </label>
-        <p className="nc-note">It also steps back each time someone dismisses it, and stays away from people who opened the sheet recently. Change any of this in your dashboard, without a release.</p>
-        <pre className="m5-code nc-code" aria-label="The code for these settings">
+        <p className="nc-sentence nc-headline">Asking {tok("message", `“${message}”`)}</p>
+        <p className="nc-note">
+          It also steps back each time someone dismisses it, and stays away from people who opened the sheet recently. Set all of it in your dashboard, without a release.
+        </p>
+        <pre className="m5-code nc-code" aria-label="The nudge prop for these settings">
           <span className="k">{"<YouAsked"}</span> nudge={"{{"}
-          {"\n  "}everyDays: <span className="n">{everyDays}</span>, activeSeconds: <span className="n">{activeSeconds}</span>,
-          {"\n  "}skipVisits: <span className="n">{skipVisits}</span>, position: <span className="s">"{position}"</span>,
-          {custom ? (
-            <>
-              {"\n  "}message: <span className="s">"{message.trim().replace(/"/g, "\\\"")}"</span>,
-            </>
-          ) : null}
+          {"\n"}
+          <span className={line("everyDays")}>
+            {"  "}everyDays: <span className="n">{everyDays}</span>,
+          </span>
+          {"\n"}
+          <span className={line("activeSeconds")}>
+            {"  "}activeSeconds: <span className="n">{activeSeconds}</span>,
+          </span>
+          {"\n"}
+          <span className={line("skipVisits")}>
+            {"  "}skipVisits: <span className="n">{skipVisits}</span>,
+          </span>
+          {"\n"}
+          <span className={line("position")}>
+            {"  "}position: <span className="s">"{position}"</span>,
+          </span>
+          {"\n"}
+          <span className={line("message")}>
+            {"  "}message: <span className="s">"{message}"</span>,
+          </span>
           {"\n"}
           {"}}"} <span className="k">{"/>"}</span>
         </pre>
       </div>
     </div>
-  );
-}
-
-/** A choice inside a sentence: looks like part of the text, opens like a select. */
-function Pick<T extends string | number>({ label, value, options, text, onChange }: { label: string; value: T; options: T[]; text: (v: T) => string; onChange: (v: T) => void }) {
-  return (
-    <span className="nc-pick">
-      <select aria-label={label} value={String(value)} onChange={(e) => onChange((typeof value === "number" ? Number(e.target.value) : e.target.value) as T)}>
-        {options.map((o) => (
-          <option key={String(o)} value={String(o)}>
-            {text(o)}
-          </option>
-        ))}
-      </select>
-      <span aria-hidden="true">{text(value)}</span>
-    </span>
   );
 }
 
