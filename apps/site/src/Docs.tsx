@@ -178,7 +178,7 @@ export async function GET() {
               <b>Slack and Discord.</b> A message for each request and each ship, through a webhook.
             </li>
             <li>
-              <b>GitHub.</b> Add the webhook shown in the dashboard. Then <code>closes YA-12</code> in a commit on the default branch, or in a merged pull request, marks YA-12 shipped.
+              <b>GitHub.</b> Add the webhook shown in the dashboard. Then <code>closes YA-12</code> in a commit on the default branch, or in a merged pull request, marks YA-12 shipped. Add a token too, and Build it opens an issue you can <a href="#agents">hand to Copilot or @claude</a>.
             </li>
           </ul>
 
@@ -186,6 +186,26 @@ export async function GET() {
           <p>
             Every request has a number, like <code>YA-12</code>. Put <b>closes YA-12</b> in a commit message or merged pull request and YouAsked marks it shipped, drafts the note from your commit and tells everyone who asked. Every shipped request also gets a <a href="/changelog">share page</a> and a &ldquo;You asked, it&rsquo;s live&rdquo; image you can post.
           </p>
+
+          <h2 id="agents">Hand a request to an agent</h2>
+          <p>
+            Open a request and tap <b>Build it</b>. You get a prompt with the request, the votes, what people said, screenshots and acceptance criteria, and three ways to send it off:
+          </p>
+          <ul>
+            <li>
+              <b>Assign to Copilot.</b> We open a GitHub issue with the brief and assign it to GitHub Copilot&rsquo;s coding agent, which opens a pull request. Your token needs read and write access to issues, contents, pull requests and actions, and the Copilot coding agent has to be on for the repo.
+            </li>
+            <li>
+              <b>Ask @claude on GitHub.</b> We open the issue and mention <code>@claude</code> on it, for the Claude Code GitHub Action. Set the action up once by running <code>/install-github-app</code> in Claude Code. The token only needs issues.
+            </li>
+            <li>
+              <b>Open in Cursor.</b> Opens Cursor with the prompt filled in, through Cursor&rsquo;s prompt link. Nothing else to set up.
+            </li>
+          </ul>
+          <p>
+            Copilot and @claude are also buttons on the Build it reply in Telegram, so you can send a request off from your phone. Handing off moves the request to In progress, and the brief asks for <code>closes YA-12</code> in the pull request, so merging it ships the request and tells everyone who asked. Anything users wrote is fenced off in the brief and marked as data, never instructions, so a request can&rsquo;t tell the agent to do something else. Only owners and admins can hand off.
+          </p>
+          <p>Prefer your own agent? Copy the prompt into Claude Code, Codex or anything else, or let it pick requests itself through the <a href="#mcp">MCP server</a>.</p>
 
           <h2 id="public-board">Public board</h2>
           <p>

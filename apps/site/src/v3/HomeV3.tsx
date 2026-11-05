@@ -234,6 +234,7 @@ const AGENTS = [
   ["claude", "Claude Code"],
   ["openai", "Codex"],
   ["cursor", "Cursor"],
+  ["copilot", "GitHub Copilot"],
 ] as const;
 
 export function Agents() {
@@ -243,6 +244,9 @@ export function Agents() {
         <div className="v3-head left">
           <h2>Set up by your coding agent.</h2>
           <p>Paste one prompt into Claude Code, Codex or Cursor. It looks at your app first, proposes where people should ask, then wires it in and signs your users.</p>
+          <p>
+            Then let it build what people ask for. From any request, assign it to Copilot, ask @claude on GitHub or open it in Cursor, from the dashboard or straight from Telegram. The agent gets the request, the votes and what people said, and when you merge its pull request, everyone who asked is told.
+          </p>
           <ul className="v3-agent-logos" aria-label="Works with">
             {AGENTS.map(([k, name]) => (
               <li key={k}>

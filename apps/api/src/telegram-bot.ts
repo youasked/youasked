@@ -13,7 +13,7 @@ import {
   undoShip,
 } from "./actions";
 import { fail, requireApp, type AppEnv } from "./app-auth";
-import { buildFor } from "./build";
+import { buildFor, handoff } from "./build";
 import { cleanText, newId } from "./lib";
 import { esc, requestCard, rememberMessage, tg, tgUpload } from "./notify";
 import { STATUSES, type AppRow, type Env, type Status, type TelegramConfig } from "./types";
@@ -89,6 +89,18 @@ export async function handleBotUpdate(
       await tg(env, token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Writing the prompt…" });
       await sendBuildPrompt(env, origin, token, target, r, cq.message?.message_id);
       return;
+    } else if (action === "hc" || action === "hl") {
+      const agent = action === "hc" ? "copilot" : "claude";
+      await tg(env, token, "answerCallbackQuery", { callback_query_id: cq.id, text: agent === "copilot" ? "Assigning Copilot…" : "Asking @claude…" });
+      const app = await env.DB.prepare("SELECT * FROM apps WHERE id = ?").bind(target.appId).first<AppRow>();
+      if (!app) return;
+      const out = await handoff(env, app, r, origin, agent);
+      const link = out.issueUrl ? `\n<a href="${esc(out.issueUrl)}">Open the issue</a>` : "";
+      await say(env, token, target.chatId, `${out.ok ? "🤖" : "⚠️"} ${ref(r)} · ${esc(out.message)}${link}`, {
+        ...(cq.message ? { reply_to_message_id: cq.message.message_id } : {}),
+        disable_web_page_preview: true,
+      });
+      return;
     } else if (action === "r" || action === "n") {
       await tg(env, token, "answerCallbackQuery", { callback_query_id: cq.id });
       const prompt =
@@ -146,13 +158,20 @@ async function sendBuildPrompt(env: Env, origin: string, token: string, target: 
   if (!app) return;
   const { prompt, issueUrl } = await buildFor(env, app, r, origin);
   const tail = issueUrl ? `\n\nGitHub issue: ${issueUrl}` : "";
-  const header = `🛠 ${ref(r)} · ${r.title}\nPaste this into Claude Code, Codex or Cursor.`;
+  const header = issueUrl
+    ? `🛠 ${ref(r)} · ${r.title}\nPaste this into Claude Code, Codex or Cursor, or hand the issue to an agent on GitHub.`
+    : `🛠 ${ref(r)} · ${r.title}\nPaste this into Claude Code, Codex or Cursor.`;
+  // With an issue open, the agents that work on GitHub can take it from here, from the phone.
+  const markup = issueUrl
+    ? { inline_keyboard: [[{ text: "🤖 Assign to Copilot", callback_data: `hc:${r.id}` }, { text: "✳️ Ask @claude", callback_data: `hl:${r.id}` }]] }
+    : undefined;
   if (prompt.length + tail.length + header.length < 3800) {
     await tg(env, token, "sendMessage", {
       chat_id: target.chatId,
       text: `${header}\n\n${prompt}${tail}`,
       disable_web_page_preview: true,
       ...(replyTo ? { reply_to_message_id: replyTo } : {}),
+      ...(markup ? { reply_markup: markup } : {}),
     });
     return;
   }
@@ -161,6 +180,7 @@ async function sendBuildPrompt(env: Env, origin: string, token: string, target: 
   form.set("document", new Blob([prompt], { type: "text/markdown" }), `${ref(r).toLowerCase()}-build-prompt.md`);
   form.set("caption", `${header}${tail}`.slice(0, 1000));
   if (replyTo) form.set("reply_to_message_id", String(replyTo));
+  if (markup) form.set("reply_markup", JSON.stringify(markup));
   await tgUpload(env, token, "sendDocument", form);
 }
 

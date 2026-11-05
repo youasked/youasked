@@ -623,3 +623,15 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
   .plan-price b { font-size: 28px; }
 }
 @media (max-width: 480px) { .plan-feats { grid-template-columns: 1fr; } }
+
+/* Build: hand a request to a coding agent */
+.handoff { border-radius: 14px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); padding: 14px 16px; margin: 0 0 16px; display: grid; gap: 10px; }
+.handoff-head { display: grid; gap: 2px; }
+.handoff-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.handoff-btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.handoff-result { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
+.handoff-result.ok { color: var(--ok); }
+.handoff-result.warn { color: var(--warn, #b45309); }
+@media (max-width: 560px) { .handoff-row { display: grid; } .handoff-btn { justify-content: center; } }
+.token-scopes { margin: 0 0 12px; padding-left: 0; display: grid; gap: 4px; }
+.handoff-result a { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }

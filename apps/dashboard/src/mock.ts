@@ -363,7 +363,20 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     const x = find(m[1]);
     if (!x) return err(404, "not_found");
     const prompt = `Build this feature request for ${s.app.name}.\n\nYA-${x.number}: ${x.title}\n\n${x.body}\n\nVotes: ${x.votes}. Asked by ${x.author.name ?? "a user"}.\n\nWhen you commit, include "closes YA-${x.number}" in the message so everyone who asked is told.`;
-    return json({ prompt, issueUrl: s.integrations.github?.hasToken ? `https://github.com/acme/app/issues/${100 + x.number}` : undefined });
+    const github = Boolean(s.integrations.github?.hasToken);
+    return json({
+      prompt,
+      issueUrl: github ? `https://github.com/acme/app/issues/${100 + x.number}` : undefined,
+      cursorUrl: `https://cursor.com/link/prompt?text=${encodeURIComponent(prompt)}`,
+      github,
+    });
+  }
+  if ((m = r.match(/^\/requests\/([^/]+)\/handoff$/)) && method === "POST") {
+    const x = find(m[1]);
+    if (!x) return err(404, "not_found");
+    const agent = (body as { agent?: string } | undefined)?.agent;
+    const issueUrl = `https://github.com/acme/app/issues/${100 + x.number}`;
+    return json({ ok: true, agent, issueUrl, message: agent === "copilot" ? "Assigned to Copilot. It opens a pull request when it's done." : "Asked @claude on the issue. It replies there and opens a branch for a pull request." });
   }
 
   if (r === "/duplicates") {

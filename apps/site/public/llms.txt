@@ -16,6 +16,7 @@ YouAsked is in beta. Plans are Solo, Pro and Studio (flat price, unlimited end u
 - The team gets each request in Telegram (with buttons), Slack or Discord, and replies reach the requester in the app.
 - Requests have numbers (YA-12). "closes YA-12" in a commit or merged pull request marks it shipped and tells everyone who asked.
 - Agents can list, read, reply to and ship requests through the MCP server.
+- From any request, "Build it" hands it to a coding agent: assign the GitHub issue to Copilot's coding agent, mention @claude for the Claude Code GitHub Action, or open Cursor with the prompt filled in. Merging the pull request with "closes YA-12" ships it.
 
 ## Key facts
 - Plain upvotes. Users are anonymous or identified by an ID the app signs with its secret key (HMAC-SHA256).

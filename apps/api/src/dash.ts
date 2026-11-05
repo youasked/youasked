@@ -312,6 +312,8 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
     [/^\/integrations(\/|$)/, ["GET", "PUT", "POST", "PATCH", "DELETE"]],
     [/^\/(import|export|embeddings)(\/|$)/, ["GET", "POST", "PUT"]],
     [/^\/requests\/[^/]+\/?$/, ["DELETE"]],
+    // Handing off starts a paid agent run in the owner's repo.
+    [/^\/requests\/[^/]+\/handoff$/, ["POST"]],
   ];
 
   dash.all("/apps/:appId/*", async (c) => {

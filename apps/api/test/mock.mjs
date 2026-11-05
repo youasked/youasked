@@ -121,7 +121,24 @@ const server = http.createServer(async (req, res) => {
     if (auth !== "Bearer ghp_goodtoken") return json(res, 401, { message: "Bad credentials" });
     if (req.method === "GET" && /^\/repos\/[\w.-]+\/[\w.-]+$/.test(sub)) {
       if (sub === "/repos/acme/missing") return json(res, 404, { message: "Not Found" });
-      return json(res, 200, { full_name: sub.slice(7), has_issues: true, permissions: { push: true } });
+      return json(res, 200, { full_name: sub.slice(7), has_issues: true, default_branch: "main", permissions: { push: true } });
+    }
+    if (req.method === "GET" && /^\/repos\/[\w.-]+\/[\w.-]+$/.test(sub) === false && sub.endsWith("/contents/.github/workflows")) {
+      return json(res, 200, [{ name: "claude.yml", path: ".github/workflows/claude.yml", type: "file" }]);
+    }
+    if (req.method === "GET" && sub.endsWith("/contents/.github/workflows/claude.yml")) {
+      return json(res, 200, { content: Buffer.from("name: Claude\njobs:\n  claude:\n    steps:\n      - uses: anthropics/claude-code-action@v1\n").toString("base64") });
+    }
+    if (req.method === "POST" && /\/issues\/\d+\/assignees$/.test(sub)) {
+      const payload = JSON.parse(body.toString());
+      calls.push({ kind: "github", method: "assign", payload });
+      const copilot = (payload.assignees ?? []).includes("copilot-swe-agent[bot]");
+      return json(res, 201, { assignees: copilot ? [{ login: "Copilot" }] : [] });
+    }
+    if (req.method === "POST" && /\/issues\/\d+\/comments$/.test(sub)) {
+      const payload = JSON.parse(body.toString());
+      calls.push({ kind: "github", method: "comment", payload });
+      return json(res, 201, { id: 1 });
     }
     if (req.method === "POST" && sub.endsWith("/issues")) {
       const payload = JSON.parse(body.toString());

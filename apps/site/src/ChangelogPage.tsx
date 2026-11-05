@@ -6,6 +6,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 export const ENTRIES: Entry[] = [
   {
     date: "2026-11-05",
+    title: "Hand a request to Copilot, Claude or Cursor",
+    body: "Build it now sends a request straight to a coding agent. Assign it to GitHub Copilot's coding agent, ask @claude on the GitHub issue for the Claude Code GitHub Action, or open Cursor with the prompt filled in. Copilot and @claude are buttons in Telegram too. The agent opens a pull request, and merging it ships the request and tells everyone who asked.",
+    tags: ["New", "Agents"],
+  },
+  {
+    date: "2026-11-05",
     title: "“Show us” lets you go to the right screen first",
     body: "Tapping “Show us” now puts a small bar over your app instead of freezing the page: go to the screen, scroll or open the menu you mean, then tap Capture and circle it. The widget also ignores your site's own element styles (section, list, heading and input rules), so it looks the same on any page.",
     tags: ["Improved", "Web"],

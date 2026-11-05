@@ -293,8 +293,13 @@ function GithubCard({ app, state, reload }: { app: WorkspaceApp; state?: Ints["g
           <p className="muted">Then write <code>closes YA-12</code> in a commit or pull request.</p>
           <hr />
           <form onSubmit={saveToken}>
-            <h3>Let "Build it" open issues <span className="optional">optional</span></h3>
-            <p className="muted">Add a GitHub token with access to issues and we open an issue with the spec when you tap Build it. {(state.hasToken || state.tokenConnected) && <b>A token is saved{state.repo ? ` for ${state.repo}` : ""}.</b>}</p>
+            <h3>Open issues and hand them to agents <span className="optional">optional</span></h3>
+            <p className="muted">With a token, Build it opens a GitHub issue with the spec, and you can assign it to Copilot or ask @claude to build it. {(state.hasToken || state.tokenConnected) && <b>A token is saved{state.repo ? ` for ${state.repo}` : ""}.</b>}</p>
+            <ul className="muted small token-scopes">
+              <li>Make a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">fine-grained token</a> for just this repo, with read and write access to <b>Issues</b>. That's enough to open issues and ask @claude.</li>
+              <li>To assign Copilot, also give it read and write access to <b>Contents</b>, <b>Pull requests</b> and <b>Actions</b>, and turn on the Copilot coding agent for the repo.</li>
+              <li>To ask @claude, set up the Claude Code GitHub Action once: run <code>/install-github-app</code> in Claude Code.</li>
+            </ul>
             <div className="grid2">
               <input className="input" placeholder="owner/repo" aria-label="Repository" value={repo} onChange={(e) => setRepo(e.target.value)} />
               <input className="input mono" type="password" placeholder={(state.hasToken || state.tokenConnected) ? "Paste a new token to replace it" : "github_pat_…"} aria-label="GitHub token" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} />

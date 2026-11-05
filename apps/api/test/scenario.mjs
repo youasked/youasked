@@ -196,6 +196,9 @@ const b1 = await shared.api("POST", `/requests/${(await shared.api("GET", "/requ
 ok(b1.status === 200 && b1.body.prompt.includes("closes YA-") && b1.body.prompt.includes("Acceptance criteria") && !b1.body.issueUrl, "build without a GitHub token: prompt, no issueUrl", JSON.stringify(Object.keys(b1.body)));
 console.log("      refined by AI:", b1.body.refined, "| prompt length", b1.body.prompt.length);
 const target = (await shared.api("GET", "/requests?status=all")).body.requests[0];
+ok(b1.body.github === false && b1.body.cursorUrl?.startsWith("https://cursor.com/link/prompt?text=") && b1.body.cursorUrl.length <= 9000, "build returns a Cursor link that fits its 10k limit", String(b1.body.cursorUrl?.length));
+const h0 = await shared.api("POST", `/requests/${target.id}/handoff`, { agent: "copilot" });
+ok(h0.status === 409 && h0.body.error === "github_not_connected" && h0.body.message, "handoff without GitHub says to connect it", JSON.stringify(h0.body));
 const badTok = await shared.api("PUT", "/integrations/github-token", { token: "ghp_nope", repo: "acme/widgets" });
 ok(badTok.status === 400 && badTok.body.error === "token_rejected", "bad GitHub token is rejected", JSON.stringify(badTok.body));
 const badRepo = await shared.api("PUT", "/integrations/github-token", { token: "ghp_goodtoken", repo: "acme/missing" });
@@ -224,6 +227,39 @@ await press("telegram-shared", SHARED_SECRET, SH_CHAT, card3.mid, `b:${rb.id}`);
 calls = await mock();
 const sent = tgCalls(calls, "sendMessage").find((c) => (c.payload.text ?? "").includes("GitHub issue: "));
 ok(Boolean(sent) && calls.filter((c) => c.kind === "github").length === 1, "Build it button replies with the prompt and the issue link");
+ok(JSON.stringify(sent?.payload.reply_markup ?? {}).includes(`hc:${rb.id}`) && JSON.stringify(sent.payload.reply_markup).includes(`hl:${rb.id}`), "the Build it reply offers Copilot and @claude buttons", JSON.stringify(sent?.payload.reply_markup));
+await reset();
+await press("telegram-shared", SHARED_SECRET, SH_CHAT, sent.mid, `hc:${rb.id}`);
+calls = await mock();
+ok(
+  calls.some((c) => c.kind === "github" && c.method === "assign") && tgCalls(calls, "sendMessage").some((c) => (c.payload.text ?? "").includes("Assigned to Copilot")),
+  "Telegram: Assign to Copilot assigns the issue and says so",
+  JSON.stringify(tgCalls(calls, "sendMessage").map((c) => c.payload.text)),
+);
+
+// Handing a request to an agent on GitHub.
+console.log("--- agent handoff");
+const statusBefore = (await shared.api("GET", `/requests/${target.id}`)).body.request?.status;
+await reset();
+const hc = await shared.api("POST", `/requests/${target.id}/handoff`, { agent: "copilot" });
+calls = await mock();
+const assign = calls.find((c) => c.kind === "github" && c.method === "assign");
+const aa = assign?.payload.agent_assignment ?? {};
+ok(
+  hc.status === 200 && hc.body.ok && assign?.payload.assignees?.includes("copilot-swe-agent[bot]") && aa.target_repo === "acme/widgets" && aa.base_branch === "main" && aa.custom_instructions?.includes("closes YA-"),
+  "handoff to Copilot assigns copilot-swe-agent with the repo, base branch and closes line",
+  JSON.stringify({ hc: hc.body, assign: assign?.payload }),
+);
+ok(!calls.some((c) => c.method === "createIssue"), "handoff reuses the request's issue");
+await reset();
+const hl = await shared.api("POST", `/requests/${target.id}/handoff`, { agent: "claude" });
+calls = await mock();
+const cm = calls.find((c) => c.kind === "github" && c.method === "comment");
+ok(hl.status === 200 && cm?.payload.body.startsWith("@claude") && cm.payload.body.includes("closes YA-"), "handoff to Claude comments @claude on the issue", JSON.stringify({ hl: hl.body, cm: cm?.payload }));
+const hx = await shared.api("POST", `/requests/${target.id}/handoff`, { agent: "devin" });
+ok(hx.status === 400 && hx.body.error === "bad_agent", "an unknown agent is rejected", JSON.stringify(hx.body));
+const statusAfter = (await shared.api("GET", `/requests/${target.id}`)).body.request?.status;
+ok(!["open", "planned"].includes(statusBefore) || statusAfter === "in_progress", "handing off moves an open request to in progress", `${statusBefore} -> ${statusAfter}`);
 // A long prompt goes out as a file.
 await reset();
 const longReq = await ask(shared, "Long request", Array.from({ length: 60 }, (_, i) => `Point ${i + 1}: the export should keep categories, notes and the original currency.`).join(" "));
@@ -236,6 +272,8 @@ await reset();
 await press("telegram-shared", SHARED_SECRET, SH_CHAT, longCard.mid, `b:${fatId}`);
 calls = await mock();
 ok(tgCalls(calls, "sendDocument").length === 1, "a long prompt is sent as a file", tgCalls(calls, "sendMessage").map((c) => c.payload.text?.length).join(","));
+const fat = await shared.api("POST", `/requests/${fatId}/build`);
+ok(fat.body.cursorUrl?.length <= 9000 && decodeURIComponent(fat.body.cursorUrl.split("text=")[1]).includes("closes YA-"), "a long prompt's Cursor link is trimmed to fit and keeps the closes line", `${fat.body.prompt.length} chars -> ${fat.body.cursorUrl?.length}`);
 
 // ================================================================== listening
 console.log("--- heard elsewhere");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { appApi, type Comment, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
+import { appApi, type ApiError, type Comment, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
+import { AgentLogo } from "../agent-logos";
 import { RequestPicker, ShipDialog, StatusPopover } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
@@ -324,23 +325,81 @@ function MergeDialog({ app, r, onClose, onDone }: { app: WorkspaceApp; r: Req; o
   );
 }
 
+type Built = { prompt: string; issueUrl?: string; cursorUrl?: string; github?: boolean };
+type Handed = { ok: boolean; message: string; issueUrl?: string };
+
 function BuildDialog({ app, r, onClose }: { app: WorkspaceApp; r: Req; onClose: () => void }) {
-  const b = useLoad(() => appApi<{ prompt: string; issueUrl?: string }>(app.id, `/requests/${r.id}/build`, { method: "POST" }), [r.id]);
+  const b = useLoad(() => appApi<Built>(app.id, `/requests/${r.id}/build`, { method: "POST" }), [r.id]);
+  const [busy, setBusy] = useState<"copilot" | "claude" | null>(null);
+  const [handed, setHanded] = useState<Handed | null>(null);
+  const issueUrl = handed?.issueUrl ?? b.data?.issueUrl;
+
+  const send = async (agent: "copilot" | "claude") => {
+    setBusy(agent);
+    setHanded(null);
+    try {
+      const out = await appApi<Handed>(app.id, `/requests/${r.id}/handoff`, { method: "POST", body: { agent } });
+      setHanded(out);
+    } catch (e) {
+      const err = e as ApiError;
+      setHanded({
+        ok: false,
+        message: err.status === 403 ? "Only owners and admins can hand requests to an agent." : err.serverMessage || "That didn't go through. Try again in a moment.",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <Dialog title={`Build YA-${r.number}`} onClose={onClose} wide>
       {b.loading && <Skeleton rows={4} />}
       {b.error != null && <ErrorState error={b.error} retry={b.retry} />}
       {b.data && (
         <>
-          <p className="muted">Paste this into Claude Code, Codex or Cursor. The prompt tells it to write <code>closes YA-{r.number}</code> in the commit, so everyone who asked is told when it lands.</p>
+          <div className="handoff">
+            <div className="handoff-head">
+              <b>Hand it to an agent</b>
+              <span className="muted small">It builds from the prompt below and opens a pull request. Merging it with <code>closes YA-{r.number}</code> tells everyone who asked.</span>
+            </div>
+            <div className="handoff-row">
+              {b.data.cursorUrl && (
+                <a className="btn btn-default handoff-btn" href={b.data.cursorUrl} target="_blank" rel="noreferrer">
+                  <AgentLogo name="cursor" /> Open in Cursor
+                </a>
+              )}
+              <Button className="handoff-btn" busy={busy === "copilot"} disabled={!b.data.github || busy !== null} onClick={() => send("copilot")}>
+                {busy !== "copilot" && <AgentLogo name="copilot" />} Assign to Copilot
+              </Button>
+              <Button className="handoff-btn" busy={busy === "claude"} disabled={!b.data.github || busy !== null} onClick={() => send("claude")}>
+                {busy !== "claude" && <AgentLogo name="claude" />} Ask @claude on GitHub
+              </Button>
+            </div>
+            {!b.data.github && (
+              <p className="muted small">
+                Copilot and Claude work from a GitHub issue. Connect GitHub with a token in{" "}
+                <Link to={appUrl(app.id, "/integrations")} onClick={onClose}>Integrations</Link> to send requests to them.
+              </p>
+            )}
+            {handed && (
+              <p className={`handoff-result ${handed.ok ? "ok" : "warn"}`} role="status">
+                <Icon name={handed.ok ? "check" : "warn"} size={16} /> {handed.message}
+                {handed.issueUrl && (
+                  <>
+                    {" "}<a href={handed.issueUrl} target="_blank" rel="noreferrer">Open the issue <Icon name="ext" size={12} /></a>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
+          <p className="muted">Or paste this into Claude Code, Codex or any coding agent. It tells the agent to write <code>closes YA-{r.number}</code> in the commit, so everyone who asked is told when it lands.</p>
           <div className="codebox">
             <pre>{b.data.prompt}</pre>
             <CopyButton text={b.data.prompt} label="Copy prompt" className="codebox-copy" />
           </div>
-          {b.data.issueUrl ? (
-            <p className="issue-line"><Icon name="check" size={16} /> We opened a GitHub issue too. <a href={b.data.issueUrl} target="_blank" rel="noreferrer">View issue <Icon name="ext" size={12} /></a></p>
-          ) : (
-            <p className="muted small">Want an issue opened automatically? Connect GitHub with a token in <Link to={appUrl(app.id, "/integrations")} onClick={onClose}>Integrations</Link>.</p>
+          {issueUrl && !handed && (
+            <p className="issue-line"><Icon name="check" size={16} /> We opened a GitHub issue too. <a href={issueUrl} target="_blank" rel="noreferrer">View issue <Icon name="ext" size={12} /></a></p>
           )}
         </>
       )}
