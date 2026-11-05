@@ -10,7 +10,48 @@ const MAX_WIDTH = 1600;
 /** Smaller than this and it was a tap, not a drag. */
 const MIN_SIDE = 14;
 
+/**
+ * Two steps. First a small bar floats over the page while the person goes where the problem is:
+ * the page is fully usable, so they can navigate, scroll and open menus. Then "Capture" freezes
+ * that screen for marking it up, which is the Mark step below.
+ */
 export default function Capture({ onDone, onCancel }: { onDone: (image: Blob) => void; onCancel: () => void }) {
+  const [phase, setPhase] = useState<"find" | "mark">("find");
+  if (phase === "find") return <Find onCapture={() => setPhase("mark")} onCancel={onCancel} />;
+  return <Mark onDone={onDone} onCancel={onCancel} onBack={() => setPhase("find")} />;
+}
+
+function Find({ onCapture, onCancel }: { onCapture: () => void; onCancel: () => void }) {
+  const captureRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    captureRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCancel();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onCancel]);
+  return (
+    <div className="ya-capture-find" role="dialog" aria-label="Show us what you mean">
+      <p>
+        <b>Go to what you want to show us,</b> then capture it.
+      </p>
+      <div className="ya-capture-find-actions">
+        <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="button" className="ya-btn ya-btn-sm" onClick={onCapture} ref={captureRef}>
+          Capture
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Mark({ onDone, onCancel, onBack }: { onDone: (image: Blob) => void; onCancel: () => void; onBack: () => void }) {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [drawing, setDrawing] = useState<Box | null>(null);
   const [busy, setBusy] = useState(false);
@@ -95,7 +136,7 @@ export default function Capture({ onDone, onCancel }: { onDone: (image: Blob) =>
         {failed
           ? "Couldn't capture this page. Try again, or cancel."
           : boxes.length === 0
-            ? "Drag to circle what you mean"
+            ? "Drag to circle what you mean, or press Done for the whole screen"
             : boxes.length >= MAX_BOXES
               ? "That's enough boxes. Press Done."
               : "Add another, or press Done"}
@@ -104,6 +145,11 @@ export default function Capture({ onDone, onCancel }: { onDone: (image: Blob) =>
         <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
+        {boxes.length === 0 && !busy && (
+          <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onBack}>
+            Back
+          </button>
+        )}
         {boxes.length > 0 && !busy && (
           <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={() => setBoxes((b) => b.slice(0, -1))}>
             Undo

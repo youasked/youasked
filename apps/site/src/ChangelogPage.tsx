@@ -6,6 +6,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 export const ENTRIES: Entry[] = [
   {
     date: "2026-11-05",
+    title: "“Show us” lets you go to the right screen first",
+    body: "Tapping “Show us” now puts a small bar over your app instead of freezing the page: go to the screen, scroll or open the menu you mean, then tap Capture and circle it. The widget also ignores your site's own element styles (section, list, heading and input rules), so it looks the same on any page.",
+    tags: ["Improved", "Web"],
+  },
+  {
+    date: "2026-11-05",
     title: "Yearly is now four months free",
     body: "Yearly plans cost about a third less than paying monthly: $72, $192 and $384 a year at the founding price ($6, $16 and $32 a month). The pricing shows what you're billed each year and what you save.",
     tags: ["Pricing"],

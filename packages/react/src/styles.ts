@@ -13,6 +13,11 @@ font-family:var(--ya-font,inherit);color:var(--_fg);font-size:15px;line-height:1
 /* :where() keeps the reset at class-level specificity, so component rules below win. */
 .ya-scope :where(button){font:inherit;color:inherit;background:none;border:0;margin:0;padding:0;cursor:pointer;text-align:inherit;letter-spacing:inherit}
 .ya-scope :where(button:disabled){cursor:default}
+.ya-scope :where(section,article,header,footer,nav,aside,main,div,figure,form,fieldset,label,ul,ol,li,dl,dd,p,h1,h2,h3,h4,h5,h6,blockquote,pre,table,img,span,a){margin:0;padding:0;border:0;height:auto;min-height:auto;max-height:none;width:auto;min-width:auto;max-width:none;float:none;background:none;box-shadow:none;text-transform:none;letter-spacing:normal}
+.ya-scope :where(ul,ol,li){list-style:none}
+.ya-scope :where(h1,h2,h3,h4,h5,h6,p,li,label,blockquote){font:inherit;color:inherit;text-align:inherit}
+.ya-scope :where(a){color:inherit;text-decoration:none}
+.ya-scope :where(input,textarea,select){font:inherit;color:inherit;margin:0;letter-spacing:normal;text-transform:none}
 .ya-scope :where(h2,h3,p,ul){margin:0;padding:0}
 .ya-scope :focus-visible{outline:2px solid var(--_accent);outline-offset:2px}
 .ya-scope :where(svg){display:block;flex:none}
@@ -289,6 +294,11 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-capture-hint{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 24px);white-space:nowrap;padding:9px 16px;border-radius:999px;background:var(--_bg);color:var(--_fg);font-size:14px;font-weight:650;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:none;animation:ya-pop .35s cubic-bezier(.34,1.36,.64,1)}
 .ya-capture-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px;border-radius:calc(var(--_radius) + 8px);background:var(--_bg);box-shadow:0 10px 40px rgba(0,0,0,.3),0 0 0 1px var(--_border)}
 .ya-capture-bar .ya-btn{min-width:84px}
+.ya-capture-find{position:fixed;z-index:2147483640;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 24px);display:flex;align-items:center;gap:14px;padding:10px 10px 10px 18px;border-radius:calc(var(--_radius) + 10px);background:var(--_bg);color:var(--_fg);box-shadow:0 0 0 1px var(--_border),0 18px 50px rgba(0,0,0,.28);font-size:14px;line-height:1.4;animation:ya-fade .18s ease-out}
+.ya-capture-find p{margin:0}
+.ya-capture-find p b{font-weight:600}
+.ya-capture-find-actions{display:flex;gap:8px;flex:none}
+@media (max-width:520px){.ya-capture-find{flex-direction:column;align-items:stretch;gap:10px;padding:14px;text-align:center}.ya-capture-find-actions .ya-btn{flex:1}}
 .ya-capture[data-busy] .ya-capture-surface{cursor:progress}
 
 .ya-embed{position:relative;display:flex;flex-direction:column;background:var(--_bg);border-radius:calc(var(--_radius) + 6px);overflow:hidden;border:1px solid var(--_border)}
