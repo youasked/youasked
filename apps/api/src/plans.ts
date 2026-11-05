@@ -90,3 +90,9 @@ export async function entitlements(env: Env, app: Pick<AppRow, "workspace_id">) 
   const live = isLive(ws);
   return { workspace: ws, live, plan: live ? ws!.plan : null, limits: live ? PLANS[ws!.plan!] : null };
 }
+
+/** Whether an app may use the paid model passes (build refinement). Test-mode apps get everything else. */
+export async function aiAllowed(env: { DB: D1Database }, app: { workspace_id: string | null; always_live?: number }): Promise<boolean> {
+  if (app.always_live) return true;
+  return (await entitlements(env as never, app)).live;
+}

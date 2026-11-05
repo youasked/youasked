@@ -2,6 +2,8 @@
 // Only people with a known email who aren't anonymous and haven't unsubscribed. Each person gets
 // each event once (email_log), whichever of the dashboard, Telegram or GitHub triggered it.
 import { sendEmail } from "./email";
+import { alert } from "./alert";
+import { entitlements } from "./plans";
 import { hmacHex } from "./lib";
 import type { Env, RequestRow } from "./types";
 
@@ -38,9 +40,29 @@ async function claim(db: D1Database, requestId: string, userId: string, kind: st
   return (res.meta.changes ?? 0) > 0;
 }
 
+/** Emails per app per day. Far above a real ship (people who asked), far below a spam run. */
+const DAILY_CAP = 300;
+
+/** Only apps on a plan (or ones we run) email their users, so a throwaway test-mode app can't send mail. */
+async function canEmail(env: Env, appId: string): Promise<boolean> {
+  const app = await env.DB.prepare("SELECT workspace_id, always_live FROM apps WHERE id = ?").bind(appId).first<{ workspace_id: string | null; always_live: number | null }>();
+  if (!app) return false;
+  if (app.always_live) return true;
+  return (await entitlements(env, app)).live;
+}
+
 async function deliver(env: Env, people: Person[], r: RequestRow, kind: string, compose: (p: Person, unsubscribeUrl: string) => { subject: string; text: string }) {
+  if (!people.length || !(await canEmail(env, r.app_id))) return;
+  const day = Math.floor(Date.now() / 86_400_000);
   for (const p of people) {
     try {
+      const sent = await env.DB.prepare("INSERT INTO rate_limits (key, bucket, n) VALUES (?1, ?2, 1) ON CONFLICT (key, bucket) DO UPDATE SET n = n + 1 RETURNING n")
+        .bind(`mail:${r.app_id}`, day)
+        .first<{ n: number }>();
+      if ((sent?.n ?? 1) > DAILY_CAP) {
+        await alert(env, `mail-cap:${r.app_id}`, `App ${r.app_id} hit the daily email cap (${DAILY_CAP}). Emails are held until tomorrow.`, 6 * 60 * 60_000);
+        return;
+      }
       if (!(await claim(env.DB, r.id, p.id, kind))) continue;
       const unsub = `${apiOrigin(env)}/v1/unsubscribe?token=${encodeURIComponent(await unsubscribeToken(env, p.id))}`;
       const { subject, text } = compose(p, unsub);

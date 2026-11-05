@@ -9,16 +9,17 @@ import auth, { dashboardBase } from "./auth";
 import { stripeHook } from "./billing";
 import { createDash } from "./dash";
 import { TEST_MODE_USERS, entitlements, isDevClient } from "./plans";
+import { alert } from "./alert";
 import build from "./build";
 import listening, { runListening } from "./listening";
 import { telegramConnect } from "./telegram-bot";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
-import { cleanText, decodeBase64Url, newId, similarity, verifySignature } from "./lib";
+import { cleanText, decodeBase64Url, newId, safeEqual, similarity, verifySignature } from "./lib";
 import type { Mail } from "./mail";
 import quality, { findSimilar, purgeRequest, unsubscribe } from "./quality";
 import { removeRequests, upsertRequests } from "./semantic";
-import { guardContent, reject } from "./spam";
+import { guardContent, limitIp, overLimit, reject } from "./spam";
 import publicBoards, { publicSettings, publicUrl, shareFields } from "./public";
 import { loadIntegrations, notifyTeam, tg } from "./notify";
 import {
@@ -163,6 +164,7 @@ async function upsertUser(
   isAnon: boolean,
   email: string | null,
   name: string | null,
+  limitKey?: string,
 ): Promise<UserRow> {
   const existing = await db
     .prepare("SELECT * FROM users WHERE app_id = ? AND external_id = ?")
@@ -170,6 +172,8 @@ async function upsertUser(
     .first<UserRow>();
   const t = now();
   if (!existing) {
+    // Each new person is a row; cap how many one IP can mint per app per hour.
+    if (limitKey && (await overLimit(db, limitKey, 60))) fail(429, "slow_down");
     await db
       .prepare(
         "INSERT INTO users (id, app_id, external_id, email, name, is_anon, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, external_id) DO NOTHING",
@@ -209,18 +213,23 @@ async function resolveUser(db: D1Database, app: AppRow, headers: Headers): Promi
     const id = typeof parsed.id === "string" || typeof parsed.id === "number" ? String(parsed.id) : "";
     if (!id || id.length > 200) fail(400, "bad_user_id");
     const sig = headers.get("x-youasked-sig");
+    const claimed = cleanText(parsed.email, 320) || null;
+    // We only ever email an address the developer's server vouched for: the signature has to cover the
+    // email as well as the id (signUser(secret, id, email)). A signature over the id alone still proves
+    // who they are, but the email is dropped, so nobody can make us mail an address they typed in.
+    let email: string | null = null;
     if (sig) {
-      if (!(await verifySignature(app.secret_key, id, sig))) fail(401, "bad_signature");
+      if (claimed && (await verifySignature(app.secret_key, id, sig, claimed))) email = claimed;
+      else if (!(await verifySignature(app.secret_key, id, sig))) fail(401, "bad_signature");
     } else if (app.require_signature) {
       fail(401, "signature_required");
     }
-    const email = cleanText(parsed.email, 320) || null;
     const name = cleanText(parsed.name, 120) || null;
-    return upsertUser(db, app.id, `u:${id}`, false, email, name);
+    return upsertUser(db, app.id, `u:${id}`, false, email, name, `newuser:${app.id}:${headers.get("cf-connecting-ip") ?? "unknown"}`);
   }
   const anon = headers.get("x-youasked-anon");
   if (anon && /^[A-Za-z0-9-]{8,64}$/.test(anon)) {
-    return upsertUser(db, app.id, `a:${anon}`, true, null, null);
+    return upsertUser(db, app.id, `a:${anon}`, true, null, null, `newuser:${app.id}:${headers.get("cf-connecting-ip") ?? "unknown"}`);
   }
   return null;
 }
@@ -242,6 +251,10 @@ const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 app.onError((err, c) => {
   if (err instanceof HTTPException) return err.getResponse();
   console.error(err);
+  // The route pattern, not the raw path, so ids don't make every error its own alert.
+  const route = `${c.req.method} ${c.req.routePath || new URL(c.req.url).pathname}`;
+  const message = err instanceof Error ? err.message : String(err);
+  c.executionCtx.waitUntil(alert(c.env, `error:${route}:${message.slice(0, 80)}`, `500 on ${route}\n${message.slice(0, 500)}`));
   return c.json({ error: "internal" }, 500);
 });
 
@@ -257,7 +270,7 @@ app.route("/v1", signup);
 
 app.post("/v1/apps", async (c) => {
   const token = c.req.header("authorization")?.replace(/^Bearer /, "");
-  if (!c.env.ADMIN_TOKEN || token !== c.env.ADMIN_TOKEN) fail(401, "unauthorized");
+  if (!safeEqual(token, c.env.ADMIN_TOKEN)) fail(401, "unauthorized");
   const body = await c.req.json<{ name?: string }>().catch(() => ({}) as { name?: string });
   const name = cleanText(body.name, 80);
   if (!name) fail(400, "name_required");
@@ -756,6 +769,8 @@ pub.get("/requests", async (c) => {
 pub.get("/requests/similar", async (c) => {
   const q = cleanText(c.req.query("q"), 200);
   if (q.length < 3) return c.json({ requests: [] });
+  // Each lookup can run an embedding; typing is debounced, so this is plenty for a person.
+  await limitIp(c.env.DB, c.req.raw.headers, "similar", 300);
   const me = c.get("user");
   const scored = await findSimilar(c.env, c.get("app").id, q, me?.id ?? "", undefined, me?.id ?? c.req.header("cf-connecting-ip") ?? "anon");
   return c.json({ requests: scored.slice(0, 4).map((x) => publicRequest(x.r, me)) });
@@ -879,6 +894,7 @@ pub.post("/requests", async (c) => {
 
 pub.post("/requests/:id/vote", async (c) => {
   const me = requireUser(c);
+  await limitIp(c.env.DB, c.req.raw.headers, `vote:${c.get("app").id}`, 120);
   const r = await loadRequest(c, c.req.param("id"));
   if (r.status === "merged") fail(400, "merged");
   if (r.status === "pending") fail(400, "pending");
@@ -928,6 +944,8 @@ pub.post("/requests/:id/comments", async (c) => {
 pub.post("/uploads", async (c) => {
   const me = requireUser(c);
   const a = c.get("app");
+  await limitIp(c.env.DB, c.req.raw.headers, "upload", 30);
+  if (await overLimit(c.env.DB, `upload-app:${a.id}`, 300)) fail(429, "slow_down");
   if (Number(c.req.header("content-length") ?? 0) > MAX_UPLOAD) fail(400, "too_large");
   const declared = (c.req.header("content-type") ?? "").split(";")[0].trim().toLowerCase();
   if (!IMAGE_TYPES.includes(declared)) fail(400, "bad_image");
@@ -994,10 +1012,25 @@ pub.post("/notifications/seen", async (c) => {
 app.route("/v1/public", publicBoards);
 app.route("/v1", pub);
 
+/** Screenshots uploaded but never attached to a request (the person gave up), older than a day. */
+async function sweepUploads(env: Env): Promise<void> {
+  const { results } = await env.DB.prepare("SELECT id FROM uploads WHERE request_id IS NULL AND created_at < ? LIMIT 500")
+    .bind(now() - 24 * 60 * 60 * 1000)
+    .all<{ id: string }>();
+  if (!results.length) return;
+  const ids = results.map((r) => r.id);
+  await env.UPLOADS.delete(ids);
+  await env.DB.batch(ids.map((id) => env.DB.prepare("DELETE FROM uploads WHERE id = ?").bind(id)));
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
     // Two triggers (see wrangler.jsonc): the daily Heard elsewhere scan, and the weekly digest.
-    ctx.waitUntil(event.cron === DAILY_CRON ? runListening(env) : sendDigests(env));
+    ctx.waitUntil(
+      (event.cron === DAILY_CRON ? Promise.all([runListening(env), sweepUploads(env)]) : sendDigests(env)).catch((err) =>
+        alert(env, `cron:${event.cron}`, `Scheduled job ${event.cron} failed: ${err instanceof Error ? err.message : String(err)}`, 6 * 60 * 60_000),
+      ),
+    );
   },
 };

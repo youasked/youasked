@@ -57,6 +57,7 @@ export async function GET() {
   const user = await getCurrentUser(); // your auth
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   return Response.json({ userId: user.id, signature: await signUser(process.env.YOUASKED_SECRET_KEY!, user.id) });
+  // To have YouAsked email them when it ships: signUser(secret, user.id, user.email), and pass the same email in `user`.
 }
 ```
 

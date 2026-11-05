@@ -1,5 +1,6 @@
 // Stripe billing through plain fetch (the SDK isn't needed on Workers). Prices are found by their
 // lookup_key (see plans.ts and scripts/stripe-setup.mjs), never by hard-coded IDs.
+import { alert } from "./alert";
 import { Hono } from "hono";
 import { dashboardBase, fail, type AuthVars } from "./auth";
 import { FOUNDING_SLOTS, PLANS, isLive, lookupKey, type Interval, type Plan, type WorkspaceRow } from "./plans";
@@ -59,7 +60,7 @@ billing.post("/workspaces/:wid/checkout", async (c) => {
   if (!c.env.STRIPE_SECRET_KEY) fail(503, "billing_unavailable");
   const ws = await ownerWorkspace(c);
   const body = await c.req.json<{ plan?: string; interval?: string }>().catch(() => ({}) as { plan?: string; interval?: string });
-  if (!body.plan || !(body.plan in PLANS)) fail(400, "bad_plan");
+  if (!body.plan || !(Object.hasOwn(PLANS, body.plan))) fail(400, "bad_plan");
   if (body.interval !== "month" && body.interval !== "year") fail(400, "bad_interval");
   const plan = body.plan as Plan;
   const interval: Interval = body.interval;
@@ -190,15 +191,35 @@ async function applySubscription(env: Env, sub: StripeSub, deleted: boolean): Pr
     )
     .bind(plan, interval, status, sub.customer, sub.id, periodEnd ? periodEnd * 1000 : null, foundingNow ? 1 : 0, ws.id)
     .run();
+
+  // Tell the developer about money moving. Compared with what was stored, so the duplicate events
+  // Stripe sends (checkout completed, subscription created) only produce one message.
+  const paying = (st: string | null | undefined) => st === "active" || st === "trialing";
+  const what = `${plan ?? "?"} ${interval === "year" ? "yearly" : "monthly"}${foundingNow ? " (founding)" : ""}`;
+  const who = `"${ws.name ?? ws.id}"`;
+  const wasPaying = paying(ws.subscription_status) && ws.stripe_subscription_id === sub.id;
+  const cancelling = Boolean((sub as { cancel_at_period_end?: boolean }).cancel_at_period_end);
+  let note: string | null = null;
+  if (paying(status) && !wasPaying) note = `New subscription: ${what} for ${who}.`;
+  else if (paying(status) && (ws.plan !== plan || ws.billing_interval !== interval)) note = `${who} changed plan to ${what}.`;
+  else if ((status === "past_due" || status === "unpaid") && ws.subscription_status !== status) note = `Payment failed for ${who} (${what}). Stripe will retry.`;
+  else if (status === "canceled" && ws.subscription_status !== "canceled") note = `${who} cancelled (${what}).`;
+  if (cancelling && status !== "canceled") note = note ?? `${who} will cancel at the end of the period (${what}).`;
+  if (note) await alert(env, `sub:${sub.id}:${status}:${plan}:${interval}:${cancelling}`, note, 60_000);
 }
 
 stripeHook.post("/stripe", async (c) => {
   if (!c.env.STRIPE_WEBHOOK_SECRET) fail(503, "billing_unavailable");
   const raw = await c.req.text();
-  if (!(await verifyStripeSignature(c.env.STRIPE_WEBHOOK_SECRET, c.req.header("stripe-signature"), raw))) fail(400, "bad_signature");
+  if (!(await verifyStripeSignature(c.env.STRIPE_WEBHOOK_SECRET, c.req.header("stripe-signature"), raw))) {
+    c.executionCtx.waitUntil(alert(c.env, "stripe:signature", "A Stripe webhook failed its signature check. If this keeps happening, the webhook secret on the Worker doesn't match Stripe's.", 60 * 60_000));
+    fail(400, "bad_signature");
+  }
 
-  const event = JSON.parse(raw) as { type: string; data: { object: Record<string, unknown> } };
+  const event = JSON.parse(raw) as { type: string; livemode?: boolean; data: { object: Record<string, unknown> } };
   const obj = event.data.object;
+  // A live API only acts on live events, so a test-mode payment can never turn on a real plan.
+  if (c.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") && event.livemode === false) return c.json({ received: true, ignored: "test_event" });
 
   if (event.type === "checkout.session.completed") {
     const wid = obj.client_reference_id as string | null;
@@ -212,10 +233,12 @@ stripeHook.post("/stripe", async (c) => {
       if (wid) sub.metadata = { ...sub.metadata, workspace_id: wid };
       await applySubscription(c.env, sub, false);
     }
-  } else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
-    await applySubscription(c.env, obj as unknown as StripeSub, false);
-  } else if (event.type === "customer.subscription.deleted") {
-    await applySubscription(c.env, obj as unknown as StripeSub, true);
+  } else if (event.type.startsWith("customer.subscription.")) {
+    // Events can arrive late or out of order, so read the subscription as it is now rather than
+    // trusting the event's copy. A cancelled one still reads back, with status "canceled".
+    const sub = c.env.STRIPE_SECRET_KEY && typeof obj.id === "string" ? await stripe<StripeSub>(c.env, "GET", `/subscriptions/${obj.id}`).catch(() => null) : null;
+    const current = sub ?? (obj as unknown as StripeSub);
+    await applySubscription(c.env, current, current.status === "canceled" || (!sub && event.type === "customer.subscription.deleted"));
   }
   return c.json({ received: true });
 });

@@ -1,6 +1,7 @@
 // Transactional email (sign-in links, invites, "it shipped" notes). Sent through Amazon SES when its
 // keys are set (the same SES account as Graiden and Otay), else through Cloudflare Email Sending (the
 // EMAIL binding), else logged so local dev and tests still see it.
+import { alert } from "./alert";
 import { AwsClient } from "aws4fetch";
 import type { Env } from "./types";
 
@@ -26,7 +27,9 @@ async function sendWithSes(env: Env, email: Email): Promise<boolean> {
     }),
   });
   if (!res.ok) {
-    console.error(`[email] SES send to ${email.to} failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    const why = (await res.text()).slice(0, 300);
+    console.error(`[email] SES send to ${email.to} failed: ${res.status} ${why}`);
+    await alert(env, "email:ses", `Email failed to send (SES ${res.status}). Sign-in links and notifications may not be arriving.\n${why}`, 30 * 60_000);
     return false;
   }
   return true;

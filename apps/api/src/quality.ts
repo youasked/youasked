@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { loadRequestById, ref } from "./actions";
 import { cleanText, similarity } from "./lib";
+import { overLimit } from "./spam";
 import { verifyUnsubscribeToken } from "./mail";
 import { exportRequests, importRequests } from "./portability";
 import { blend, nearestPairs, pairOf, removeRequests, searchByMeaning, semanticAvailable, upsertRequests } from "./semantic";
@@ -139,6 +140,7 @@ export default function quality(deps: QualityDeps) {
   /** Embeds existing requests. Call repeatedly with `after` set to the previous `next` until it is null. */
   router.post("/embeddings/backfill", async (c) => {
     const app = c.get("app");
+    if (await overLimit(c.env.DB, `backfill:${app.id}`, 20)) throw new HTTPException(429, { message: "slow_down" });
     if (!semanticAvailable(c.env)) return c.json({ available: false, embedded: 0, next: null });
     const body = await c.req.json<{ after?: string }>().catch(() => ({}) as { after?: string });
     const { results } = await c.env.DB.prepare(
@@ -176,6 +178,7 @@ export default function quality(deps: QualityDeps) {
 
   router.post("/import", async (c) => {
     const app = c.get("app");
+    if (await overLimit(c.env.DB, `import:${app.id}`, 10)) throw new HTTPException(429, { message: "slow_down" });
     const length = Number(c.req.header("content-length") ?? 0);
     if (length > 3 * 1024 * 1024) fail(413, "file_too_large");
     const form = await c.req.formData().catch(() => null);

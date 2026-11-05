@@ -21,6 +21,9 @@ export type Env = {
   /** Billing. */
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  /** Operator alerts go to this Telegram chat through this bot (see alert.ts). */
+  ALERT_TELEGRAM_TOKEN?: string;
+  ALERT_CHAT_ID?: string;
 
   /** The shared @youasked_bot that apps connect to with one tap (apps can still bring their own bot). */
   YOUASKED_BOT_TOKEN?: string;

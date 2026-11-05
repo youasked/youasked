@@ -627,3 +627,6 @@
 .v5 .v3-plan .amt .was-price { margin-left: 8px; font: 500 20px/1 Switzer, system-ui, sans-serif; color: var(--muted); text-decoration-thickness: 1.5px; }
 .v5 .v3-plan .was { margin-top: 10px; font-size: 14px; line-height: 1.45; }
 .v5 .v3-plan .was b { color: var(--ink); font-weight: 600; }
+.pf-chips li.soon { color: var(--muted); background: var(--tint); box-shadow: 0 0 0 1px var(--line); }
+.pf-chips li.soon svg { opacity: 0.55; }
+.pf-chips li em { margin-left: 2px; padding: 3px 8px; border-radius: 999px; background: #fff; color: var(--muted); font: 600 11.5px/1 Switzer, system-ui, sans-serif; font-style: normal; box-shadow: 0 0 0 1px var(--line); }

@@ -169,7 +169,9 @@ export async function GET() {
 }
 ```
 
-On any other backend, the signature is `HMAC-SHA256(secretKey, userId)` as hex. Either import `signUser` from `@youasked/react/server` in Node, or compute it with the platform's crypto (Supabase edge functions, Firebase functions, Rails, Django and so on).
+To let YouAsked email the person when what they asked for ships, sign their email as well: `signUser(secret, user.id, user.email)`, and pass the same `email` in `user`. Unsigned emails are ignored and never emailed.
+
+On any other backend, the signature is `HMAC-SHA256(secretKey, userId)` as hex, or `HMAC-SHA256(secretKey, userId + "\n" + email.trim().toLowerCase())` when you include an email. Either import `signUser` from `@youasked/react/server` in Node, or compute it with the platform's crypto (Supabase edge functions, Firebase functions, Rails, Django and so on).
 
 **Client:** fetch the identity once the user is known and pass it in:
 

@@ -146,7 +146,10 @@ export async function GET() {
   });
 }`}</Code>
           <p>
-            Pass the result to the provider: <code>{"user={{ id: userId }} signature={signature} ready={loaded}"}</code>. Email and name are optional; send them only if you want your team to see them. Signatures are HMAC-SHA256 of the user ID, made with your secret key.
+            Pass the result to the provider: <code>{"user={{ id: userId }} signature={signature} ready={loaded}"}</code>. Signatures are HMAC-SHA256 of the user ID, made with your secret key. Name is optional and only shown to your team.
+          </p>
+          <p>
+            <b>Email.</b> To have YouAsked email someone when what they asked for ships, sign their email too, <code>signUser(secret, user.id, user.email)</code>, and pass the same email in <code>user</code>. We only ever email an address your server signed, and only from apps on a plan, so nobody can make YouAsked mail an address they typed in. The signature is then HMAC-SHA256 of <code>{"`${id}\n${email}`"}</code>, with the email trimmed and lowercased.
           </p>
 
           <h2 id="theming">Theming</h2>
@@ -252,7 +255,7 @@ export default function RootLayout() {
 
           <h2 id="ios">iOS: Swift and SwiftUI</h2>
           <p>
-            A native SwiftUI sheet with detents, a keyboard-aware composer, Dynamic Type and VoiceOver, and no third-party dependencies. iOS 15 and up. Add the package in Xcode (File, Add Package Dependencies) with <code>https://github.com/youasked/youasked</code>, then:
+            A native SwiftUI sheet with detents, a keyboard-aware composer, Dynamic Type and VoiceOver, and no third-party dependencies. Builds for iOS 15 and up; tested on iOS 18 and 26. Add the package in Xcode (File, Add Package Dependencies) with <code>https://github.com/youasked/youasked</code>, then:
           </p>
           <Code label="MyApp.swift">{`import SwiftUI
 import YouAsked
@@ -274,7 +277,7 @@ struct MyApp: App {
 
           <h2 id="android">Android: Kotlin and Jetpack Compose</h2>
           <p>
-            A Material 3 bottom sheet that sits on the keyboard with edge-to-edge on, the back button, TalkBack labels, and no networking libraries. minSdk 24. Add JitPack to your repositories, then the dependency:
+            A Material 3 bottom sheet that sits on the keyboard with edge-to-edge on, the back button, TalkBack labels, and no networking libraries. Builds for Android 7 (API 24) and up; tested on Android 16. Add JitPack to your repositories, then the dependency:
           </p>
           <Code label="build.gradle.kts">{`// settings.gradle.kts: repositories { maven("https://jitpack.io") }
 implementation("com.github.youasked:youasked:0.1.0")`}</Code>

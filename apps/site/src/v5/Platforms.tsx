@@ -128,8 +128,11 @@ setContent {
 
 const GROUPS: { title: string; note: string; items: PlatformKey[] }[] = [
   { title: "Web", note: "React, Next.js, or a script tag for everything else", items: ["react", "nextdotjs", "vuedotjs", "svelte", "angular", "nuxt", "astro", "html5", "webflow", "wordpress"] },
-  { title: "Mobile", note: "React Native and Expo, or fully native", items: ["react", "expo", "swift", "android"] },
+  { title: "Mobile", note: "React Native and Expo, or fully native", items: ["react", "expo", "swift", "android", "flutter"] },
 ];
+
+/** Not built yet, shown so people know it's planned. */
+const SOON: PlatformKey[] = ["flutter"];
 
 const LABEL: Partial<Record<PlatformKey, string>> = { swift: "iOS, SwiftUI", android: "Android, Compose", html5: "Plain HTML" };
 
@@ -150,9 +153,10 @@ export function Platforms() {
               </div>
               <ul className="pf-chips">
                 {g.items.map((k, i) => (
-                  <li key={`${k}${i}`}>
+                  <li key={`${k}${i}`} className={SOON.includes(k) ? "soon" : undefined}>
                     <PlatformIcon k={k} size={17} />
                     {g.title === "Mobile" && k === "react" ? "React Native" : (LABEL[k] ?? PLATFORM_LOGOS[k].name)}
+                    {SOON.includes(k) && <em>Soon</em>}
                   </li>
                 ))}
               </ul>

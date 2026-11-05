@@ -9,7 +9,7 @@ Site: https://youasked.dev
 - A board with Top, New and Shipped, pull to refresh, request detail with the team's replies, and a Yours list.
 - Light and dark from the system setting, themable with one parameter.
 - Kotlin and Jetpack Compose only. The library uses `HttpURLConnection` and `org.json`: no OkHttp, no Retrofit, no image loader.
-- minSdk 24, compileSdk 36.
+- minSdk 24, compileSdk 36. Tested on Android 16 (API 36) on one phone size so far.
 
 ## Install
 

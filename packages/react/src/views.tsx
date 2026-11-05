@@ -665,7 +665,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
             {request.source && (
               <p className="ya-note">
                 Also asked{" "}
-                {request.sourceUrl ? (
+                {request.sourceUrl && /^https:\/\//i.test(request.sourceUrl) ? (
                   <a href={request.sourceUrl} target="_blank" rel="noopener noreferrer">
                     {request.source === "reddit" ? "on Reddit" : "in App Store reviews"}
                   </a>

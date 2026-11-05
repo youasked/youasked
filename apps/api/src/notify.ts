@@ -205,11 +205,14 @@ function plainText(e: TeamEvent): string {
 
 async function sendWebhook(cfg: WebhookConfig, e: TeamEvent) {
   const text = plainText(e);
+  // User text must not be able to ping a whole channel: Slack gets its control characters escaped
+  // (so <!channel> and <@U123> stay literal), and Discord is told to resolve no mentions at all.
+  const slackSafe = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const body =
     cfg.format === "slack"
-      ? { text }
+      ? { text: slackSafe(text) }
       : cfg.format === "discord"
-        ? { content: text }
+        ? { content: text, allowed_mentions: { parse: [] } }
         : {
             event: e.kind,
             text,

@@ -23,8 +23,11 @@ export async function hmacHex(secret: string, message: string): Promise<string> 
   return toHex(await crypto.subtle.sign("HMAC", key, encoder.encode(message)));
 }
 
-export async function verifySignature(secret: string, userId: string, signature: string): Promise<boolean> {
-  const expected = encoder.encode(await hmacHex(secret, userId));
+/** What a signature covers: the user id, plus the email when the developer's server signed one. */
+export const signedMessage = (userId: string, email?: string | null) => (email ? `${userId}\n${email.trim().toLowerCase()}` : userId);
+
+export async function verifySignature(secret: string, userId: string, signature: string, email?: string | null): Promise<boolean> {
+  const expected = encoder.encode(await hmacHex(secret, signedMessage(userId, email)));
   const given = encoder.encode(signature.toLowerCase());
   if (expected.byteLength !== given.byteLength) return false;
   return crypto.subtle.timingSafeEqual(expected, given);
@@ -70,4 +73,13 @@ export function similarity(a: string, b: string): number {
   let shared = 0;
   for (const t of ta) if (tb.has(t)) shared++;
   return (2 * shared) / (ta.size + tb.size);
+}
+
+/** Constant-time string compare, for secrets in headers. False for missing or different-length values. */
+export function safeEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const x = encoder.encode(a);
+  const y = encoder.encode(b);
+  if (x.byteLength !== y.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(x, y);
 }

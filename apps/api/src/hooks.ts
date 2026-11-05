@@ -3,7 +3,7 @@
 import { Hono } from "hono";
 import { loadRequestById, loadRequestByNumber, ref, setStatus } from "./actions";
 import { aiText } from "./ai";
-import { hmacHex } from "./lib";
+import { hmacHex, safeEqual } from "./lib";
 import { botTokenFor, esc, loadIntegrations, notifyTeam, tg } from "./notify";
 import { handleBotUpdate, handleSharedUpdate, resolveOwn, type TgUpdate } from "./telegram-bot";
 import type { AppRow, Env, GithubConfig, Integration, RequestRow, TelegramConfig } from "./types";
@@ -32,7 +32,7 @@ hooks.post("/telegram/:id", async (c) => {
   // Notify-only bots never point their webhook here, so nothing here should be accepted for them.
   // Shared chats are served by /telegram-shared.
   if (cfg.interactive === false || cfg.shared || !cfg.secret) return c.text("unknown", 404);
-  if (c.req.header("x-telegram-bot-api-secret-token") !== cfg.secret) return c.text("forbidden", 403);
+  if (!safeEqual(c.req.header("x-telegram-bot-api-secret-token"), cfg.secret)) return c.text("forbidden", 403);
   const update = await c.req.json<TgUpdate>();
   const env = c.env;
 
@@ -63,7 +63,7 @@ hooks.post("/telegram/:id", async (c) => {
 // The shared @youasked_bot: one webhook for every app that connected through it.
 hooks.post("/telegram-shared", async (c) => {
   if (!c.env.YOUASKED_BOT_TOKEN || !c.env.YOUASKED_BOT_SECRET) return c.text("unknown", 404);
-  if (c.req.header("x-telegram-bot-api-secret-token") !== c.env.YOUASKED_BOT_SECRET) return c.text("forbidden", 403);
+  if (!safeEqual(c.req.header("x-telegram-bot-api-secret-token"), c.env.YOUASKED_BOT_SECRET)) return c.text("forbidden", 403);
   const update = await c.req.json<TgUpdate>();
   await handleSharedUpdate(c.env, new URL(c.req.url).origin, update, (p) => c.executionCtx.waitUntil(p));
   return c.json({ ok: true });

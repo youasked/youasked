@@ -1,5 +1,7 @@
 // Developer sign-in: Google, GitHub and email links. Sessions are a random token in an HttpOnly
 // cookie; only its SHA-256 is stored. Routes live under /v1/auth.
+import { alert } from "./alert";
+import { overLimit } from "./spam";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -166,6 +168,7 @@ export async function signInIdentity(env: Env, id: Identity): Promise<string> {
         db.prepare("INSERT INTO account_identities (provider, subject, account_id, created_at) VALUES (?, ?, ?, ?)").bind(id.provider, id.subject, accountId, t),
         ...workspaceStatements(db, accountId, `${first}'s workspace`, t).statements,
       ]);
+      await alert(env, `account:${email}`, `New account: ${email} (signed in with ${id.provider}).`, 60_000);
     } catch (err) {
       // A parallel first sign-in with the same email won the insert; use that account.
       const existing = await db.prepare("SELECT id FROM accounts WHERE email = ?").bind(email).first<{ id: string }>();
@@ -369,6 +372,12 @@ auth.post("/email", async (c) => {
     .bind(email, t - 60 * 60 * 1000)
     .first<{ n: number }>();
   if ((recent?.n ?? 0) >= 5) fail(429, "too_many_links");
+  // Per IP and overall, so nobody can use the sign-in form to mail strangers from our domain.
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  if ((await overLimit(c.env.DB, `signin-mail:${ip}`, 10)) || (await overLimit(c.env.DB, "signin-mail:all", 400))) {
+    await alert(c.env, "signin-mail-limit", "The email sign-in limit was hit (per IP or overall). Could be a spike of real sign-ups, or someone hammering the form.", 60 * 60_000);
+    fail(429, "too_many_links");
+  }
   const token = randomToken(32);
   await c.env.DB.prepare("INSERT INTO login_tokens (id, email, created_at, expires_at) VALUES (?, ?, ?, ?)")
     .bind(await sha256Hex(token), email, t, t + LOGIN_TOKEN_MS)

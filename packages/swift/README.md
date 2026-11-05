@@ -9,7 +9,7 @@ Site: https://youasked.dev
 - A board with Top, New and Shipped, pull to refresh, request detail with the team's replies, and a Yours list.
 - Light and dark from the phone's setting, themable with one struct.
 - Dynamic Type (capped at 1.3x so layouts hold) and VoiceOver labels.
-- SwiftUI only, no third-party dependencies. iOS 15+.
+- SwiftUI only, no third-party dependencies. Builds for iOS 15+; tested on iOS 18 and 26 (iOS 15 to 17 use the same code paths with fallbacks, but haven't been run yet).
 
 ## Install
 

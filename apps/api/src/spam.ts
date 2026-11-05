@@ -61,6 +61,17 @@ export async function overLimit(db: D1Database, key: string, limit: number): Pro
   return (row?.n ?? 1) > limit;
 }
 
+/**
+ * A per-hour limit keyed by the caller's IP (not their device id, which anyone can change). Throws 429.
+ * `scope` keeps different routes and apps apart, e.g. limitIp(c.env.DB, c.req.raw.headers, `vote:${app.id}`, 120).
+ */
+export async function limitIp(db: D1Database, headers: Headers, scope: string, perHour: number): Promise<void> {
+  const ip = headers.get("cf-connecting-ip") ?? "unknown";
+  if (await overLimit(db, `${scope}:${ip}`, perHour)) {
+    throw new HTTPException(429, { res: new Response(JSON.stringify({ error: "slow_down" }), { status: 429, headers: { "content-type": "application/json" } }) });
+  }
+}
+
 const LIMITS = { request: { ip: 30, device: 8 }, comment: { ip: 90, device: 25 } } as const;
 
 /**
