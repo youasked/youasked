@@ -433,15 +433,17 @@ function Panel({
     setTimeout(onClose, 200);
   }, [onClose, reduceMotion]);
 
+  // A phone sheet stops the page scrolling behind it. While it's tucked away for "Show us", the page
+  // has to scroll again, so people can go to what they want to show.
   useEffect(() => {
-    if (!isSheet) return;
+    if (!isSheet || hidden) return;
     const html = document.documentElement;
     const previous = html.style.overflow;
     html.style.overflow = "hidden";
     return () => {
       html.style.overflow = previous;
     };
-  }, [isSheet]);
+  }, [isSheet, hidden]);
 
   useEffect(() => {
     panelRef.current?.focus({ preventScroll: true });

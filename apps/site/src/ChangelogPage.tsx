@@ -5,6 +5,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 // Newest first. Static for now: see the note at the bottom of the page.
 export const ENTRIES: Entry[] = [
   {
+    date: "2026-11-06",
+    title: "“Show us” scrolls on phones",
+    body: "On a phone, the page now scrolls while you go to what you want to show, instead of staying stuck where the sheet was opened. In @youasked/react 0.7.3 and @youasked/js 0.1.2.",
+    tags: ["Fixed", "Web"],
+  },
+  {
     date: "2026-11-05",
     title: "Hand a request to Copilot, Claude or Cursor",
     body: "Build it now sends a request straight to a coding agent. Assign it to GitHub Copilot's coding agent, ask @claude on the GitHub issue for the Claude Code GitHub Action, or open Cursor with the prompt filled in. Copilot and @claude are buttons in Telegram too. The agent opens a pull request, and merging it ships the request and tells everyone who asked.",
