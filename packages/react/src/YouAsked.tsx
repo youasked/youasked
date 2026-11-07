@@ -42,7 +42,7 @@ export type YouAskedProps = {
   greeting?: string;
   /** Heading of the full list. */
   title?: string;
-  /** Distance in px from the bottom edge for the launcher, toast and desktop panel, e.g. to clear a tab bar. */
+  /** Distance in px from the bottom edge for the launcher, toast, desktop panel and "Show us" bar, e.g. to clear a tab bar. */
   offset?: number;
   /** Show the corner card for replies, shipped requests and what's new. Turn off for previews embedded in a page. */
   cards?: boolean;

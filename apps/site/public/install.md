@@ -127,7 +127,7 @@ export default function Root() {
 }
 ```
 
-`trigger="floating"` (the default) adds a chat-bubble launcher in the corner. Use `trigger="none"` when there's a bottom tab bar, a floating action button or a support widget in that corner, or when you place the entry points yourself. `offset` moves the launcher up if you keep it.
+`trigger="floating"` (the default) adds a chat-bubble launcher in the corner. Use `trigger="none"` when there's a bottom tab bar, a floating action button or a support widget in that corner, or when you place the entry points yourself. `offset` lifts everything YouAsked floats at the bottom of the screen (the launcher, the in-app cards and the "Show us" bar) above your own bottom bar. Set it to the bar's height plus a little room whenever the app has a bottom tab bar, even with `trigger="none"`.
 
 ## 6. Choose the entry points
 

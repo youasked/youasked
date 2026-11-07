@@ -24,7 +24,7 @@ That adds the launcher in the corner. The tag also takes:
 | `data-accent`, `data-mode` (`auto`, `light`, `dark`), `data-radius`, `data-button-radius` (a number or `pill`), `data-font` | Appearance |
 | `data-trigger="none"` | No corner launcher, for when you use the elements or your own buttons |
 | `data-position="bottom-left"` | Launcher on the left |
-| `data-offset="80"` | Lifts the launcher and cards, e.g. above a bottom bar |
+| `data-offset="80"` | Lifts the launcher, the in-app cards and the "Show us" bar above a bottom bar |
 | `data-nudge="off"` | Turns the occasional "Got an idea?" prompt off on this page |
 | `data-wait-for-user` | Waits for `YouAsked.identify(…)` before doing anything |
 | `data-demo` | Sample data and no network, for trying it out |

@@ -1,7 +1,7 @@
 // "Show us": a full-screen layer over the host page where you drag boxes around what you mean.
 // Loaded on demand (it carries the screenshot library), so the main bundle stays small.
 import { domToCanvas } from "modern-screenshot";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Box = { x: number; y: number; w: number; h: number };
 
@@ -9,6 +9,59 @@ const MAX_BOXES = 6;
 const MAX_WIDTH = 1600;
 /** Smaller than this and it was a tap, not a drag. */
 const MIN_SIDE = 14;
+
+/** Where someone dragged the bar to. Kept for the rest of the visit, so it stays out of their way next time too. */
+let moved: { x: number; y: number } | null = null;
+
+/**
+ * The bars float over the host app, so they can land on its tab bar or a button someone needs.
+ * Drag one anywhere (not from its buttons) to move it out of the way.
+ */
+function useMovable() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState(moved);
+  const drag = useRef<{ dx: number; dy: number; id: number } | null>(null);
+  const clamp = useCallback((x: number, y: number) => {
+    const el = ref.current;
+    if (!el) return { x, y };
+    return {
+      x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - el.offsetWidth - 8)),
+      y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - el.offsetHeight - 8)),
+    };
+  }, []);
+  useEffect(() => {
+    // Back on screen after a resize or rotation, and fitted to this bar's own size.
+    const fit = () => setPos((p) => (p ? clamp(p.x, p.y) : p));
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [clamp]);
+  const handlers = {
+    onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+      if (e.button !== 0 || (e.target as Element).closest("button")) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      drag.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    },
+    onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      moved = clamp(e.clientX - d.dx, e.clientY - d.dy);
+      setPos(moved);
+    },
+    onPointerUp() {
+      drag.current = null;
+    },
+    onPointerCancel() {
+      drag.current = null;
+    },
+  };
+  const style: React.CSSProperties | undefined = pos ? { left: pos.x, top: pos.y, bottom: "auto", transform: "none" } : undefined;
+  /** Moved into the top half, so anything else that sits at the top should go to the bottom. */
+  const high = pos !== null && pos.y < window.innerHeight / 2;
+  return { ref, style, handlers, high };
+}
 
 /**
  * Two steps. First a small bar floats over the page while the person goes where the problem is:
@@ -34,8 +87,10 @@ function Find({ onCapture, onCancel }: { onCapture: () => void; onCancel: () => 
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [onCancel]);
+  const bar = useMovable();
   return (
-    <div className="ya-capture-find" role="dialog" aria-label="Show us what you mean">
+    <div className="ya-capture-find" role="dialog" aria-label="Show us what you mean" ref={bar.ref} style={bar.style} {...bar.handlers}>
+      <span className="ya-grip" aria-hidden="true" title="Drag to move" />
       <p>
         <b>Go to what you want to show us,</b> then capture it.
       </p>
@@ -104,8 +159,16 @@ function Mark({ onDone, onCancel, onBack }: { onDone: (image: Blob) => void; onC
     h: Math.abs(e.clientY - a.y),
   });
 
+  const bar = useMovable();
   return (
-    <div className="ya-capture" role="dialog" aria-label="Show us what you mean" data-busy={busy || undefined}>
+    <div
+      className="ya-capture"
+      role="dialog"
+      aria-label="Show us what you mean"
+      data-busy={busy || undefined}
+      data-drawing={drawing ? "" : undefined}
+      data-bar-high={bar.high || undefined}
+    >
       <span className="ya-capture-sample" ref={sampleRef} aria-hidden="true" />
       <div
         className="ya-capture-surface"
@@ -141,7 +204,8 @@ function Mark({ onDone, onCancel, onBack }: { onDone: (image: Blob) => void; onC
               ? "That's enough boxes. Press Done."
               : "Add another, or press Done"}
       </p>
-      <div className="ya-capture-bar">
+      <div className="ya-capture-bar" ref={bar.ref} style={bar.style} {...bar.handlers}>
+        <span className="ya-grip" aria-hidden="true" title="Drag to move" />
         <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </button>

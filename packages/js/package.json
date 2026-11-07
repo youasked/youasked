@@ -1,6 +1,6 @@
 {
   "name": "@youasked/js",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "In-app feature requests for any website: plain HTML, Vue, Svelte, Angular, Nuxt, Astro, Webflow, WordPress. Users ask and vote, you hear it on your phone, and everyone who asked is told when you ship.",
   "license": "MIT",
   "type": "module",

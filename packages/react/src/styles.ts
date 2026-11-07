@@ -291,14 +291,18 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-capture-sample{position:absolute;color:var(--_accent);width:0;height:0;overflow:hidden}
 .ya-capture-surface{position:absolute;inset:0;background:rgba(8,10,20,.2);cursor:crosshair;touch-action:none;-webkit-user-select:none;user-select:none}
 .ya-capture-box{position:absolute;border:3px solid var(--_accent);border-radius:8px;background:var(--_tint);box-shadow:0 0 0 2px rgba(255,255,255,.92);pointer-events:none}
-.ya-capture-hint{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 24px);white-space:nowrap;padding:9px 16px;border-radius:999px;background:var(--_bg);color:var(--_fg);font-size:14px;font-weight:650;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:none;animation:ya-pop .35s cubic-bezier(.34,1.36,.64,1)}
-.ya-capture-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px;border-radius:calc(var(--_radius) + 8px);background:var(--_bg);box-shadow:0 10px 40px rgba(0,0,0,.3),0 0 0 1px var(--_border)}
+.ya-capture-hint{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);white-space:normal;line-height:1.35;padding:9px 16px;border-radius:20px;background:var(--_bg);color:var(--_fg);font-size:14px;font-weight:650;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:none;animation:ya-pop .35s cubic-bezier(.34,1.36,.64,1)}
+.ya-capture-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--_offset) + 12px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:14px 8px 8px;cursor:grab;touch-action:none;transition:opacity .15s;border-radius:calc(var(--_radius) + 8px);background:var(--_bg);box-shadow:0 10px 40px rgba(0,0,0,.3),0 0 0 1px var(--_border)}
 .ya-capture-bar .ya-btn{min-width:84px}
-.ya-capture-find{position:fixed;z-index:2147483640;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 24px);display:flex;align-items:center;gap:14px;padding:10px 10px 10px 18px;border-radius:calc(var(--_radius) + 10px);background:var(--_bg);color:var(--_fg);box-shadow:0 0 0 1px var(--_border),0 18px 50px rgba(0,0,0,.28);font-size:14px;line-height:1.4;animation:ya-fade .18s ease-out}
+.ya-capture-find{position:fixed;z-index:2147483640;left:50%;transform:translateX(-50%);bottom:calc(var(--_offset) + 12px + env(safe-area-inset-bottom));cursor:grab;touch-action:none;width:max-content;max-width:calc(100vw - 24px);display:flex;align-items:center;gap:14px;padding:16px 10px 10px 18px;border-radius:calc(var(--_radius) + 10px);background:var(--_bg);color:var(--_fg);box-shadow:0 0 0 1px var(--_border),0 18px 50px rgba(0,0,0,.28);font-size:14px;line-height:1.4;animation:ya-fade .18s ease-out}
 .ya-capture-find p{margin:0}
 .ya-capture-find p b{font-weight:600}
 .ya-capture-find-actions{display:flex;gap:8px;flex:none}
-@media (max-width:520px){.ya-capture-find{flex-direction:column;align-items:stretch;gap:10px;padding:14px;text-align:center}.ya-capture-find-actions .ya-btn{flex:1}}
+@media (max-width:520px){.ya-capture-find{flex-direction:column;align-items:stretch;gap:10px;padding:20px 14px 14px;text-align:center}.ya-capture-find-actions .ya-btn{flex:1}}
+.ya-capture-find .ya-btn,.ya-capture-bar .ya-btn{cursor:pointer}
+.ya-grip{position:absolute;top:6px;left:50%;width:30px;height:4px;margin-left:-15px;border-radius:2px;background:var(--_border);pointer-events:none}
+.ya-capture[data-drawing] .ya-capture-bar,.ya-capture[data-drawing] .ya-capture-hint{opacity:.12}
+.ya-capture[data-bar-high] .ya-capture-hint{top:auto;bottom:calc(var(--_offset) + 12px + env(safe-area-inset-bottom))}
 .ya-capture[data-busy] .ya-capture-surface{cursor:progress}
 
 .ya-embed{position:relative;display:flex;flex-direction:column;background:var(--_bg);border-radius:calc(var(--_radius) + 6px);overflow:hidden;border:1px solid var(--_border)}

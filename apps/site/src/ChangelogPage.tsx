@@ -5,6 +5,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 // Newest first. Static for now: see the note at the bottom of the page.
 export const ENTRIES: Entry[] = [
   {
+    date: "2026-11-07",
+    title: "“Show us” stays clear of your tab bar",
+    body: "The bars you use while showing us something now sit above your app's bottom bar, using the same offset as the launcher. Drag either bar anywhere if it covers something you need, and the bar fades while you draw a box. In @youasked/react 0.7.4 and @youasked/js 0.1.3.",
+    tags: ["Improved", "Web"],
+  },
+  {
     date: "2026-11-06",
     title: "“Show us” scrolls on phones",
     body: "On a phone, the page now scrolls while you go to what you want to show, instead of staying stuck where the sheet was opened. In @youasked/react 0.7.3 and @youasked/js 0.1.2.",
