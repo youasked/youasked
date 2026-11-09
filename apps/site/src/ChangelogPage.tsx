@@ -29,9 +29,15 @@ export const ENTRIES: Entry[] = [
     tags: ["Improved", "Web"],
   },
   {
+    date: "2026-11-09",
+    title: "Lower prices, a site menu and plainer plan descriptions",
+    body: "Solo is now $9 a month, Pro $18 and Studio $39 (founding prices $6, $12 and $24), and yearly is still four months free. Every plan bullet now says in one line what it does, the comparison table explains each row, and the site has a menu on phones and desktop that jumps straight to pricing, docs, FAQ and contact.",
+    tags: ["Pricing", "Web"],
+  },
+  {
     date: "2026-11-05",
     title: "Yearly is now four months free",
-    body: "Yearly plans cost about a third less than paying monthly: $72, $192 and $384 a year at the founding price ($6, $16 and $32 a month). The pricing shows what you're billed each year and what you save.",
+    body: "Yearly plans cost about a third less than paying monthly. The pricing shows what you're billed each year and what you save.",
     tags: ["Pricing"],
   },
   {

@@ -186,7 +186,7 @@ export const FEATUREBASE_FAQ: Faq[] = [
   },
   {
     q: "Is there a cheaper Featurebase alternative for a solo developer?",
-    a: "Featurebase has a free plan for one seat. If you need more than that, YouAsked Solo costs $15 a month ($9 founding price), with no per-seat or per-resolution charges.",
+    a: "Featurebase has a free plan for one seat. If you need more than that, YouAsked Solo costs $9 a month ($6 founding price), with no per-seat or per-resolution charges.",
   },
   {
     q: "Does Featurebase have an MCP server?",

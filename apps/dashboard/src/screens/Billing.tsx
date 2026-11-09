@@ -7,6 +7,27 @@ import { useSession } from "../session";
 import { Button, Icon, PageHead, shortDate, useFail } from "../ui";
 
 const ORDER: Plan[] = ["solo", "pro", "studio"];
+type PlanLimits = (typeof PLANS)[Plan];
+const unit = (n: number, one: string, many: string) => `${Number.isFinite(n) ? n : "Unlimited"} ${n === 1 ? one : many}`;
+
+/** What each plan includes, with one plain line on what it means. Same wording as the pricing page. */
+function features(L: PlanLimits): { label: string; sub: string; soon?: boolean }[] {
+  return [
+    { label: unit(L.apps, "app", "apps"), sub: L.apps === 1 ? "One app of yours, with its own board and requests." : "Each app of yours gets its own board, requests and widget keys." },
+    { label: unit(L.members, "team member", "team members"), sub: L.members === 1 ? "Just you can sign in to the dashboard." : "People who can sign in here to read, reply and ship requests." },
+    { label: "Unlimited users and votes", sub: "You never pay more because more people use your app or vote." },
+    { label: "Alerts, GitHub and MCP", sub: "Requests land in Telegram, Slack or Discord. “closes YA-12” in a commit ships one, and your coding agent can too." },
+    L.removeBranding
+      ? { label: "Hide the “Feedback by YouAsked” line", sub: "It is the small credit at the bottom of the feedback sheet your users see. Turn it off in Settings." }
+      : { label: "Shows a small “Feedback by YouAsked” line", sub: "It is a small credit at the bottom of the feedback sheet your users see. Pro and Studio can hide it." },
+    ...(L.listeningApps
+      ? [{ label: `Finds requests outside your app, on ${unit(L.listeningApps, "app", "apps")}`, sub: "Heard elsewhere reads Reddit posts and App Store reviews every day and puts the feature asks in an inbox you approve, merge or dismiss." }]
+      : []),
+    ...(L.linear ? [{ label: "Linear sync", sub: "Turn requests into Linear issues. Not available yet.", soon: true }] : []),
+    ...(L.customDomain ? [{ label: "Your own domain for the board", sub: "Serve your public board from an address like feedback.yourapp.com. Not available yet.", soon: true }] : []),
+  ];
+}
+
 const BLURB: Record<Plan, string> = {
   solo: "One app, just you.",
   pro: "A few apps and a small team.",
@@ -151,10 +172,13 @@ export function Billing() {
                 )}
               </div>
               <ul className="plan-feats">
-                <li>{Number.isFinite(L.apps) ? `${L.apps} ${L.apps === 1 ? "app" : "apps"}` : "Unlimited apps"}</li>
-                <li>{L.members} {L.members === 1 ? "team member" : "team members"}</li>
-                <li>{L.listeningApps ? `Heard elsewhere on ${L.listeningApps} ${L.listeningApps === 1 ? "app" : "apps"}` : "Telegram, Slack, Discord, GitHub"}</li>
-                <li>{L.removeBranding ? "Remove the YouAsked line" : "Shows the YouAsked line"}</li>
+                {features(L).map((f) => (
+                  <li key={f.label}>
+                    <b>{f.label}</b>
+                    {f.soon && <em className="soon-tag">Coming soon</em>}
+                    <small>{f.sub}</small>
+                  </li>
+                ))}
               </ul>
               <div className="plan-cta">
                 {isCurrent ? (

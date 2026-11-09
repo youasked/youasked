@@ -130,3 +130,17 @@
 .log-tags { display: flex; gap: 8px; flex-wrap: wrap; }
 .log-tags span { font: 600 12px var(--body); padding: 3px 10px; border-radius: 999px; background: rgba(43, 75, 238, 0.1); color: var(--cobalt); }
 @media (max-width: 640px) { .log-item { grid-template-columns: 1fr; } }
+
+/* Plan bullets: the feature, then one plain line on what it does. */
+.plan li .feat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.feat-label { color: var(--ink); font-weight: 550; line-height: 1.35; }
+.plan li small, .v3-plan li small { display: block; color: var(--muted); font-size: 13.5px; line-height: 1.45; font-weight: 400; margin-top: 2px; text-wrap: pretty; }
+.soon-tag { font-style: normal; font: 600 11px var(--body); margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #eef1fe; color: #1f37c9; white-space: nowrap; vertical-align: 1px; }
+.plan ul { gap: 14px; }
+.v3-plan ul { gap: 14px !important; }
+@media (max-width: 600px) {
+  .tbl:not(.tbl-docs):not(.tbl-vs) { min-width: 0; font-size: 13.5px; }
+  .tbl:not(.tbl-docs):not(.tbl-vs) th, .tbl:not(.tbl-docs):not(.tbl-vs) td { padding: 10px 8px; }
+  .tbl:not(.tbl-docs):not(.tbl-vs) tbody th { width: 46%; }
+  .tbl:not(.tbl-docs):not(.tbl-vs) th small { font-size: 12px; }
+}

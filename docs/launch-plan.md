@@ -48,9 +48,9 @@ No permanent free tier. Free users cost real money here (AI, screenshots, notifi
 
 | | Solo | Pro | Studio |
 |---|---|---|---|
-| Monthly | $15 | $39 | $79 |
-| Yearly (2 months free) | $150 | $390 | $790 |
-| **Founding price, locked for life** | **$9 / $90** | **$24 / $240** | **$49 / $490** |
+| Monthly | $9 | $18 | $39 |
+| Yearly (4 months free) | $72 | $144 | $312 |
+| **Founding price, locked for life** | **$6 / $48** | **$12 / $96** | **$24 / $192** |
 | Apps | 1 | 5 | Unlimited |
 | Team members | 1 | 5 | 15 |
 | End users and votes | Unlimited | Unlimited | Unlimited |
@@ -115,7 +115,7 @@ Keyword volumes still need checking in a keyword tool before we write the compar
 
 ## Decisions for Aden
 
-1. **Pricing:** Solo $15, Pro $39, Studio $79 (founding $9 / $24 / $49), 14-day no-card trial, no free tier. Change any numbers?
+1. **Pricing:** Solo $9, Pro $18, Studio $39 (founding $6 / $12 / $24, cut on 2026-11-09), 14-day no-card trial, no free tier. Change any numbers?
 2. **"Feedback by YouAsked" line on Solo:** keep it (a free growth loop), or remove it on every paid plan?
 3. **Features:** build all 12 before launch, or launch with 1 to 8 plus 9 and 10, and ship 11 and 12 in the first two weeks after launch?
 4. **Closed beta:** yes or no, and who to invite besides Graiden.

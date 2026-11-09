@@ -91,9 +91,15 @@ export function Plans() {
               </p>
               <ul>
                 {planFeatures(key).map((f) => (
-                  <li key={f}>
+                  <li key={f.label} data-soon={f.soon || undefined}>
                     <Check size={18} />
-                    {f}
+                    <span className="feat">
+                      <span className="feat-label">
+                        {f.label}
+                        {f.soon && <em className="soon-tag">Coming soon</em>}
+                      </span>
+                      <small>{f.sub}</small>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -185,7 +191,7 @@ export function PricingPage() {
           </p>
         </div>
       </section>
-      <section className="page-section">
+      <section className="page-section" id="faq">
         <div className="narrow">
           <h2 className="h3 page-h">Pricing questions</h2>
           <FaqList items={PRICING_FAQ} />

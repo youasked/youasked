@@ -607,7 +607,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 .plan-price span { color: var(--muted); }
 .plan-price s { color: var(--muted); margin-left: 6px; font-size: 14px; }
 .plan-price small { flex-basis: 100%; color: var(--muted); font-size: 12.5px; }
-.plan-feats { display: grid; gap: 3px; font-size: 14px; color: var(--text-2); }
+.plan-feats { display: grid; gap: 10px; font-size: 14px; color: var(--text-2); }
 .plan-feats li::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-text); margin-right: 9px; vertical-align: middle; }
 .plan-cta { justify-self: end; }
 .current-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--accent-text); height: 38px; }
@@ -635,3 +635,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 @media (max-width: 560px) { .handoff-row { display: grid; } .handoff-btn { justify-content: center; } }
 .token-scopes { margin: 0 0 12px; padding-left: 0; display: grid; gap: 4px; }
 .handoff-result a { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+
+.plan-feats li b { font-weight: 600; color: var(--text); }
+.plan-feats li small { display: block; margin: 2px 0 0 14px; font-size: 12.5px; line-height: 1.45; color: var(--text-3, var(--text-2)); opacity: 0.85; }
+.plan-feats .soon-tag { font: 600 10.5px var(--body); margin-left: 8px; padding: 1px 7px; border-radius: 99px; background: var(--butter); color: var(--ink); font-style: normal; }
