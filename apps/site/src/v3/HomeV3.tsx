@@ -5,7 +5,7 @@ import { AskAbout, AskBar, FeatureBoard, FeatureCard, RequestButton, YouAsked } 
 import { AGENT_PROMPT, MCP_CMD } from "../content";
 import { LANDING_FAQ } from "../faq";
 import { Logo } from "../Logos";
-import { FOUNDING_SLOTS, GUARANTEE_DAYS, PLANS, PLAN_ORDER, money, price, priceView, yearlyTag, type Interval } from "../plans-view";
+import { FOUNDING_SLOTS, GUARANTEE_DAYS, PLANS, PLAN_ORDER, money, planFeatures, price, priceView, yearlyTag, type Interval } from "../plans-view";
 import { CopyButton } from "../ui";
 import { Film } from "./Film";
 import { Wordmark } from "./Mark";
@@ -51,9 +51,21 @@ export function HomeV3() {
   );
 }
 
+/** Where the menu goes. Contact is the same address the terms and privacy pages give. */
+export const CONTACT_EMAIL = "hello@youasked.dev";
+const MENU: [label: string, href: string][] = [
+  ["How it works", "/#how"],
+  ["Pricing", "/pricing"],
+  ["Docs", "/docs"],
+  ["FAQ", "/#faq"],
+  ["Changelog", "/changelog"],
+  ["Contact", `mailto:${CONTACT_EMAIL}`],
+];
+
 /** The bar goes dark while it sits over a dark hero (marked data-dark), and light everywhere else. */
 export function SiteNav({ startDark = false }: { startDark?: boolean }) {
   const [dark, setDark] = useState(startDark);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     const hero = document.querySelector("[data-dark]");
     if (!hero) return;
@@ -62,17 +74,31 @@ export function SiteNav({ startDark = false }: { startDark?: boolean }) {
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, []);
+  // Escape closes the phone menu, and so does growing the window to the inline links.
+  useEffect(() => {
+    if (!open) return;
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const wide = window.matchMedia("(min-width: 981px)");
+    const grow = () => wide.matches && setOpen(false);
+    window.addEventListener("keydown", key);
+    wide.addEventListener("change", grow);
+    return () => {
+      window.removeEventListener("keydown", key);
+      wide.removeEventListener("change", grow);
+    };
+  }, [open]);
   return (
-    <header className="v3-nav" data-tone={dark ? "dark" : undefined}>
+    <header className="v3-nav" data-tone={dark ? "dark" : undefined} data-open={open || undefined}>
       <div className="v3-wrap v3-nav-in">
         <a href="/" aria-label="YouAsked home">
           <Wordmark />
         </a>
         <nav className="v3-links" aria-label="Main">
-          <a href="/#how">How it works</a>
-          <a href="/docs">Docs</a>
-          <a href="/pricing">Pricing</a>
-          <a href="/changelog">Changelog</a>
+          {MENU.map(([label, href]) => (
+            <a key={label} href={href}>
+              {label}
+            </a>
+          ))}
         </nav>
         <div className="v3-nav-cta">
           <a className="v3-quiet" href="https://app.youasked.dev">
@@ -81,7 +107,26 @@ export function SiteNav({ startDark = false }: { startDark?: boolean }) {
           <a className="v3-btn" href="https://app.youasked.dev">
             Get started
           </a>
+          <button type="button" className="v3-menu-btn" aria-expanded={open} aria-controls="v3-sheet" onClick={() => setOpen(!open)}>
+            <span className="v3-burger" aria-hidden="true">
+              <i />
+              <i />
+            </span>
+            {open ? "Close" : "Menu"}
+          </button>
         </div>
+      </div>
+      <div className="v3-sheet" id="v3-sheet" hidden={!open}>
+        <nav aria-label="Menu">
+          {MENU.map(([label, href]) => (
+            <a key={label} href={href} onClick={() => setOpen(false)}>
+              {label}
+            </a>
+          ))}
+        </nav>
+        <a className="v3-btn line v3-sheet-in" href="https://app.youasked.dev" onClick={() => setOpen(false)}>
+          Sign in
+        </a>
       </div>
     </header>
   );
@@ -316,12 +361,15 @@ export function PricingRow() {
                   )}
                 </p>
                 <ul>
-                  <li>{Number.isFinite(plan.apps) ? `${plan.apps} app${plan.apps > 1 ? "s" : ""}` : "Unlimited apps"}</li>
-                  <li>
-                    {plan.members} team member{plan.members > 1 ? "s" : ""}
-                  </li>
-                  <li>{plan.listeningApps ? `Heard elsewhere on ${plan.listeningApps} app${plan.listeningApps > 1 ? "s" : ""}` : "Every entry point and integration"}</li>
-                  <li>{plan.removeBranding ? "Remove the YouAsked line" : "Telegram, Slack, Discord, GitHub"}</li>
+                  {planFeatures(p).map((f) => (
+                    <li key={f.label}>
+                      <span className="feat-label">
+                        {f.label}
+                        {f.soon && <em className="soon-tag">Coming soon</em>}
+                      </span>
+                      <small>{f.sub}</small>
+                    </li>
+                  ))}
                 </ul>
                 <a className={p === "pro" ? "v3-btn" : "v3-btn line"} href="https://app.youasked.dev">
                   Start with {plan.name}
@@ -384,6 +432,7 @@ export function SiteFooter() {
           <a href="/mcp">MCP</a>
           <a href="/alternatives">Alternatives</a>
           <a href="/changelog">Changelog</a>
+          <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>
