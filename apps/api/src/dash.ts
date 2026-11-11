@@ -12,6 +12,7 @@ import {
 } from "./auth";
 import { billing, foundingLeft } from "./billing";
 import { cleanText, newId } from "./lib";
+import { connections } from "./mcp-oauth";
 import { PLANS, TEST_MODE_APPS, isLive, type WorkspaceRow } from "./plans";
 import type { AppRow, Env } from "./types";
 
@@ -299,6 +300,9 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
 
   // ------------------------------------------------------------ billing
   dash.route("/", billing);
+
+  // ------------------------------------------------------------ AI assistant connections (MCP)
+  dash.route("/", connections);
 
   // ------------------------------------------------------------ session proxy
 

@@ -8,6 +8,8 @@ import agent from "./agent";
 import auth, { dashboardBase } from "./auth";
 import { stripeHook } from "./billing";
 import { createDash } from "./dash";
+import { createMcp } from "./mcp";
+import { oauth } from "./mcp-oauth";
 import { TEST_MODE_USERS, entitlements, isDevClient } from "./plans";
 import { alert } from "./alert";
 import build from "./build";
@@ -264,6 +266,9 @@ app.get("/admin/legacy", (c) => c.html(adminPage));
 app.route("/v1/hooks", hooks);
 app.route("/v1/hooks", stripeHook);
 app.route("/v1/auth", auth);
+// Hosted MCP connector: OAuth server (metadata, registration, authorize, token) and the /mcp endpoint.
+app.route("/", oauth);
+app.route("/", createMcp((req, env, ctx) => app.fetch(req, env, ctx)));
 app.route("/v1", signup);
 
 // ---------------------------------------------------------------- bootstrap
