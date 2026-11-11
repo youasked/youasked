@@ -16,6 +16,8 @@ import { Board } from "./screens/Board";
 import { Settings } from "./screens/Settings";
 import { Team } from "./screens/Team";
 import { Billing } from "./screens/Billing";
+import { Connect } from "./screens/Connect";
+import { Assistants } from "./screens/Assistants";
 
 export function App() {
   return (
@@ -89,6 +91,8 @@ function Root() {
     navigate("/", true);
     return <Splash />;
   }
+  // Consent for an AI assistant (hosted MCP connector). Standalone: no sidebar, needs only the sign-in.
+  if (path === "/connect") return <Connect me={me} reqId={query.get("req") ?? ""} />;
   if (!ws) {
     if (wsError) return <div className="center-page"><ErrorState error={wsError} retry={reloadWs} /></div>;
     return <Splash />;
@@ -113,6 +117,7 @@ function Page({ path }: { path: string }) {
   if (seg[0] === "invite") return <Invite />;
   if (seg[0] === "billing") return <Billing />;
   if (seg[0] === "team") return <Team />;
+  if (seg[0] === "assistants") return <Assistants />;
   if (seg[0] === "a" && seg[1]) {
     const app = findApp(ws, seg[1]);
     if (!app) {

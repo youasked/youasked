@@ -66,6 +66,7 @@ export function Shell({ children, theme, setTheme }: { children: ReactNode; them
   const wsNav = [
     { to: "/team", label: "Team", icon: "users" },
     { to: "/billing", label: "Billing", icon: "card" },
+    { to: "/assistants", label: "AI assistants", icon: "plug" },
   ];
   const active = (to: string, exact?: boolean) => (exact ? path === to || path.startsWith(to + "/r/") : path === to || path.startsWith(to + "/"));
 
