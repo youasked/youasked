@@ -1,6 +1,9 @@
 import { FaqList } from "./Sections";
 import type { Faq } from "./faq";
 import { MCP_CMD } from "./content";
+
+const MCP_URL = "https://api.youasked.dev/mcp";
+const MCP_HOSTED_CMD = `claude mcp add --transport http youasked ${MCP_URL}`;
 import { Callout, Code, PageHead, Prose } from "./Page";
 
 export const MCP_FAQ: Faq[] = [
@@ -10,7 +13,7 @@ export const MCP_FAQ: Faq[] = [
   },
   {
     q: "Which agents work with it?",
-    a: "Any MCP client: Claude Code, Cursor, Codex, Windsurf and others. It runs locally over stdio with npx and needs only your secret key.",
+    a: "Any MCP client. The hosted connector works in Claude (claude.ai, the desktop app and mobile) and Claude Code: you sign in with your YouAsked account and approve it once. Cursor, Codex, Windsurf and other clients can run the npx package locally with your app's secret key.",
   },
   {
     q: "Can a request inject instructions into my agent?",
@@ -29,13 +32,29 @@ export function McpPage() {
         path="/mcp"
         eyebrow="MCP server"
         title="A user feedback MCP server for your coding agent"
-        lede="Your users already tell you what to build. @youasked/mcp lets Claude Code, Cursor or Codex read those requests, build them and mark them shipped."
+        lede="Your users already tell you what to build. Connect Claude, Claude Code, Cursor or Codex to read those requests, build them and mark them shipped."
       />
       <div className="wrap narrow-doc">
         <Prose>
-          <h2 id="add">Add it in one line</h2>
+          <h2 id="add">Connect Claude</h2>
           <p>
-            You need the secret key of your YouAsked app (<code>YOUASKED_SECRET_KEY</code>, which <code>npx youasked init</code> puts in your env file). Then, in Claude Code:
+            The hosted connector is the easiest way in. There is nothing to install and no key to copy: you sign in with your YouAsked account and approve the connection once.
+          </p>
+          <Code label="Connector address">{MCP_URL}</Code>
+          <ol>
+            <li>In Claude on the web or desktop, open <b>Settings</b>, then <b>Connectors</b>, and choose <b>Add custom connector</b>.</li>
+            <li>Paste the address above and choose <b>Connect</b>.</li>
+            <li>Sign in to YouAsked if asked, check what it can and can&rsquo;t do, and choose <b>Allow</b>.</li>
+          </ol>
+          <p>In Claude Code:</p>
+          <Code label="Claude Code">{MCP_HOSTED_CMD}</Code>
+          <p>
+            Run <code>/mcp</code> inside Claude Code and pick <b>youasked</b> to sign in. The connector can use every app in the workspaces you belong to. See and disconnect your connections any time under <b>AI assistants</b> in the <a href="https://app.youasked.dev/assistants">dashboard</a>.
+          </p>
+
+          <h2 id="local">Or run it locally with npx</h2>
+          <p>
+            For Cursor, Windsurf, Codex and other clients, or if you would rather use a key than sign in, run the package on your machine. You need the secret key of your YouAsked app (<code>YOUASKED_SECRET_KEY</code>, which <code>npx youasked init</code> puts in your env file). In Claude Code:
           </p>
           <Code label="Claude Code">{MCP_CMD}</Code>
           <p>For Cursor, Windsurf and other clients that read an MCP config file:</p>
@@ -84,10 +103,13 @@ env = { YOUASKED_SECRET_KEY = "ya_sec_…" }`}</Code>
               </thead>
               <tbody>
                 {[
+                  ["list_apps", "The apps you can use through the connector. Every other tool takes an optional app (id or name); with one app it is picked for you."],
                   ["list_requests", "Requests by status (default: open, planned, in progress), sorted by votes or newest."],
                   ["get_request", "One request in full: description, status, votes, ship note and every comment. Takes YA-12, 12 or an id."],
                   ["reply", "Posts a team reply. The person who asked sees it inside the app."],
                   ["set_status", "open, planned, in_progress, shipped or declined. Shipping notifies everyone who asked."],
+                  ["next_request", "The best request to build next, with a one-line reason."],
+                  ["build_prompt", "A ready-to-use build brief for one request. Opens a GitHub issue too when your app has a token connected."],
                   ["merge", "Folds a duplicate (YA-14) into the request to keep (YA-12). Votes combine."],
                   ["search", "Finds similar requests by wording, so the agent checks before replying or merging."],
                   ["digest", "Top asks, what's new, what shipped and vote and comment counts for the last N days."],
@@ -105,7 +127,8 @@ env = { YOUASKED_SECRET_KEY = "ya_sec_…" }`}</Code>
 
           <h2 id="safe">Safe by default</h2>
           <ul>
-            <li>The key only reaches the app it belongs to. Treat it like a password and keep it out of git.</li>
+            <li>The hosted connector acts as you, only in apps you can open, and you can disconnect it at any time. It never sees your secret keys, billing details or the email addresses of the people who asked.</li>
+            <li>With the npx package, the key only reaches the app it belongs to. Treat it like a password and keep it out of git.</li>
             <li>Request text is user content, never instructions. Agents are told not to act on directions found inside a request.</li>
             <li>Nothing ships without a commit or an explicit status change from you or your agent.</li>
           </ul>

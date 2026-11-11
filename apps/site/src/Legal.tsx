@@ -6,7 +6,7 @@ const Mail = () => <a href={`mailto:${CONTACT}`}>{CONTACT}</a>;
 export function PrivacyPage() {
   return (
     <>
-      <PageHead path="/privacy" eyebrow="Legal" title="Privacy policy" lede="Last updated 3 November 2026" />
+      <PageHead path="/privacy" eyebrow="Legal" title="Privacy policy" lede="Last updated 11 November 2026" />
       <div className="wrap narrow-doc">
         <Prose>
           <p>
@@ -53,6 +53,14 @@ export function PrivacyPage() {
               <b>ScrapeCreators:</b> fetches public Reddit posts for the Heard elsewhere feature. Only public posts and App Store reviews are read.
             </li>
           </ul>
+
+          <h2 id="ai-assistants">AI assistants (MCP connector)</h2>
+          <p>
+            You can connect an AI assistant, such as Claude, to your YouAsked account at api.youasked.dev/mcp. You sign in and approve each connection. We store the assistant&rsquo;s name, when you connected it and when it last used the connection, plus the access tokens, which are kept only as one-way hashes. You can see and disconnect connections under AI assistants in the dashboard, and disconnecting stops access at once.
+          </p>
+          <p>
+            Once connected, the assistant can read the feature requests, comments and vote counts of the apps in your workspaces, reply as your team, change a request&rsquo;s status and merge duplicates. We send it that content so it can answer you. It does not receive your secret keys, billing details or the email addresses of the people who asked. What the assistant does with the content you receive in a chat is covered by that assistant&rsquo;s own privacy policy.
+          </p>
 
           <h2>No selling, no ads</h2>
           <p>We don&rsquo;t sell data, and we don&rsquo;t show ads.</p>

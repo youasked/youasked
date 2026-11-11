@@ -219,7 +219,9 @@ export async function GET() {
           </p>
 
           <h2 id="mcp">MCP server</h2>
-          <p>Let your coding agent read the top requests, build them and ship them.</p>
+          <p>Let Claude or your coding agent read the top requests, build them and ship them. The hosted connector needs no key: you sign in and approve it once.</p>
+          <Code label="Claude Code">{"claude mcp add --transport http youasked https://api.youasked.dev/mcp"}</Code>
+          <p>In claude.ai, add a custom connector with the address <code>https://api.youasked.dev/mcp</code>. Prefer a local server with your secret key (Cursor, Codex and others)? Use the npx package:</p>
           <Code label="Terminal">{MCP_CMD}</Code>
           <p>
             It gives your agent tools to list, read, search, reply to, merge and ship requests. More on the <a href="/mcp">MCP server page</a>.
