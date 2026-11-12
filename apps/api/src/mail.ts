@@ -2,6 +2,8 @@
 // Only people with a known email who aren't anonymous and haven't unsubscribed. Each person gets
 // each event once (email_log), whichever of the dashboard, Telegram or GitHub triggered it.
 import { sendEmail } from "./email";
+import { requestEmail } from "./email-kit";
+import { siteUrl } from "./public";
 import { alert } from "./alert";
 import { entitlements } from "./plans";
 import { hmacHex } from "./lib";
@@ -25,10 +27,14 @@ export async function verifyUnsubscribeToken(env: Env, token: string): Promise<s
   return userId;
 }
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 async function appNameOf(db: D1Database, appId: string): Promise<string> {
   return (await db.prepare("SELECT name FROM apps WHERE id = ?").bind(appId).first<{ name: string }>())?.name ?? "the app";
+}
+
+/** The request's public share page, when the app has a slug (shipped requests get one even on a private board). */
+async function sharePageOf(env: Env, r: RequestRow): Promise<string | null> {
+  const a = await env.DB.prepare("SELECT slug FROM apps WHERE id = ?").bind(r.app_id).first<{ slug: string | null }>();
+  return a?.slug ? `${siteUrl(env)}/${a.slug}/shipped/${r.number}` : null;
 }
 
 /** Marks (request, person, kind) as sent. False when they were already emailed about it. */
@@ -51,7 +57,7 @@ async function canEmail(env: Env, appId: string): Promise<boolean> {
   return (await entitlements(env, app)).live;
 }
 
-async function deliver(env: Env, people: Person[], r: RequestRow, kind: string, compose: (p: Person, unsubscribeUrl: string) => { subject: string; text: string }) {
+async function deliver(env: Env, people: Person[], r: RequestRow, kind: string, compose: (p: Person, unsubscribeUrl: string) => { subject: string; text: string; html: string }) {
   if (!people.length || !(await canEmail(env, r.app_id))) return;
   const day = Math.floor(Date.now() / 86_400_000);
   for (const p of people) {
@@ -65,15 +71,8 @@ async function deliver(env: Env, people: Person[], r: RequestRow, kind: string, 
       }
       if (!(await claim(env.DB, r.id, p.id, kind))) continue;
       const unsub = `${apiOrigin(env)}/v1/unsubscribe?token=${encodeURIComponent(await unsubscribeToken(env, p.id))}`;
-      const { subject, text } = compose(p, unsub);
+      const { subject, text, html } = compose(p, unsub);
       const body = `${text}\n\n--\nDon't want these? Unsubscribe: ${unsub}`;
-      const html =
-        `<div style="font:16px/1.5 -apple-system,Segoe UI,sans-serif;max-width:520px">` +
-        text
-          .split("\n\n")
-          .map((para) => `<p>${esc(para).replace(/\n/g, "<br>")}</p>`)
-          .join("") +
-        `<p style="color:#888;font-size:13px">Don't want these? <a href="${esc(unsub)}">Unsubscribe</a></p></div>`;
       await sendEmail(env, { to: p.email, subject, text: body, html });
     } catch (err) {
       console.error("[mail] failed", err);
@@ -93,14 +92,36 @@ export async function emailShipped(env: Env, r: RequestRow): Promise<void> {
   const people = results;
   if (!people.length) return;
   const app = await appNameOf(env.DB, r.app_id);
-  await deliver(env, people, r, "shipped", (p) => ({
-    subject: `Live in ${app}: ${r.title}`,
-    text:
-      `${p.name ? `Hi ${p.name.split(/\s+/)[0]},\n\n` : ""}` +
-      `You ${p.id === r.author_id ? "asked for" : "voted for"} "${r.title}". It's live in ${app}.` +
+  const page = await sharePageOf(env, r);
+  await deliver(env, people, r, "shipped", (p, unsubscribe) => {
+    const first = p.name ? p.name.split(/\s+/)[0] : null;
+    const asked = p.id === r.author_id;
+    const text =
+      `${first ? `Hi ${first},\n\n` : ""}` +
+      `You ${asked ? "asked for" : "voted for"} "${r.title}". It's live in ${app}.` +
       (r.ship_note ? `\n\n${r.ship_note}` : "") +
-      `\n\nThanks for helping shape it.`,
-  }));
+      (page ? `\n\nSee the update: ${page}` : "") +
+      `\n\nThanks for helping shape it.`;
+    return {
+      subject: `Live in ${app}: ${r.title}`,
+      text,
+      html: requestEmail({
+        app,
+        tag: "Just shipped",
+        title: "You asked. It’s live.",
+        preheader: `${r.title} is now live in ${app}.`,
+        kicker: "Shipped",
+        live: true,
+        greeting: first ? `Hi ${first},` : null,
+        intro: `You ${asked ? "asked for" : "voted for"} this in ${app}, and it’s now live.`,
+        quote: { caption: asked ? "Your request" : "The request you voted for", text: r.title, big: true },
+        note: r.ship_note ? { caption: `A note from the ${app} team`, text: r.ship_note } : null,
+        closing: "Thanks for helping shape it.",
+        cta: page ? { label: "See what shipped", href: page } : null,
+        unsubscribe,
+      }),
+    };
+  });
 }
 
 export async function emailReply(env: Env, r: RequestRow, body: string, commentId: string): Promise<void> {
@@ -112,8 +133,24 @@ export async function emailReply(env: Env, r: RequestRow, body: string, commentI
     .all<Person>();
   if (!results.length) return;
   const app = await appNameOf(env.DB, r.app_id);
-  await deliver(env, results, r, `reply:${commentId}`, (p) => ({
-    subject: `${app} replied to "${r.title}"`,
-    text: `${p.name ? `Hi ${p.name.split(/\s+/)[0]},\n\n` : ""}The ${app} team replied to "${r.title}":\n\n${body}\n\nYou can answer from the feedback sheet in the app.`,
-  }));
+  await deliver(env, results, r, `reply:${commentId}`, (p, unsubscribe) => {
+    const first = p.name ? p.name.split(/\s+/)[0] : null;
+    return {
+      subject: `${app} replied to "${r.title}"`,
+      text: `${first ? `Hi ${first},\n\n` : ""}The ${app} team replied to "${r.title}":\n\n${body}\n\nYou can answer from the feedback sheet in the app.`,
+      html: requestEmail({
+        app,
+        tag: "New reply",
+        title: `The ${app} team replied.`,
+        preheader: body.replace(/\s+/g, " ").slice(0, 110),
+        kicker: "A reply to your request",
+        greeting: first ? `Hi ${first},` : null,
+        intro: "They answered your request:",
+        quote: { caption: "Your request", text: r.title },
+        note: { caption: "Their reply", text: body },
+        closing: "You can answer from the feedback sheet in the app.",
+        unsubscribe,
+      }),
+    };
+  });
 }

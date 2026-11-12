@@ -18,7 +18,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/*", "!/assets/*", "!/*.md", "!/*.txt", "!/*.svg", "!/og.png", "!/apple-touch-icon.png", "!/sitemap.xml"]
+    "run_worker_first": ["/*", "!/assets/*", "!/*.md", "!/*.txt", "!/*.svg", "!/og.png", "!/email/*", "!/apple-touch-icon.png", "!/sitemap.xml"]
   },
   // Fonts for the share cards are bundled as raw bytes.
   "rules": [{ "type": "Data", "globs": ["**/*.woff"], "fallthrough": true }]
