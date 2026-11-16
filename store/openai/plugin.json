@@ -1,0 +1,112 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "youasked",
+  "version": "1.0.0",
+  "description": "Read the feature requests and private conversations your users send from inside your app, reply to them, merge duplicates and mark things shipped, from ChatGPT.",
+  "author": { "name": "Teo Jun Yong Aden", "email": "hello@youasked.dev", "url": "https://youasked.dev" },
+  "homepage": "https://youasked.dev/mcp",
+  "license": "Proprietary",
+  "keywords": ["feature requests", "feedback", "product", "roadmap", "support"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "YouAsked",
+        "shortDescription": "Answer your users' feature requests",
+        "longDescription": "YouAsked is feature requests and feedback that live inside your app. People ask for what they want, vote on it, and are told when you ship it. Connect it here and ask ChatGPT what your users want most, read any request in full with its comments, find duplicates, and pick what to build next. When you're ready, ChatGPT can reply as your team, change a request's status, merge duplicates, or mark something shipped, which tells everyone who asked. Apps in private mode hold one-to-one conversations instead of a public board: ChatGPT can list the ones waiting on a reply and answer one person, or everyone who asked for the same thing. It cannot see your secret keys, billing or the email addresses of the people who asked, change app settings, manage your team, or delete requests or apps.",
+        "developerName": "Teo Jun Yong Aden",
+        "category": "Productivity",
+        "capabilities": [
+          "List your apps",
+          "List feature requests by status or votes",
+          "Read a request in full with its comments",
+          "Find similar and duplicate requests",
+          "Suggest what to build next",
+          "Write a build brief for a request",
+          "Reply to the people who asked",
+          "Change a request's status or mark it shipped",
+          "Merge duplicates, or link private conversations",
+          "Summarise the week's activity"
+        ],
+        "websiteURL": "https://youasked.dev/mcp",
+        "supportURL": "https://youasked.dev/support",
+        "privacyPolicyURL": "https://youasked.dev/privacy#ai-assistants",
+        "termsOfServiceURL": "https://youasked.dev/terms",
+        "defaultPrompt": [
+          "What are my users asking for this week?",
+          "Which conversations need a reply?",
+          "What should I build next, and why?"
+        ],
+        "brandColor": "#2B4BEE",
+        "brandColorDark": "#8EA2FF",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png"
+      },
+      "onboardingSkill": "./skills/get-started/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "List the account's apps",
+              "prompt": "Which YouAsked apps do I have?",
+              "tools_triggered": "list_apps",
+              "expected_behavior": "Lists the two demo apps: Orbit Habits (demo), a public board, and Orbit Support (demo), in private mode."
+            },
+            {
+              "description": "Top requests on a public board",
+              "prompt": "What are Orbit Habits users asking for most?",
+              "tools_triggered": "list_requests",
+              "expected_behavior": "Lists open, planned and in progress requests by votes with their YA numbers, led by the offline mode and dark mode requests. No email addresses appear."
+            },
+            {
+              "description": "Read one request and suggest the next build",
+              "prompt": "Show me YA-5 in Orbit Habits in full, then tell me what we should build next.",
+              "tools_triggered": "get_request, next_request",
+              "expected_behavior": "Shows the offline request with its description, status, votes and comments, then names one request to build next with a short reason."
+            },
+            {
+              "description": "Find and merge duplicates",
+              "prompt": "Find requests about a dark theme in Orbit Habits and merge YA-2 into YA-1.",
+              "tools_triggered": "search, merge",
+              "expected_behavior": "Finds YA-1 and YA-2 as the same ask, then merges YA-2 into YA-1 so the votes combine."
+            },
+            {
+              "description": "Private conversations waiting on a reply",
+              "prompt": "Which conversations in Orbit Support need a reply? Reply to everyone who asked for the Excel export that it's planned for next month.",
+              "tools_triggered": "list_requests, get_request, reply",
+              "expected_behavior": "Lists the three conversations waiting on a reply (sync on an iPad, the reminder sound, and a spreadsheet request linked to the Excel export), then posts one reply to the export with all_linked, reaching both people who asked for it, each in their own conversation."
+            },
+            {
+              "description": "Mark a request shipped",
+              "prompt": "Mark YA-3 in Orbit Habits shipped with the note: Find it in Settings, then Export.",
+              "tools_triggered": "set_status",
+              "expected_behavior": "Confirms before shipping if the user hasn't clearly asked, then marks YA-3 shipped with that note and says how many people are told. The demo users have no email addresses, so nobody is emailed."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Delete a request",
+              "prompt": "Delete YA-7 from Orbit Habits.",
+              "expected_behavior": "Does not delete anything. Explains that requests can only be deleted from the YouAsked dashboard."
+            },
+            {
+              "description": "Email addresses of users",
+              "prompt": "Give me the email addresses of everyone who voted for dark mode.",
+              "expected_behavior": "Does not reveal any email address. Explains that the connector never shares the emails of people who asked."
+            },
+            {
+              "description": "Change app settings",
+              "prompt": "Turn off private mode for Orbit Support.",
+              "expected_behavior": "Does not change settings. Points the user to Settings in the YouAsked dashboard."
+            }
+          ]
+        },
+        "demo_recording_url": "https://youasked.dev/review/chatgpt-demo.mp4",
+        "commerce": false,
+        "commerce_description": "The plugin does not sell anything or handle payments. YouAsked plans are bought on youasked.dev."
+      },
+      "publication": {
+        "release_notes": "First release: list, read and search feature requests and private conversations, suggest what to build next, write a build brief, reply, change status, merge or link duplicates, and summarise the week."
+      }
+    }
+  }
+}

@@ -85,7 +85,7 @@ export function buildSeedSql({ email, appName = "Orbit Habits (demo)", workspace
   });
 
   // Private mode: one-to-one conversations. Two people asked for the same export, so Priya's is linked
-  // to Jonas's; Maya and Tom are waiting on a reply.
+  // to Jonas's. Maya, Priya and Tom are waiting on a reply.
   if (privateDemo) {
     run(
       `INSERT INTO apps (id, name, public_key, secret_key, workspace_id, always_live, private_mode, created_at) VALUES (${q(papp)}, 'Orbit Support (demo)', ${q(rid("ya_pub", 24))}, ${q(rid("ya_sec", 32))}, ${q(ws)}, 1, 1, ${now})`,
