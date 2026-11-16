@@ -1,17 +1,27 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "youasked",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read the feature requests and private conversations your users send from inside your app, reply to them, merge duplicates and mark things shipped, from ChatGPT.",
-  "author": { "name": "Teo Jun Yong Aden", "email": "hello@youasked.dev", "url": "https://youasked.dev" },
+  "author": {
+    "name": "Teo Jun Yong Aden",
+    "email": "hello@youasked.dev",
+    "url": "https://youasked.dev"
+  },
   "homepage": "https://youasked.dev/mcp",
   "license": "Proprietary",
-  "keywords": ["feature requests", "feedback", "product", "roadmap", "support"],
+  "keywords": [
+    "feature requests",
+    "feedback",
+    "product",
+    "roadmap",
+    "support"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "YouAsked",
-        "shortDescription": "Answer your users' feature requests",
+        "shortDescription": "Answer your users' requests",
         "longDescription": "YouAsked is feature requests and feedback that live inside your app. People ask for what they want, vote on it, and are told when you ship it. Connect it here and ask ChatGPT what your users want most, read any request in full with its comments, find duplicates, and pick what to build next. When you're ready, ChatGPT can reply as your team, change a request's status, merge duplicates, or mark something shipped, which tells everyone who asked. Apps in private mode hold one-to-one conversations instead of a public board: ChatGPT can list the ones waiting on a reply and answer one person, or everyone who asked for the same thing. It cannot see your secret keys, billing or the email addresses of the people who asked, change app settings, manage your team, or delete requests or apps.",
         "developerName": "Teo Jun Yong Aden",
         "category": "Productivity",
@@ -46,16 +56,10 @@
         "test_cases": {
           "positive": [
             {
-              "description": "List the account's apps",
-              "prompt": "Which YouAsked apps do I have?",
-              "tools_triggered": "list_apps",
-              "expected_behavior": "Lists the two demo apps: Orbit Habits (demo), a public board, and Orbit Support (demo), in private mode."
-            },
-            {
               "description": "Top requests on a public board",
               "prompt": "What are Orbit Habits users asking for most?",
-              "tools_triggered": "list_requests",
-              "expected_behavior": "Lists open, planned and in progress requests by votes with their YA numbers, led by the offline mode and dark mode requests. No email addresses appear."
+              "tools_triggered": "list_apps, list_requests",
+              "expected_behavior": "Finds Orbit Habits (demo) among the account's two demo apps, then lists its open, planned and in progress requests by votes with their YA numbers, led by the offline mode and dark mode requests. No email addresses appear."
             },
             {
               "description": "Read one request and suggest the next build",
