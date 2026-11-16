@@ -8,6 +8,7 @@ export const CRUMBS: Record<string, [name: string, href: string][]> = {
   "/changelog": [["Changelog", "/changelog"]],
   "/privacy": [["Privacy policy", "/privacy"]],
   "/terms": [["Terms of service", "/terms"]],
+  "/support": [["Support", "/support"]],
   "/alternatives": [["Alternatives", "/alternatives"]],
   "/alternatives/canny": [
     ["Alternatives", "/alternatives"],

@@ -104,13 +104,13 @@ env = { YOUASKED_SECRET_KEY = "ya_sec_…" }`}</Code>
               <tbody>
                 {[
                   ["list_apps", "The apps you can use through the connector. Every other tool takes an optional app (id or name); with one app it is picked for you."],
-                  ["list_requests", "Requests by status (default: open, planned, in progress), sorted by votes or newest."],
+                  ["list_requests", "Requests by status (default: open, planned, in progress), sorted by votes or newest. In private mode, needs_reply lists the conversations waiting on your team."],
                   ["get_request", "One request in full: description, status, votes, ship note and every comment. Takes YA-12, 12 or an id."],
-                  ["reply", "Posts a team reply. The person who asked sees it inside the app."],
+                  ["reply", "Posts a team reply. The person who asked sees it inside the app. In private mode it reaches only that person, or everyone linked to the same request when you ask."],
                   ["set_status", "open, planned, in_progress, shipped or declined. Shipping notifies everyone who asked."],
                   ["next_request", "The best request to build next, with a one-line reason."],
                   ["build_prompt", "A ready-to-use build brief for one request. Opens a GitHub issue too when your app has a token connected."],
-                  ["merge", "Folds a duplicate (YA-14) into the request to keep (YA-12). Votes combine."],
+                  ["merge", "Folds a duplicate (YA-14) into the request to keep (YA-12). Votes combine. Private conversations are linked instead, so each person keeps their own."],
                   ["search", "Finds similar requests by wording, so the agent checks before replying or merging."],
                   ["digest", "Top asks, what's new, what shipped and vote and comment counts for the last N days."],
                 ].map(([t, d]) => (

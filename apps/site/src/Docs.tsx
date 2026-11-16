@@ -11,6 +11,7 @@ const TOC: [string, string][] = [
   ["integrations", "Integrations"],
   ["ship", "Ship a request"],
   ["public-board", "Public board"],
+  ["private-mode", "Private mode"],
   ["mcp", "MCP server"],
   ["cli", "CLI"],
   ["react-native", "React Native"],
@@ -216,6 +217,17 @@ export async function GET() {
   -d '{"slug": "your-app", "publicBoard": true, "description": "What your app does."}'`}</Code>
           <p>
             Public pages show titles, vote counts, statuses and ship notes. They never show emails, user IDs or request text. A shipped request&rsquo;s share page at <code>youasked.dev/your-app/shipped/12</code> works even when the board itself is private.
+          </p>
+
+          <h2 id="private-mode">Private mode</h2>
+          <p>
+            Turn on private mode and the widget stops being a public board. Each person sees only their own conversations with your team, like a support chat inside your app. Nobody sees anyone else&rsquo;s requests, votes or comments, and there is no public board or share page. Switch it on in the dashboard under Settings, or with the admin API:
+          </p>
+          <Code label="Terminal">{`curl -X PATCH https://api.youasked.dev/v1/admin/app \\
+  -H "Authorization: Bearer $YOUASKED_SECRET_KEY" \\
+  -d '{"privateMode": true}'`}</Code>
+          <p>
+            Your inbox becomes conversations: Needs reply, All and Done. Reply to one person, or link several people who asked for the same thing. Each keeps their own conversation, follows the linked request&rsquo;s status, and is told in their own thread when it ships. Conversations written in private mode stay private if you turn it off later. The API enforces all of this, so older SDK versions can&rsquo;t show anything they shouldn&rsquo;t. Use signed users, so every reply reaches the right person.
           </p>
 
           <h2 id="mcp">MCP server</h2>

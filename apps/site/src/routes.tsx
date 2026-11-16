@@ -7,7 +7,7 @@ import { DocsPage } from "./Docs";
 import { Home } from "./Home";
 import { HomeV3 } from "./v3/HomeV3";
 import { HomeV5 } from "./v5/HomeV5";
-import { PrivacyPage, TermsPage } from "./Legal";
+import { PrivacyPage, SupportPage, TermsPage } from "./Legal";
 import { MCP_FAQ, McpPage } from "./McpPage";
 import { NotFoundPage } from "./NotFound";
 import { crumbsFor } from "./Page";
@@ -123,6 +123,13 @@ export const ROUTES: Route[] = [
     title: "Privacy policy | YouAsked",
     description: "What YouAsked collects from developers and from the people who use apps with YouAsked, who processes it, and how to access, export or delete it.",
     component: PrivacyPage,
+    priority: 0.3,
+  },
+  {
+    path: "/support",
+    title: "Support | YouAsked",
+    description: "Get help with YouAsked: email support, setup docs, connecting Claude or ChatGPT, and exporting or deleting your data.",
+    component: SupportPage,
     priority: 0.3,
   },
   {

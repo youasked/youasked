@@ -180,6 +180,7 @@ const FOOT_GROUPS: { title: string; links: [string, string][] }[] = [
       ["Docs", "/docs"],
       ["MCP server", "/mcp"],
       ["Changelog", "/changelog"],
+      ["Support", "/support"],
       ["Privacy policy", "/privacy"],
       ["Terms of service", "/terms"],
     ],

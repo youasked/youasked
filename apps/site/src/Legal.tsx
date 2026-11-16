@@ -6,11 +6,11 @@ const Mail = () => <a href={`mailto:${CONTACT}`}>{CONTACT}</a>;
 export function PrivacyPage() {
   return (
     <>
-      <PageHead path="/privacy" eyebrow="Legal" title="Privacy policy" lede="Last updated 11 November 2026" />
+      <PageHead path="/privacy" eyebrow="Legal" title="Privacy policy" lede="Last updated 16 November 2026" />
       <div className="wrap narrow-doc">
         <Prose>
           <p>
-            YouAsked is run by Aden Teo (YouAsked), Singapore. This page explains what we handle, why, and who helps us do it. Questions: <Mail />.
+            YouAsked is run by Teo Jun Yong Aden (Aden Teo), trading as YouAsked, Singapore. This page explains what we handle, why, and who helps us do it. Questions: <Mail />.
           </p>
 
           <h2>Developer accounts</h2>
@@ -59,7 +59,7 @@ export function PrivacyPage() {
             You can connect an AI assistant, such as Claude, to your YouAsked account at api.youasked.dev/mcp. You sign in and approve each connection. We store the assistant&rsquo;s name, when you connected it and when it last used the connection, plus the access tokens, which are kept only as one-way hashes. You can see and disconnect connections under AI assistants in the dashboard, and disconnecting stops access at once.
           </p>
           <p>
-            Once connected, the assistant can read the feature requests, comments and vote counts of the apps in your workspaces, reply as your team, change a request&rsquo;s status and merge duplicates. We send it that content so it can answer you. It does not receive your secret keys, billing details or the email addresses of the people who asked. What the assistant does with the content you receive in a chat is covered by that assistant&rsquo;s own privacy policy.
+            Once connected, the assistant can read the feature requests, comments and vote counts of the apps in your workspaces, reply as your team, change a request&rsquo;s status and merge duplicates. For apps in private mode that includes each person&rsquo;s one-to-one conversation with your team, and replies reach only that person (or everyone linked to the same request, when you ask). We send it that content so it can answer you. It does not receive your secret keys, billing details or the email addresses of the people who asked. What the assistant does with the content you receive in a chat is covered by that assistant&rsquo;s own privacy policy.
           </p>
 
           <h2>No selling, no ads</h2>
@@ -75,14 +75,44 @@ export function PrivacyPage() {
   );
 }
 
-export function TermsPage() {
+export function SupportPage() {
   return (
     <>
-      <PageHead path="/terms" eyebrow="Legal" title="Terms of service" lede="Last updated 3 November 2026" />
+      <PageHead path="/support" eyebrow="Help" title="Support" lede="Email us and a person answers, usually within a day." />
       <div className="wrap narrow-doc">
         <Prose>
           <p>
-            These terms cover your use of YouAsked, run by Aden Teo (YouAsked), Singapore. By creating an account or using the service you agree to them. Contact: <Mail />.
+            Write to <Mail /> about anything: setting up the widget, billing, a bug, or your data. Include your app&rsquo;s name and, for a bug, what you did and what you saw.
+          </p>
+
+          <h2>Getting started</h2>
+          <p>
+            The <a href="/docs">docs</a> cover installing the widget on React, plain websites, React Native, iOS and Android, signed users, theming, integrations and <a href="/docs#private-mode">private mode</a>.
+          </p>
+
+          <h2>AI assistants (Claude, ChatGPT)</h2>
+          <p>
+            Connect with the address <code>https://api.youasked.dev/mcp</code>, sign in to YouAsked and approve the connection. You can see and disconnect every connection under <a href="https://app.youasked.dev/assistants">AI assistants</a> in the dashboard; disconnecting stops access at once. The <a href="/mcp">MCP page</a> lists what an assistant can and can&rsquo;t do.
+          </p>
+
+          <h2>Your data</h2>
+          <p>
+            Export your requests from the dashboard at any time. To delete your account or the data of someone who used your app, email <Mail />; we delete it within 30 days. See the <a href="/privacy">privacy policy</a>.
+          </p>
+        </Prose>
+      </div>
+    </>
+  );
+}
+
+export function TermsPage() {
+  return (
+    <>
+      <PageHead path="/terms" eyebrow="Legal" title="Terms of service" lede="Last updated 16 November 2026" />
+      <div className="wrap narrow-doc">
+        <Prose>
+          <p>
+            These terms cover your use of YouAsked, run by Teo Jun Yong Aden (Aden Teo), trading as YouAsked, Singapore. By creating an account or using the service you agree to them. Contact: <Mail />.
           </p>
 
           <h2>Subscriptions</h2>
