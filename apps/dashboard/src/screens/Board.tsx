@@ -43,6 +43,11 @@ export function Board({ app }: { app: WorkspaceApp }) {
   return (
     <div className="page narrow">
       <PageHead title="Public board" sub="A page anyone can open to see what you're building and what just shipped, and to ask for things." />
+      {app.privateMode && (
+        <p className="pending-bar" role="note">
+          <span><Icon name="lock" size={16} /> <b>Off while private mode is on.</b> Nobody can see the board, and conversations are never published.</span>
+        </p>
+      )}
       {info.error != null && <ErrorState error={info.error} retry={info.retry} />}
       {info.loading && !d && !info.error && <Skeleton rows={3} />}
       {d && (

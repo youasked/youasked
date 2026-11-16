@@ -57,12 +57,13 @@ function limitsFor(ws: WorkspaceRow) {
 
 const maskSecret = (key: string) => `ya_sec_…${key.slice(-4)}`;
 
-const appView = (a: Pick<AppRow, "id" | "name" | "public_key" | "always_live"> & { created_at?: number }, live: boolean) => ({
+const appView = (a: Pick<AppRow, "id" | "name" | "public_key" | "always_live" | "private_mode"> & { created_at?: number }, live: boolean) => ({
   id: a.id,
   name: a.name,
   publicKey: a.public_key,
   live: live || Boolean(a.always_live),
   createdAt: a.created_at,
+  privateMode: Boolean(a.private_mode),
 });
 
 async function usage(db: D1Database, wid: string) {
@@ -131,7 +132,7 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
       c.env.DB.prepare("SELECT id, email, role, created_at, expires_at FROM invites WHERE workspace_id = ? AND accepted_at IS NULL AND expires_at > ? ORDER BY created_at")
         .bind(ws.id, Date.now())
         .all<{ id: string; email: string; role: Role; created_at: number; expires_at: number }>(),
-      c.env.DB.prepare("SELECT id, name, public_key, secret_key, always_live, created_at FROM apps WHERE workspace_id = ? ORDER BY created_at")
+      c.env.DB.prepare("SELECT id, name, public_key, secret_key, always_live, private_mode, created_at FROM apps WHERE workspace_id = ? ORDER BY created_at")
         .bind(ws.id)
         .all<AppRow & { created_at: number }>(),
       usage(c.env.DB, ws.id),

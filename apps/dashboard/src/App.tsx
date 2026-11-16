@@ -7,6 +7,7 @@ import { Shell } from "./Shell";
 import { SignIn } from "./screens/SignIn";
 import { Claim, CreateApp, Invite } from "./screens/FirstRun";
 import { Install } from "./screens/Install";
+import { Conversations } from "./screens/Conversations";
 import { Inbox } from "./screens/Inbox";
 import { RequestDetail } from "./screens/Detail";
 import { Duplicates } from "./screens/Duplicates";
@@ -128,6 +129,9 @@ function Page({ path }: { path: string }) {
       );
     }
     const sub = seg[2];
+    // Private mode: one-to-one conversations instead of a request board.
+    if (app.privateMode && !sub) return <Conversations app={app} />;
+    if (app.privateMode && sub === "r" && seg[3]) return <Conversations app={app} selectedId={seg[3]} />;
     if (!sub) return <Inbox app={app} />;
     if (sub === "r" && seg[3]) return <RequestDetail app={app} requestId={seg[3]} />;
     if (sub === "duplicates") return <Duplicates app={app} />;

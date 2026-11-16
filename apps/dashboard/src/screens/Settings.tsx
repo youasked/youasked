@@ -43,7 +43,8 @@ export function Settings({ app }: { app: WorkspaceApp }) {
     try {
       await appApi(app.id, "/app", { method: "PATCH", body });
       info.set((x) => ({ ...x, ...(body as Partial<AppInfo>) }));
-      if (body.name) await reloadWs();
+      // The inbox switches layout with private mode, and reads it from the workspace's app list.
+      if (body.name || body.privateMode !== undefined) await reloadWs();
       if (ok) toast(ok);
     } catch (e) {
       fail(e);
@@ -69,7 +70,21 @@ export function Settings({ app }: { app: WorkspaceApp }) {
               <Button disabled={!name.trim() || name.trim() === d.name} onClick={() => patch({ name: name.trim() }, "Name saved")}>Save</Button>
             </div>
           </Row>
-          <Row title="Approve requests before they're public" hint="New requests wait in your inbox until you approve them. Good against spam.">
+          <Row
+            title="Private mode"
+            hint={
+              d.privateMode
+                ? "On. Each person only sees their own conversations with you, like a support chat. No public board, votes or share pages. If you turn it off, conversations from now on are public; the ones written while it was on stay private."
+                : "Each person only sees their own conversations with you, like a support chat inside your app. No public board or votes. You reply to each person, and can link people asking for the same thing so they're all told when it ships."
+            }
+          >
+            <Switch
+              label="Private mode"
+              checked={Boolean(d.privateMode)}
+              onChange={(v) => patch({ privateMode: v }, v ? "Private mode is on. Your inbox is now conversations." : "Private mode is off. New requests are public again.")}
+            />
+          </Row>
+          <Row title="Approve requests before they're public" hint={d.privateMode ? "Not needed while private mode is on: nobody else sees what people send." : "New requests wait in your inbox until you approve them. Good against spam."}>
             <Switch label="Approve requests before they're public" checked={d.moderation === "approve"} onChange={(v) => patch({ moderation: v ? "approve" : "off" }, v ? "New requests now wait for approval" : "New requests go public straight away")} />
           </Row>
           <Row

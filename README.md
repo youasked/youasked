@@ -62,6 +62,12 @@ Leave out `user` for anonymous visitors. `trigger="none"` hides the floating but
 - **Credit and early access**: identified users with a name can tick "Credit me when it ships" (the ship note then
   says "Thanks to Priya for asking"). Voters on planned or in-progress requests can tap "Try it early"; the
   dashboard lists them.
+- **Private mode** (Settings in the dashboard): the widget stops being a public board. Each person sees only their own
+  conversations with the team, like a support chat, and nobody sees anyone else's requests, votes or comments. The
+  dashboard inbox becomes conversations (needs a reply, all, done). When several people ask for the same thing, link
+  their conversations: each keeps their own thread, follows the linked request's status, and is told when it ships.
+  Reply to one person or to everyone linked. Requests written in private mode stay private if you turn it off later.
+  Enforced by the API, so older SDK versions can't show anything they shouldn't.
 - **`<YouAsked demo />`**: no `appKey`, no network. Sample requests, working votes, posts and comments, and a pretend
   team that replies a few seconds later. For docs, Storybook and landing pages.
 

@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useInternal, type Route } from "./context";
 import { IconCheck, IconChevron, IconIdea, IconSend } from "./icons";
+import { ConversationList } from "./private";
 import { AppAvatar, RequestRow, Skeleton, useLoad } from "./shared";
 import { Navigator } from "./views";
 
@@ -18,8 +19,9 @@ function useScope(className?: string, style?: CSSProperties) {
 }
 
 /** A chat-style input bar. Tapping it opens the composer. Good at the top of a home screen or under an empty state. */
-export function AskBar({ placeholder = "Ask for a feature…", className, style }: Common & { placeholder?: string }) {
-  const { open, appIcon, unseenCount } = useInternal();
+export function AskBar({ placeholder, className, style }: Common & { placeholder?: string }) {
+  const { open, appIcon, unseenCount, config } = useInternal();
+  placeholder ??= config?.private ? "Message the team…" : "Ask for a feature…";
   return (
     <div {...useScope(className, style)}>
       <button type="button" className="ya-askbar" onClick={() => open({ view: "new" })}>
@@ -42,14 +44,21 @@ export function AskBar({ placeholder = "Ask for a feature…", className, style 
 
 /** A card with the top requests and vote buttons, for a dashboard or home tab. */
 export function FeatureCard({
-  heading = "Shape what's next",
-  description = "Vote on ideas or suggest your own",
+  heading,
+  description,
   limit = 3,
   className,
   style,
 }: Common & { heading?: string; description?: string; limit?: number }) {
-  const { client, open, config, markSeen } = useInternal();
-  const { data } = useLoad(() => client.list("top", "active"), [client]);
+  const { client, open, config, markSeen, appName } = useInternal();
+  // In private mode the card is about your own conversations, never anyone else's requests.
+  const isPrivate = Boolean(config?.private);
+  const { data } = useLoad(
+    () => (!config ? new Promise<never>(() => {}) : isPrivate ? client.mine() : client.list("top", "active")),
+    [client, Boolean(config), isPrivate],
+  );
+  heading ??= isPrivate ? `Message the ${appName} team` : "Shape what's next";
+  description ??= isPrivate ? "Questions, ideas or bugs. Only the team sees it." : "Vote on ideas or suggest your own";
   const notice = config?.unseen.find((n) => n.kind === "shipped");
   return (
     <div {...useScope(className, style)}>
@@ -83,6 +92,8 @@ export function FeatureCard({
         )}
         {!data ? (
           <Skeleton rows={2} />
+        ) : isPrivate ? (
+          data.length > 0 && <ConversationList requests={data.slice(0, limit)} appName={appName} onOpen={(id) => open({ requestId: id })} />
         ) : data.length > 0 ? (
           <ul className="ya-list">
             {data.slice(0, limit).map((r) => (
@@ -92,7 +103,7 @@ export function FeatureCard({
         ) : null}
         <div className="ya-card-actions">
           <button type="button" className="ya-btn ya-btn-sm" onClick={() => open({ view: "new" })}>
-            Suggest an idea
+            {isPrivate ? "Send a message" : "Suggest an idea"}
           </button>
           {data && data.length > limit && (
             <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={() => open({ view: "board" })}>
@@ -113,12 +124,14 @@ export function FeatureCard({
  */
 export function RequestButton({
   variant = "pill",
-  label = "Request a feature",
-  sublabel = "Vote on what we build next",
+  label,
+  sublabel,
   className,
   style,
 }: Common & { variant?: "pill" | "icon" | "row"; label?: string; sublabel?: string }) {
-  const { open, unseenCount } = useInternal();
+  const { open, unseenCount, config } = useInternal();
+  label ??= config?.private ? "Message the team" : "Request a feature";
+  sublabel ??= config?.private ? "Questions, ideas or bugs" : "Vote on what we build next";
   const scope = useScope(className, style);
   const badge = unseenCount > 0 && (variant === "icon" ? <span className="ya-dot" aria-hidden="true" /> : <span className="ya-badge">{unseenCount}</span>);
   if (variant === "icon") {

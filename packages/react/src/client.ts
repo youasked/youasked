@@ -21,6 +21,11 @@ export type FeatureRequest = {
   createdAt: number;
   voted: boolean;
   mine: boolean;
+  /** A private conversation: only the person who wrote it and the team ever see it. */
+  private?: boolean;
+  /** In your own list: the latest message, and whether the team's reply is still unread. */
+  last?: { body: string; team: boolean; at: number };
+  unread?: boolean;
 };
 
 export type Attachment = { id: string; url: string };
@@ -63,6 +68,11 @@ export type Config = {
   mode?: "test" | "live";
   /** The occasional in-app prompt, as set in the dashboard. null when it's off. */
   nudge?: import("./nudge").NudgeSettings | null;
+  /**
+   * Private mode: no public board. Each person sees only their own conversations with the team,
+   * like a support chat. Set in the dashboard.
+   */
+  private?: boolean;
 };
 
 export type NewRequest = {

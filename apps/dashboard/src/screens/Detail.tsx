@@ -328,7 +328,7 @@ function MergeDialog({ app, r, onClose, onDone }: { app: WorkspaceApp; r: Req; o
 type Built = { prompt: string; issueUrl?: string; cursorUrl?: string; github?: boolean };
 type Handed = { ok: boolean; message: string; issueUrl?: string };
 
-function BuildDialog({ app, r, onClose }: { app: WorkspaceApp; r: Req; onClose: () => void }) {
+export function BuildDialog({ app, r, onClose }: { app: WorkspaceApp; r: Req; onClose: () => void }) {
   const b = useLoad(() => appApi<Built>(app.id, `/requests/${r.id}/build`, { method: "POST" }), [r.id]);
   const [busy, setBusy] = useState<"copilot" | "claude" | null>(null);
   const [handed, setHanded] = useState<Handed | null>(null);
@@ -407,7 +407,7 @@ function BuildDialog({ app, r, onClose }: { app: WorkspaceApp; r: Req; onClose: 
   );
 }
 
-function DeleteDialog({ app, r, onClose, onDone }: { app: WorkspaceApp; r: Req; onClose: () => void; onDone: () => void }) {
+export function DeleteDialog({ app, r, onClose, onDone }: { app: WorkspaceApp; r: Req; onClose: () => void; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const fail = useFail();

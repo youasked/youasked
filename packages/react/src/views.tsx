@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { YouAskedError, type FeatureRequest, type Notice, type RequestComment } from "./client";
 import { useInternal, type Route } from "./context";
-import { IconCheck, IconChevron, IconClose, IconFrame, IconPlus, IconSend, IconSpark } from "./icons";
+import { IconCheck, IconChevron, IconClose, IconFrame, IconLock, IconPlus, IconSend, IconSpark } from "./icons";
+import { ConversationList, LockNote } from "./private";
 import {
   AppAvatar,
   BigVote,
@@ -19,10 +20,13 @@ type NavProps = { route: Route; setRoute: (r: Route) => void; onClose?: () => vo
 
 /** Renders the current screen. Shared by the overlay sheet and the embedded page. */
 export function Navigator({ route, setRoute, onClose }: NavProps) {
+  const { config } = useInternal();
   switch (route.view) {
     case "home":
       return <Home key={`${route.draft ?? ""}${route.focus ? "f" : ""}${route.topic ?? ""}`} route={route} setRoute={setRoute} onClose={onClose} />;
     case "board":
+      // Private mode has no shared board; the list of your own conversations takes its place.
+      if (config?.private) return <Mine setRoute={setRoute} onClose={onClose} />;
       return <Board initialTab={route.tab} setRoute={setRoute} onClose={onClose} />;
     case "detail":
       return <Detail key={route.id} id={route.id} from={route.from} setRoute={setRoute} onClose={onClose} />;
@@ -97,12 +101,23 @@ function Confetti() {
 
 function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, { view: "home" }> }) {
   const { client, config, appName, appIcon, greeting, markSeen, whatsNew, dismissWhatsNew, pointAtIt } = useInternal();
-  const top = useLoad(() => client.list("top", "active"), [client]);
-  const shipped = useLoad(() => client.list("new", "shipped"), [client]);
+  // Until the config says which mode the app is in, load nothing, so a private app never flashes a board.
+  // If the widget's own config load failed (offline when the page opened), ask again from here.
+  const probe = useLoad(() => (config ? Promise.resolve(null) : client.config()), [client, Boolean(config)]);
+  const cfg = config ?? probe.data;
+  const isPrivate = Boolean(cfg?.private);
+  const ready = cfg != null;
+  // Private mode shows your own conversations; otherwise what everyone is asking for.
+  const top = useLoad(() => (ready && !isPrivate ? client.list("top", "active") : Promise.resolve([])), [client, ready, isPrivate]);
+  const shipped = useLoad(() => (ready && !isPrivate ? client.list("new", "shipped") : Promise.resolve([])), [client, ready, isPrivate]);
+  const [tick, setTick] = useState(0);
+  const convos = useLoad(() => (ready && isPrivate ? client.mine() : Promise.resolve([])), [client, ready, isPrivate, tick]);
   const [text, setText] = useState(route.draft ?? "");
   const [thread, setThread] = useState<ThreadItem[]>([]);
   const [similar, setSimilar] = useState<FeatureRequest[]>([]);
-  const [notices] = useState<Notice[]>(() => config?.unseen ?? []);
+  // In private mode a reply shows as an unread conversation and counts as seen once it's opened,
+  // so only "it's live" notices are shown (and cleared) here.
+  const [notices] = useState<Notice[]>(() => (config?.unseen ?? []).filter((n) => !(config?.private && n.kind === "reply")));
   // What shipped since the last visit is shown once: read it now, then tell the server it's been seen.
   const [news] = useState(() => whatsNew);
   const [shots, setShots] = useState<Shot[]>([]);
@@ -124,8 +139,14 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   // The team answering while this screen is open (the demo does this a few seconds after you post).
   const arrived = config?.unseen.filter((n) => n.kind === "reply" && !notices.some((o) => o.id === n.id)) ?? [];
   const arrivedKey = arrived.map((n) => n.id).join(",");
+  const firstArrived = useRef(arrivedKey);
   useEffect(() => {
     if (!arrived.length) return;
+    if (isPrivate) {
+      // Refresh the list so the conversation shows its new reply as unread.
+      if (arrivedKey !== firstArrived.current) setTick((t) => t + 1);
+      return;
+    }
     setThread((th) => [...th, ...arrived.map((notice) => ({ kind: "reply" as const, notice }))]);
     markSeen(arrived.map((n) => n.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,7 +179,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
 
   useEffect(() => {
     const q = text.trim();
-    if (q.length < 4) {
+    if (q.length < 4 || isPrivate) {
       setSimilar([]);
       return;
     }
@@ -173,7 +194,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
       alive = false;
       clearTimeout(t);
     };
-  }, [client, text]);
+  }, [client, text, isPrivate]);
 
   const point = async () => {
     setShotError(null);
@@ -224,7 +245,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   const chatting = thread.length > 0;
   const openRequest = (id: string) => setRoute({ view: "detail", id, from: "home" });
   const asking = route.topic && route.placeholder ? route.topic : null;
-  const placeholder = route.placeholder ?? "Ask for a feature…";
+  const placeholder = route.placeholder ?? (isPrivate ? "Message the team…" : "Ask for a feature…");
   const yours = news?.items.find((i) => i.mine);
   // Shipped notices for things already listed in the "what's new" bubble would just say it twice.
   const listed = new Set(news?.items.map((i) => i.id));
@@ -235,12 +256,17 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
       <Header
         leading={<AppAvatar icon={appIcon} />}
         title={appName}
-        subtitle="Ideas, votes and what's new"
+        subtitle={isPrivate ? "Messages to the team" : "Ideas, votes and what's new"}
         onClose={onClose}
       />
       <div className="ya-body ya-chat" ref={bodyRef}>
         <div className="ya-bubble ya-bubble-in">
-          {asking ? `Let's talk about ${asking}. What's missing, or what bugs you?` : (greeting ?? `Hey! What would make ${appName} better for you?`)}
+          {asking
+            ? `Let's talk about ${asking}. What's missing, or what bugs you?`
+            : (greeting ??
+              (isPrivate
+                ? `Hi! Questions, ideas, something not working? Tell us here. Only the ${appName} team sees what you send.`
+                : `Hey! What would make ${appName} better for you?`))}
         </div>
         {news && (
           <div className={yours ? "ya-bubble ya-bubble-in ya-bubble-win ya-bubble-news" : "ya-bubble ya-bubble-in ya-bubble-news"}>
@@ -289,7 +315,27 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
           ),
         )}
 
-        {!chatting && (
+        {!chatting && !ready && (probe.error ? <p className="ya-note">{errorText(probe.error)}</p> : <Skeleton rows={2} />)}
+
+        {!chatting && ready && isPrivate && (
+          <>
+            {convos.data && convos.data.length > 0 && (
+              <Section
+                title="Your conversations"
+                action={convos.data.length > 4 ? "See all" : undefined}
+                onAction={() => setRoute({ view: "mine" })}
+              >
+                <ConversationList requests={convos.data.slice(0, 4)} appName={appName} onOpen={(id) => openRequest(id)} />
+              </Section>
+            )}
+            {convos.error && <p className="ya-note">{errorText(convos.error)}</p>}
+            <LockNote appName={appName}>
+              {convos.data && convos.data.length > 0 ? undefined : `Private. Only the ${appName} team sees your messages.`}
+            </LockNote>
+          </>
+        )}
+
+        {!chatting && ready && !isPrivate && (
           <>
             <Section title="Popular right now" action="See all" onAction={() => setRoute({ view: "board" })}>
               {top.error ? (
@@ -344,11 +390,15 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
             <ReplyBubble key={i} notice={t.notice} appName={appName} onOpen={() => openRequest(t.notice.requestId)} />
           ) : t.kind === "posted" ? (
             <div key={i} className="ya-bubble ya-bubble-in">
-              <span>
-                Got it. <b>{t.request.title}</b> is on the board, and we'll tell you right here when it ships.
-              </span>
+              {isPrivate ? (
+                <span>Sent. Only the {appName} team can see it, and they'll reply right here.</span>
+              ) : (
+                <span>
+                  Got it. <b>{t.request.title}</b> is on the board, and we'll tell you right here when it ships.
+                </span>
+              )}
               <button type="button" className="ya-bubble-link" onClick={() => openRequest(t.request.id)}>
-                View request
+                {isPrivate ? "Open conversation" : "View request"}
               </button>
             </div>
           ) : (
@@ -357,7 +407,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
             </div>
           ),
         )}
-        {chatting && !sending && (
+        {chatting && !sending && !isPrivate && (
           <button type="button" className="ya-chip" onClick={() => setRoute({ view: "board" })}>
             See what others asked for
           </button>
@@ -407,7 +457,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={placeholder}
-            aria-label={asking ? placeholder : "Ask for a feature"}
+            aria-label={asking ? placeholder : isPrivate ? "Message the team" : "Ask for a feature"}
             maxLength={2000}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -583,7 +633,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
     setDeleteError(null);
     try {
       await client.remove(data.request.id);
-      setRoute({ view: "mine" });
+      setRoute({ view: config?.private ? "home" : "mine" });
     } catch (err) {
       setDeleteError(errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined));
       setDeleting(false);
@@ -607,6 +657,15 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
 
   const request = data?.request;
   const comments = data?.comments ?? [];
+  // A private conversation reads like a chat: your words on the right, the team's on the left.
+  const isPrivate = Boolean(request?.private || config?.private);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const lastId = comments[comments.length - 1]?.id ?? "";
+  useEffect(() => {
+    if (!isPrivate || !request) return;
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [isPrivate, request?.id, lastId]);
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -623,6 +682,102 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
       setSending(false);
     }
   };
+
+  if (isPrivate && request) {
+    const opening = request.body && request.body !== request.title ? request.body : request.title;
+    return (
+      <>
+        <Header title={request.title} onBack={() => setRoute({ view: from ?? "home" })} onClose={onClose} />
+        <div className="ya-body ya-private" ref={bodyRef}>
+          <div className="ya-detail-meta ya-private-meta">
+            {request.status !== "open" && <StatusPill status={request.status} />}
+            <span className="ya-pill ya-pill-lock">
+              <IconLock size={12} />
+              Private
+            </span>
+          </div>
+          <div className="ya-thread">
+            <div className="ya-msg ya-msg-out">
+              <div className="ya-bubble ya-bubble-out">
+                {data?.attachments?.map((a) => (
+                  <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="ya-bubble-imglink">
+                    <img className="ya-bubble-img" src={a.url} alt="Your screenshot" loading="lazy" />
+                  </a>
+                ))}
+                {opening}
+              </div>
+              <span className="ya-msg-meta">
+                <time dateTime={new Date(request.createdAt).toISOString()}>{ago(request.createdAt)}</time>
+              </span>
+            </div>
+            {comments.map((c) => (
+              <Message key={c.id} comment={c} appName={appName} appIcon={appIcon} />
+            ))}
+          </div>
+          {request.status === "shipped" && (
+            <div className="ya-callout" data-tone="success">
+              <IconCheck />
+              <span>
+                <b>It's live.</b>
+                {request.shipNote ? ` ${request.shipNote}` : " Thanks for asking."}
+              </span>
+            </div>
+          )}
+          {comments.length === 0 && request.status !== "shipped" && (
+            <LockNote appName={appName}>Only the {appName} team can see this. They'll reply right here.</LockNote>
+          )}
+          {data?.canDelete &&
+            (confirmDelete ? (
+              <p className="ya-note ya-delete-row">
+                Delete this message? This can't be undone.
+                <button type="button" className="ya-link ya-link-danger" onClick={remove} disabled={deleting}>
+                  {deleting ? "Deleting…" : "Delete"}
+                </button>
+                <button type="button" className="ya-link" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  Keep it
+                </button>
+              </p>
+            ) : (
+              <p className="ya-note ya-delete-row">
+                <button type="button" className="ya-link ya-link-quiet" onClick={() => setConfirmDelete(true)}>
+                  Delete this message
+                </button>
+              </p>
+            ))}
+          {deleteError && (
+            <p className="ya-note" role="alert">
+              {deleteError}
+            </p>
+          )}
+        </div>
+        <form className="ya-composer ya-composer-bar" onSubmit={send}>
+          <textarea
+            className="ya-composer-input"
+            rows={1}
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Reply…"
+            aria-label="Reply"
+            maxLength={1000}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+              }
+            }}
+          />
+          <button type="submit" className="ya-send" disabled={!reply.trim() || sending} aria-label="Send reply">
+            <IconSend />
+          </button>
+          {replyError && (
+            <span className="ya-sr" role="alert">
+              {replyError}
+            </span>
+          )}
+        </form>
+      </>
+    );
+  }
 
   return (
     <>
@@ -786,11 +941,16 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
 // ---------------------------------------------------------------- yours
 
 function Mine({ setRoute, onClose }: { setRoute: (r: Route) => void; onClose?: () => void }) {
-  const { client } = useInternal();
+  const { client, config, appName } = useInternal();
   const { data, error } = useLoad(() => client.mine(), [client]);
+  const isPrivate = Boolean(config?.private);
   return (
     <>
-      <Header title="Your requests" onBack={() => setRoute({ view: "board" })} onClose={onClose} />
+      <Header
+        title={isPrivate ? "Your conversations" : "Your requests"}
+        onBack={() => setRoute({ view: isPrivate ? "home" : "board" })}
+        onClose={onClose}
+      />
       <div className="ya-body">
         {error ? (
           <p className="ya-empty">{errorText(error)}</p>
@@ -799,8 +959,13 @@ function Mine({ setRoute, onClose }: { setRoute: (r: Route) => void; onClose?: (
         ) : data.length === 0 ? (
           <div className="ya-empty">
             <b>Nothing yet</b>
-            Requests you post or vote on show up here, with their status.
+            {isPrivate ? `Messages you send to the ${appName} team show up here, with their replies.` : "Requests you post or vote on show up here, with their status."}
           </div>
+        ) : isPrivate ? (
+          <>
+            <ConversationList requests={data} appName={appName} onOpen={(id) => setRoute({ view: "detail", id, from: "mine" })} />
+            <LockNote appName={appName} />
+          </>
         ) : (
           <ul className="ya-list">
             {data.map((r) => (
@@ -812,7 +977,7 @@ function Mine({ setRoute, onClose }: { setRoute: (r: Route) => void; onClose?: (
       <div className="ya-foot">
         <button type="button" className="ya-btn" onClick={() => setRoute({ view: "home", focus: true })}>
           <IconPlus />
-          Request a feature
+          {isPrivate ? "New message" : "Request a feature"}
         </button>
       </div>
     </>

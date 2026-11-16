@@ -66,6 +66,13 @@ export const IconSpark = () => (
     <path d="M19 16v4M17 18h4" />
   </svg>
 );
+/** A small padlock: shown wherever private mode promises that only the team sees something. */
+export const IconLock = ({ size = 14 }: { size?: number }) => (
+  <svg {...base} width={size} height={size} strokeWidth={2.2}>
+    <rect x="5" y="11" width="14" height="10" rx="2.5" />
+    <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+  </svg>
+);
 /** YouAsked's own mark for asking: a speech bubble with an up arrow (ask, and vote it up). */
 /** The ask mark: a speech bubble holding the vote arrow. `ink` colours the arrow; by default the background. */
 export const IconIdea = ({ ink = "var(--_bg)" }: { ink?: string }) => (

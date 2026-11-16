@@ -1065,6 +1065,8 @@ pub.post("/requests/:id/comments", async (c) => {
     ),
     // Writing again reopens a conversation the team had marked done.
     c.env.DB.prepare("UPDATE requests SET comment_count = comment_count + 1, updated_at = ?, closed_at = NULL WHERE id = ?").bind(t, r.id),
+    // Answering a reply means they've read it.
+    c.env.DB.prepare("UPDATE notifications SET seen_at = ?1 WHERE user_id = ?2 AND request_id = ?3 AND kind = 'reply' AND seen_at IS NULL").bind(t, me.id, r.id),
   ]);
   c.executionCtx.waitUntil(notifyTeam(c.env, c.get("app").id, { kind: "comment", appName: c.get("app").name, request: r, author: me, body }));
   return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t } }, 201);
@@ -1127,7 +1129,13 @@ pub.get("/me/requests", async (c) => {
   )
     .bind(me.id, a.id)
     .all<RequestRow & LastMessageCols & { voted: number; author_name: string | null; unread: number }>();
-  return c.json({ requests: results.map((r) => ({ ...publicRequest(r, me), last: lastMessage(r), unread: r.unread > 0 })) });
+  return c.json({
+    requests: results.map((r) => {
+      const last = lastMessage(r);
+      // Unread means the team has the last word and they haven't opened it since.
+      return { ...publicRequest(r, me), last, unread: r.unread > 0 && last.team };
+    }),
+  });
 });
 
 pub.post("/notifications/seen", async (c) => {

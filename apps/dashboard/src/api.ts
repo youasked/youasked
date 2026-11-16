@@ -21,10 +21,26 @@ export type Req = {
   updatedAt?: number;
   attachments?: { id: string; url: string }[];
   earlyAccess?: number;
-  author?: { email: string | null; name: string | null; anonymous: boolean };
+  author?: { id?: string; email: string | null; name: string | null; anonymous: boolean };
   shareUrl?: string | null;
   shareImage?: string | null;
+  /** Private mode: only the person who wrote it and the team see it. */
+  private?: boolean;
+  /** The latest message (the request's own text when nobody has replied yet). */
+  last?: { body: string; team: boolean; at: number };
+  /** The person wrote last and the team hasn't marked it done. */
+  needsReply?: boolean;
+  closedAt?: number | null;
+  /** The request this conversation is filed under, and how many are filed under this one. */
+  linkedTo?: string | null;
+  linkedCount?: number;
 };
+
+/** A private conversation filed with others under one request. */
+export type LinkedConversation = Pick<Req, "id" | "number" | "title" | "body" | "status" | "createdAt" | "last" | "needsReply" | "linkedTo"> & {
+  author: { id: string; email: string | null; name: string | null; anonymous: boolean };
+};
+export type Linked = { root: { id: string; number: number; title: string; status: Status; votes: number }; conversations: LinkedConversation[] } | null;
 
 export type Comment = { id: string; body: string; is_team: number; created_at: number; name: string | null; email: string | null };
 export type Voter = { email: string | null; name: string | null; is_anon: number };
@@ -37,7 +53,7 @@ export type Interval = "month" | "year";
 
 export type Me = { account: Account; workspaces: WorkspaceSummary[] };
 
-export type WorkspaceApp = { id: string; name: string; publicKey: string; secretKeyHint?: string; live: boolean; createdAt: number };
+export type WorkspaceApp = { id: string; name: string; publicKey: string; secretKeyHint?: string; live: boolean; createdAt: number; privateMode?: boolean };
 export type Member = { accountId: string; email: string; name: string | null; role: Role };
 export type Invite = { id: string; email: string; role: Role; createdAt?: number };
 export type Limits = { plan?: Plan | null; apps: number | null; members: number; listeningApps: number; removeBranding: boolean; linear: boolean; customDomain: boolean };
@@ -74,6 +90,7 @@ export type AppInfo = {
   publicUrl?: string | null;
   description?: string | null;
   publicKey?: string;
+  privateMode?: boolean;
 };
 
 export type NewApp = { id: string; name: string; publicKey: string; secretKey: string };

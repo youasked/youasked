@@ -19,7 +19,7 @@ export function Duplicates({ app }: { app: WorkspaceApp }) {
     try {
       await appApi(app.id, `/requests/${drop.id}/merge`, { method: "POST", body: { into: keep.id } });
       d.set((x) => ({ pairs: x.pairs.filter((q) => keyOf(q) !== keyOf(p)) }));
-      toast(`Merged YA-${drop.number} into YA-${keep.number}`);
+      toast(app.privateMode ? `Linked YA-${drop.number} to YA-${keep.number}. Both keep their own conversation.` : `Merged YA-${drop.number} into YA-${keep.number}`);
       bump();
     } catch (e) {
       fail(e);
@@ -44,7 +44,14 @@ export function Duplicates({ app }: { app: WorkspaceApp }) {
   const pairs = d.data?.pairs ?? [];
   return (
     <div className="page">
-      <PageHead title="Duplicates" sub="Requests that look like the same idea in different words. Merging keeps every vote and tells everyone when it ships." />
+      <PageHead
+        title="Duplicates"
+        sub={
+          app.privateMode
+            ? "Conversations that look like the same ask in different words. Linking keeps each person's conversation private and tells all of them when it ships."
+            : "Requests that look like the same idea in different words. Merging keeps every vote and tells everyone when it ships."
+        }
+      />
       {d.error != null && <ErrorState error={d.error} retry={d.retry} />}
       {d.loading && !d.data && !d.error && <Skeleton rows={3} />}
       {d.data && pairs.length === 0 && (
@@ -72,7 +79,7 @@ export function Duplicates({ app }: { app: WorkspaceApp }) {
                   <Link to={appUrl(app.id, `/r/${keep.id}`)} className="pair-name">{keep.title}</Link>
                   <p className="pair-body">{keep.body}</p>
                   <p className="muted small">{keep.votes} {keep.votes === 1 ? "vote" : "votes"}</p>
-                  <Button size="sm" busy={busy === keyOf(p)} onClick={() => merge(p, keep, drop)} aria-label={`Keep YA-${keep.number} and merge YA-${drop.number} into it`}>
+                  <Button size="sm" busy={busy === keyOf(p)} onClick={() => merge(p, keep, drop)} aria-label={app.privateMode ? `Link YA-${drop.number} to YA-${keep.number}` : `Keep YA-${keep.number} and merge YA-${drop.number} into it`}>
                     <Icon name="merge" size={15} /> Keep this one
                   </Button>
                   {i === 0 && <span className="vs" aria-hidden="true">or</span>}
