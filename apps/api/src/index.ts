@@ -1,7 +1,21 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { addTeamComment, loadRequestById, mergeRequests, setStatus } from "./actions";
+import {
+  LAST_MESSAGE_SQL,
+  addTeamComment,
+  recount,
+  lastMessage,
+  linkRequests,
+  loadRequestById,
+  mergeRequests,
+  needsReply,
+  rootOf,
+  setDone,
+  setStatus,
+  unlinkRequest,
+  type LastMessageCols,
+} from "./actions";
 import { adminPage } from "./admin-page";
 import { adminMovedPage } from "./admin-moved";
 import agent from "./agent";
@@ -117,8 +131,22 @@ function publicRequest(r: RequestRow & { voted?: number; author_name?: string | 
     createdAt: r.created_at,
     voted: Boolean(r.voted),
     mine: me ? r.author_id === me.id : false,
+    private: Boolean(r.private),
   };
 }
+
+/**
+ * Whether this person may see a request in the widget. A private conversation (or anything in an app
+ * that's in private mode) is only ever its author's; requests waiting for approval are too.
+ */
+function visibleTo(a: AppRow, r: RequestRow, me: UserRow | null): boolean {
+  if (me && r.author_id === me.id) return true;
+  if (a.private_mode || r.private) return false;
+  return r.status !== "pending";
+}
+
+/** visibleTo as SQL, for lists. `me` is the bound parameter holding the person's id ("" when anonymous). */
+const visibleSql = (a: AppRow, me: string) => (a.private_mode ? `r.author_id = ${me}` : `(r.private = 0 OR r.author_id = ${me})`);
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_UPLOAD = 2 * 1024 * 1024;
@@ -320,6 +348,7 @@ admin.get("/app", (c) => {
     description: a.description,
     publicUrl: publicUrl(c.env, a),
     nudge: readNudge(a.nudge),
+    privateMode: Boolean(a.private_mode),
   });
 });
 
@@ -335,6 +364,8 @@ admin.patch("/app", async (c) => {
     description?: string | null;
     /** Settings for the occasional prompt, or null to turn it off. */
     nudge?: Partial<Nudge> | null;
+    /** Each person sees only their own conversations with the team. */
+    privateMode?: boolean;
   }>();
   if (body.moderation !== undefined && body.moderation !== "off" && body.moderation !== "approve") fail(400, "bad_moderation");
   const a = c.get("app");
@@ -366,6 +397,10 @@ admin.patch("/app", async (c) => {
     const nudge = body.nudge === null ? null : JSON.stringify(normaliseNudge({ ...readNudge(a.nudge), ...body.nudge }));
     await c.env.DB.prepare("UPDATE apps SET nudge = ? WHERE id = ?").bind(nudge, a.id).run();
   }
+  if (body.privateMode !== undefined) {
+    // Conversations written while private stay private (requests.private) if this is switched off later.
+    await c.env.DB.prepare("UPDATE apps SET private_mode = ? WHERE id = ?").bind(body.privateMode ? 1 : 0, a.id).run();
+  }
   if (pubSettings) {
     await c.env.DB.prepare("UPDATE apps SET slug = ?, public_board = ?, description = ? WHERE id = ?")
       .bind(pubSettings.slug, pubSettings.public_board, pubSettings.description, a.id)
@@ -379,7 +414,7 @@ admin.get("/requests", async (c) => {
   const where = status && status !== "all" ? "AND r.status = ?" : "AND r.status != 'merged'";
   const stmt = c.env.DB.prepare(
     `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon,
-            (SELECT COUNT(*) FROM early_access e WHERE e.request_id = r.id) AS early_count
+            (SELECT COUNT(*) FROM early_access e WHERE e.request_id = r.id) AS early_count, ${LAST_MESSAGE_SQL}
      FROM requests r LEFT JOIN users u ON u.id = r.author_id
      WHERE r.app_id = ? ${where}
      ORDER BY CASE r.status WHEN 'in_progress' THEN 0 WHEN 'planned' THEN 1 WHEN 'open' THEN 2 ELSE 3 END,
@@ -389,7 +424,7 @@ admin.get("/requests", async (c) => {
   const { results } = await (status && status !== "all"
     ? stmt.bind(c.get("app").id, status)
     : stmt.bind(c.get("app").id)
-  ).all<RequestRow & { author_email: string | null; author_name: string | null; author_anon: number; early_count: number }>();
+  ).all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number; early_count: number }>();
   const origin = new URL(c.req.url).origin;
   const files = await attachmentsFor(c.env.DB, results.map((r) => r.id), origin);
   return c.json({
@@ -399,8 +434,9 @@ admin.get("/requests", async (c) => {
       attachments: files.get(r.id) ?? [],
       earlyAccess: r.early_count,
       credit: Boolean(r.credit),
-      author: { email: r.author_email, name: r.author_name, anonymous: Boolean(r.author_anon) },
+      author: { id: r.author_id, email: r.author_email, name: r.author_name, anonymous: Boolean(r.author_anon) },
       updatedAt: r.updated_at,
+      ...conversationFields(r),
     })),
   });
 });
@@ -426,8 +462,65 @@ admin.get("/requests/:id", async (c) => {
     .bind(r.id)
     .all();
   const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
-  return c.json({ request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r) }, attachments: files.get(r.id) ?? [], comments, voters, earlyAccess: early });
+  const conv = (await c.env.DB.prepare(`SELECT r.*, ${LAST_MESSAGE_SQL} FROM requests r WHERE r.id = ?`).bind(r.id).first<RequestRow & LastMessageCols>())!;
+  const author = await c.env.DB.prepare(
+    `SELECT u.id, u.email, u.name, u.is_anon,
+            (SELECT COUNT(*) FROM requests x WHERE x.author_id = u.id AND x.status != 'merged') AS conversations
+     FROM users u WHERE u.id = ?`,
+  )
+    .bind(r.author_id)
+    .first<{ id: string; email: string | null; name: string | null; is_anon: number; conversations: number }>();
+  return c.json({
+    request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r), ...conversationFields(conv) },
+    attachments: files.get(r.id) ?? [],
+    comments,
+    voters,
+    earlyAccess: early,
+    author: author ? { id: author.id, email: author.email, name: author.name, anonymous: Boolean(author.is_anon), conversations: author.conversations } : null,
+    linked: await linkedFor(c.env.DB, c.get("app").id, r),
+  });
 });
+
+/** Inbox fields: the last message, whether the person is waiting on a reply, and how it's filed. */
+function conversationFields(r: RequestRow & LastMessageCols) {
+  return {
+    last: lastMessage(r),
+    needsReply: needsReply(r),
+    closedAt: r.closed_at ?? null,
+    linkedTo: r.linked_to ?? null,
+    linkedCount: r.linked_count ?? 0,
+  };
+}
+
+/**
+ * The request this conversation is filed under (if any), and every conversation filed under that
+ * request, so the team can see all the people who asked for the same thing in one place.
+ */
+async function linkedFor(db: D1Database, appId: string, r: RequestRow) {
+  const root = await rootOf(db, r);
+  const { results } = await db
+    .prepare(
+      `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon, ${LAST_MESSAGE_SQL}
+       FROM requests r LEFT JOIN users u ON u.id = r.author_id
+       WHERE r.app_id = ?1 AND (r.id = ?2 OR r.linked_to = ?2) ORDER BY r.created_at`,
+    )
+    .bind(appId, root.id)
+    .all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number }>();
+  if (results.length < 2) return null;
+  return {
+    root: { id: root.id, number: root.number, title: root.title, status: root.status, votes: root.vote_count },
+    conversations: results.map((x) => ({
+      id: x.id,
+      number: x.number,
+      title: x.title,
+      body: x.body,
+      status: x.status,
+      createdAt: x.created_at,
+      author: { id: x.author_id, email: x.author_email, name: x.author_name, anonymous: Boolean(x.author_anon) },
+      ...conversationFields(x),
+    })),
+  };
+}
 
 admin.patch("/requests/:id", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
@@ -453,18 +546,42 @@ admin.patch("/requests/:id", async (c) => {
 
 admin.post("/requests/:id/comments", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
-  const body = cleanText((await c.req.json<{ body?: string }>()).body, 2000);
+  const input = await c.req.json<{ body?: string; everyone?: boolean }>();
+  const body = cleanText(input.body, 2000);
   if (!body) fail(400, "body_required");
-  return c.json(await addTeamComment(c.env.DB, r, body, mailOf(c)));
+  return c.json(await addTeamComment(c.env.DB, r, body, mailOf(c), { everyone: input.everyone === true }));
+});
+
+/** Files a private conversation under another request; it follows that request's status from now on. */
+admin.post("/requests/:id/link", async (c) => {
+  const from = await loadRequest(c, c.req.param("id"));
+  const into = await loadRequest(c, (await c.req.json<{ into?: string }>()).into ?? "");
+  if (from.id === into.id) fail(400, "same_request");
+  const root = await linkRequests(c.env.DB, from, into, mailOf(c));
+  return c.json({ ok: true, root: { id: root.id, number: root.number, title: root.title, status: root.status } });
+});
+
+admin.post("/requests/:id/unlink", async (c) => {
+  await unlinkRequest(c.env.DB, await loadRequest(c, c.req.param("id")));
+  return c.json({ ok: true });
+});
+
+/** Done with a conversation (or not). The person writing again reopens it. */
+admin.post("/requests/:id/done", async (c) => {
+  const r = await loadRequest(c, c.req.param("id"));
+  const { done } = await c.req.json<{ done?: boolean }>().catch(() => ({ done: true }));
+  await setDone(c.env.DB, r, done !== false);
+  return c.json({ ok: true, done: done !== false });
 });
 
 admin.post("/requests/:id/merge", async (c) => {
   const from = await loadRequest(c, c.req.param("id"));
   const into = await loadRequest(c, (await c.req.json<{ into?: string }>()).into ?? "");
   if (from.id === into.id) fail(400, "same_request");
-  await mergeRequests(c.env.DB, from, into);
-  c.executionCtx.waitUntil(removeRequests(c.env, [from.id]));
-  return c.json({ ok: true });
+  const { linked } = await mergeRequests(c.env.DB, from, into, mailOf(c));
+  // A linked conversation is still its own request; a merged one leaves the search index.
+  if (!linked) c.executionCtx.waitUntil(removeRequests(c.env, [from.id]));
+  return c.json({ ok: true, linked });
 });
 
 admin.delete("/requests/:id", async (c) => {
@@ -705,9 +822,11 @@ pub.get("/config", async (c) => {
     nudge: readNudge(a.nudge),
     watermark: Boolean(a.watermark),
     identified: me ? !me.is_anon : false,
-    canCredit: me ? !me.is_anon && Boolean(me.name) : false,
+    // Credit names the person on the public share page, which private conversations never get.
+    canCredit: me && !a.private_mode ? !me.is_anon && Boolean(me.name) : false,
+    private: Boolean(a.private_mode),
     unseen,
-    whatsNew: me ? await whatsNewFor(c.env.DB, a.id, me) : null,
+    whatsNew: me ? await whatsNewFor(c.env.DB, a, me) : null,
   });
 });
 
@@ -718,7 +837,8 @@ pub.get("/config", async (c) => {
  * nobody is greeted with a backlog of things that shipped before they arrived. Anonymous visitors
  * are tracked the same way by their device id.
  */
-async function whatsNewFor(db: D1Database, appId: string, me: UserRow) {
+async function whatsNewFor(db: D1Database, a: AppRow, me: UserRow) {
+  const appId = a.id;
   const since = Math.max(me.last_whats_new_at ?? 0, me.created_at);
   const { results } = await db
     .prepare(
@@ -727,15 +847,15 @@ async function whatsNewFor(db: D1Database, appId: string, me: UserRow) {
        FROM requests r
        LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?1
        LEFT JOIN users au ON au.id = r.author_id
-       WHERE r.app_id = ?2 AND r.status = 'shipped' AND r.shipped_at > ?3
+       WHERE r.app_id = ?2 AND r.status = 'shipped' AND r.shipped_at > ?3 AND ${visibleSql(a, "?1")}
        ORDER BY mine DESC, r.shipped_at DESC LIMIT 5`,
     )
     .bind(me.id, appId, since)
     .all<{ id: string; title: string; ship_note: string | null; shipped_at: number; mine: number }>();
   if (!results.length) return null;
   const total = await db
-    .prepare("SELECT COUNT(*) AS n FROM requests WHERE app_id = ? AND status = 'shipped' AND shipped_at > ?")
-    .bind(appId, since)
+    .prepare(`SELECT COUNT(*) AS n FROM requests r WHERE r.app_id = ?2 AND r.status = 'shipped' AND r.shipped_at > ?3 AND ${visibleSql(a, "?1")}`)
+    .bind(me.id, appId, since)
     .first<{ n: number }>();
   return {
     since,
@@ -761,9 +881,9 @@ pub.get("/requests", async (c) => {
     filter === "shipped" ? "r.shipped_at DESC" : sort === "new" ? "r.created_at DESC" : "r.vote_count DESC, r.created_at DESC";
   const { results } = await c.env.DB.prepare(
     `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
-     LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?
+     LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?1
      LEFT JOIN users au ON au.id = r.author_id
-     WHERE r.app_id = ? AND r.status IN (${statuses.map(() => "?").join(",")})
+     WHERE r.app_id = ?2 AND ${visibleSql(a, "?1")} AND r.status IN (${statuses.map((_, i) => `?${i + 3}`).join(",")})
      ORDER BY ${order} LIMIT 100`,
   )
     .bind(me?.id ?? "", a.id, ...statuses)
@@ -777,8 +897,11 @@ pub.get("/requests/similar", async (c) => {
   // Each lookup can run an embedding; typing is debounced, so this is plenty for a person.
   await limitIp(c.env.DB, c.req.raw.headers, "similar", 300);
   const me = c.get("user");
-  const scored = await findSimilar(c.env, c.get("app").id, q, me?.id ?? "", undefined, me?.id ?? c.req.header("cf-connecting-ip") ?? "anon");
-  return c.json({ requests: scored.slice(0, 4).map((x) => publicRequest(x.r, me)) });
+  const a = c.get("app");
+  // In private mode there's nothing of anyone else's to suggest.
+  if (a.private_mode) return c.json({ requests: [] });
+  const scored = await findSimilar(c.env, a.id, q, me?.id ?? "", undefined, me?.id ?? c.req.header("cf-connecting-ip") ?? "anon");
+  return c.json({ requests: scored.filter((x) => visibleTo(a, x.r, me)).slice(0, 4).map((x) => publicRequest(x.r, me)) });
 });
 
 /**
@@ -809,8 +932,8 @@ pub.get("/requests/:id", async (c) => {
     .bind(me?.id ?? "", c.req.param("id"), c.get("app").id)
     .first<RequestRow & { voted: number; author_name: string | null }>();
   if (!r) fail(404, "not_found");
-  // A request waiting for approval is only visible to the person who wrote it.
-  if (r.status === "pending" && r.author_id !== me?.id) fail(404, "not_found");
+  // Waiting for approval, or a private conversation: only the person who wrote it.
+  if (!visibleTo(c.get("app"), r, me)) fail(404, "not_found");
   if (r.status === "merged" && r.merged_into) return c.json({ redirect: r.merged_into });
   const { results } = await c.env.DB.prepare(
     `SELECT c.id, c.body, c.is_team, c.created_at, c.user_id, u.name FROM comments c
@@ -857,7 +980,7 @@ pub.post("/requests", async (c) => {
     .catch(() => ({}) as { title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown });
   const title = cleanText(body.title, 120);
   const context = cleanContext(body.context);
-  const credit = body.credit === true && !me.is_anon && Boolean(me.name) ? 1 : 0;
+  const credit = body.credit === true && !me.is_anon && Boolean(me.name) && !a.private_mode ? 1 : 0;
   const uploadIds = (Array.isArray(body.attachments) ? body.attachments : [])
     .filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x))
     .slice(0, MAX_ATTACHMENTS);
@@ -869,15 +992,16 @@ pub.post("/requests", async (c) => {
   if ((recent?.n ?? 0) >= 10) reject(429, "slow_down", "That's a lot of requests in an hour. Try again a bit later.");
   const verdict = await guardContent(c.env, c.req.raw.headers, a.id, "request", `${title}\n${text}`);
   // Moderation holds everything for approval; text that looks off is held even when moderation is off.
-  const status = a.moderation === "approve" || verdict === "review" ? "pending" : "open";
+  // A private conversation is never shown to anyone else, so there is nothing to hold it back from.
+  const status = !a.private_mode && (a.moderation === "approve" || verdict === "review") ? "pending" : "open";
   const id = newId("req");
   const t = now();
   const insert = () =>
     c.env.DB.batch([
       c.env.DB.prepare(
-        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, context, credit, created_at, updated_at)
-         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, ?9, 1, ?7, ?8, ?6, ?6)`,
-      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit, status),
+        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, context, credit, private, created_at, updated_at)
+         VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, ?9, 1, ?7, ?8, ?10, ?6, ?6)`,
+      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit, status, a.private_mode ? 1 : 0),
       c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
       // Only the author's own, not-yet-used uploads can be attached.
       ...uploadIds.map((u) =>
@@ -901,6 +1025,9 @@ pub.post("/requests/:id/vote", async (c) => {
   const me = requireUser(c);
   await limitIp(c.env.DB, c.req.raw.headers, `vote:${c.get("app").id}`, 120);
   const r = await loadRequest(c, c.req.param("id"));
+  if (!visibleTo(c.get("app"), r, me)) fail(404, "not_found");
+  // Nobody else can see a private conversation, so there's nothing to vote on.
+  if (c.get("app").private_mode || r.private) fail(400, "private");
   if (r.status === "merged") fail(400, "merged");
   if (r.status === "pending") fail(400, "pending");
   const existing = await c.env.DB.prepare("SELECT 1 AS x FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first();
@@ -909,10 +1036,7 @@ pub.post("/requests/:id/vote", async (c) => {
     existing
       ? c.env.DB.prepare("DELETE FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id)
       : c.env.DB.prepare("INSERT OR IGNORE INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(r.id, me.id, t),
-    c.env.DB.prepare("UPDATE requests SET vote_count = imported_votes + (SELECT COUNT(*) FROM votes WHERE request_id = ?1), updated_at = ?2 WHERE id = ?1").bind(
-      r.id,
-      t,
-    ),
+    recount(c.env.DB, r.id, t),
   ]);
   const after = await loadRequest(c, r.id);
   return c.json({ voted: !existing, votes: after.vote_count });
@@ -921,7 +1045,7 @@ pub.post("/requests/:id/vote", async (c) => {
 pub.post("/requests/:id/comments", async (c) => {
   const me = requireUser(c);
   const r = await loadRequest(c, c.req.param("id"));
-  if (r.status === "pending" && r.author_id !== me.id) fail(404, "not_found");
+  if (!visibleTo(c.get("app"), r, me)) fail(404, "not_found");
   const body = cleanText((await c.req.json<{ body?: string }>().catch(() => ({}) as { body?: string })).body, 1000);
   if (!body) fail(400, "body_required");
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE user_id = ? AND created_at > ?")
@@ -939,7 +1063,8 @@ pub.post("/requests/:id/comments", async (c) => {
       body,
       t,
     ),
-    c.env.DB.prepare("UPDATE requests SET comment_count = comment_count + 1, updated_at = ? WHERE id = ?").bind(t, r.id),
+    // Writing again reopens a conversation the team had marked done.
+    c.env.DB.prepare("UPDATE requests SET comment_count = comment_count + 1, updated_at = ?, closed_at = NULL WHERE id = ?").bind(t, r.id),
   ]);
   c.executionCtx.waitUntil(notifyTeam(c.env, c.get("app").id, { kind: "comment", appName: c.get("app").name, request: r, author: me, body }));
   return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t } }, 201);
@@ -973,6 +1098,7 @@ pub.post("/uploads", async (c) => {
 pub.post("/requests/:id/early-access", async (c) => {
   const me = requireUser(c);
   const r = await loadRequest(c, c.req.param("id"));
+  if (!visibleTo(c.get("app"), r, me)) fail(404, "not_found");
   if (r.status !== "planned" && r.status !== "in_progress") fail(400, "not_in_the_works");
   const voted = await c.env.DB.prepare("SELECT 1 AS x FROM votes WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first();
   if (!voted) fail(403, "vote_first");
@@ -987,16 +1113,21 @@ pub.post("/requests/:id/early-access", async (c) => {
 pub.get("/me/requests", async (c) => {
   const me = c.get("user");
   if (!me) return c.json({ requests: [] });
+  const a = c.get("app");
+  // In private mode this is the person's list of conversations: only what they wrote, newest
+  // activity first, with the last message and whether the team's reply is still unread.
   const { results } = await c.env.DB.prepare(
-    `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted FROM requests r
+    `SELECT r.*, au.name AS author_name, (v.user_id IS NOT NULL) AS voted, ${LAST_MESSAGE_SQL},
+            (SELECT COUNT(*) FROM notifications n WHERE n.request_id = r.id AND n.user_id = ?1 AND n.seen_at IS NULL) AS unread
+     FROM requests r
      LEFT JOIN votes v ON v.request_id = r.id AND v.user_id = ?1
      LEFT JOIN users au ON au.id = r.author_id
-     WHERE r.app_id = ?2 AND r.status != 'merged' AND (r.author_id = ?1 OR v.user_id IS NOT NULL)
-     ORDER BY r.updated_at DESC LIMIT 100`,
+     WHERE r.app_id = ?2 AND r.status != 'merged' AND ${a.private_mode ? "r.author_id = ?1" : `(r.author_id = ?1 OR (v.user_id IS NOT NULL AND r.private = 0))`}
+     ORDER BY COALESCE(last_at, r.created_at) DESC LIMIT 100`,
   )
-    .bind(me.id, c.get("app").id)
-    .all<RequestRow & { voted: number; author_name: string | null }>();
-  return c.json({ requests: results.map((r) => publicRequest(r, me)) });
+    .bind(me.id, a.id)
+    .all<RequestRow & LastMessageCols & { voted: number; author_name: string | null; unread: number }>();
+  return c.json({ requests: results.map((r) => ({ ...publicRequest(r, me), last: lastMessage(r), unread: r.unread > 0 })) });
 });
 
 pub.post("/notifications/seen", async (c) => {

@@ -70,6 +70,8 @@ export type AppRow = {
   slug: string | null;
   public_board: number;
   description: string | null;
+  /** 1 when each person sees only their own conversations with the team (no public board, no votes). */
+  private_mode?: number;
 };
 
 export type UserRow = {
@@ -114,6 +116,12 @@ export type RequestRow = {
   source_url: string | null;
   /** Mentions found outside the widget (Heard elsewhere), counted like quiet votes. */
   elsewhere_count: number;
+  /** 1 when written while the app was in private mode: only the author and the team ever see it. */
+  private?: number;
+  /** The request this private conversation is filed under. It follows that request's status. */
+  linked_to?: string | null;
+  /** When the team marked the conversation done; cleared when the person writes again. */
+  closed_at?: number | null;
   created_at: number;
   updated_at: number;
 };

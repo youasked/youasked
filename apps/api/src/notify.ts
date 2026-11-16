@@ -95,13 +95,17 @@ export function requestCard(
   extra: { author?: Author; similar?: RequestRow | null; earlyAccess?: number; photo?: boolean } = {},
 ) {
   const lines = [
-    `💡 <b>${esc(appName)}</b> · ${ref(r)}${r.status !== "open" ? ` · ${STATUS_WORD[r.status]}` : ""}`,
+    `${r.private ? "🔒" : "💡"} <b>${esc(appName)}</b> · ${ref(r)}${r.private ? " · Private" : ""}${r.status !== "open" ? ` · ${STATUS_WORD[r.status]}` : ""}`,
     `<b>${esc(r.title)}</b>`,
   ];
   if (r.body && r.body !== r.title) lines.push(esc(clip(r.body, extra.photo ? CAPTION_BODY : 600)));
-  const meta = [`${r.vote_count} ${r.vote_count === 1 ? "vote" : "votes"}`];
+  const meta = r.private
+    ? r.vote_count > 1
+      ? [`${r.vote_count} people asked`]
+      : []
+    : [`${r.vote_count} ${r.vote_count === 1 ? "vote" : "votes"}`];
   if (extra.author !== undefined) meta.unshift(esc(who(extra.author)));
-  lines.push(`<i>${meta.join(" · ")}</i>`);
+  if (meta.length) lines.push(`<i>${meta.join(" · ")}</i>`);
   const where = contextLine(r);
   if (where) lines.push(`📍 ${esc(clip(where, 120))}`);
   if (r.source) lines.push(`🌐 Found on ${r.source === "reddit" ? "Reddit" : "the App Store"}`);
@@ -118,7 +122,11 @@ export function requestCard(
   const second: Button[] = [{ text: "💬 Reply", callback_data: `r:${r.id}` }];
   if (r.status !== "shipped" && r.status !== "declined") second.push({ text: "🛠 Build it", callback_data: `b:${r.id}` });
   const third: Button[] = [];
-  if (extra.similar) third.push({ text: `🔀 Merge into ${ref(extra.similar)}`, callback_data: `m:${r.id}:${extra.similar.id}` });
+  if (extra.similar) {
+    // Private conversations are linked, not merged: each person keeps their own.
+    const link = r.private || extra.similar.private;
+    third.push({ text: `${link ? "🔗 Link to" : "🔀 Merge into"} ${ref(extra.similar)}`, callback_data: `m:${r.id}:${extra.similar.id}` });
+  }
   if (r.status === "shipped") third.push({ text: "✏️ Ship note", callback_data: `n:${r.id}` });
   else if (r.status !== "declined") third.push({ text: "🚫 Decline", callback_data: `s:${r.id}:declined` });
   return { text: lines.join("\n"), reply_markup: { inline_keyboard: [statusRow, second, third].filter((row) => row.length) } };

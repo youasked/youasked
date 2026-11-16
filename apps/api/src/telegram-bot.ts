@@ -74,16 +74,17 @@ export async function handleBotUpdate(
     }
     let toast = "";
     if (action === "s" && (STATUSES as readonly string[]).includes(arg)) {
-      const { notified } = await setStatus(env.DB, r, arg as Status, undefined, mail);
-      toast = arg === "shipped" ? `Shipped. ${notified} told.` : `Marked ${arg.replace("_", " ")}.`;
+      const { notified, root, linked } = await setStatus(env.DB, r, arg as Status, undefined, mail);
+      const also = linked ? ` (with ${ref(root)} and ${linked} linked)` : "";
+      toast = arg === "shipped" ? `Shipped${also}. ${notified} told.` : `Marked ${arg.replace("_", " ")}${also}.`;
     } else if (action === "u" && (STATUSES as readonly string[]).includes(arg)) {
       await undoShip(env.DB, r, arg as Status);
       toast = "Undone.";
     } else if (action === "m") {
       const into = await loadRequestById(env.DB, target.appId, arg);
       if (into) {
-        await mergeRequests(env.DB, r, into);
-        toast = `Merged into ${ref(into)}.`;
+        const { linked } = await mergeRequests(env.DB, r, into, mail);
+        toast = linked ? `Linked to ${ref(into)}. They keep their own conversation.` : `Merged into ${ref(into)}.`;
       }
     } else if (action === "b") {
       await tg(env, token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Writing the prompt…" });
@@ -105,7 +106,9 @@ export async function handleBotUpdate(
       await tg(env, token, "answerCallbackQuery", { callback_query_id: cq.id });
       const prompt =
         action === "r"
-          ? `💬 Reply to ${ref(r)} · <b>${esc(r.title)}</b>\nWhatever you send next as a reply to this message goes to everyone who asked, in the app.`
+          ? r.private
+            ? `💬 Reply to ${ref(r)} · <b>${esc(r.title)}</b>\nWhatever you send next as a reply to this message goes to this person only, in the app.`
+            : `💬 Reply to ${ref(r)} · <b>${esc(r.title)}</b>\nWhatever you send next as a reply to this message goes to everyone who asked, in the app.`
           : `✏️ Ship note for ${ref(r)} · <b>${esc(r.title)}</b>\nReply to this message with the note people will see, e.g. “Find it in Settings → Appearance.”`;
       const sent = await say(env, token, target.chatId, prompt, { reply_markup: { force_reply: true, selective: true } });
       await rememberMessage(env, target.chatId, sent?.result?.message_id, r.id, action === "r" ? "reply" : "note");

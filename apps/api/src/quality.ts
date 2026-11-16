@@ -71,6 +71,8 @@ export async function purgeRequest(env: Env, r: RequestRow): Promise<void> {
     env.DB.prepare("DELETE FROM uploads WHERE request_id = ?").bind(r.id),
     env.DB.prepare("DELETE FROM email_log WHERE request_id = ?").bind(r.id),
     env.DB.prepare("DELETE FROM duplicate_dismissals WHERE app_id = ?1 AND (a = ?2 OR b = ?2)").bind(r.app_id, r.id),
+    // Conversations filed under this one become their own again.
+    env.DB.prepare("UPDATE requests SET linked_to = NULL WHERE linked_to = ?").bind(r.id),
     env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(r.id),
   ]);
   if (files.length) await env.UPLOADS.delete(files.map((f) => f.id));

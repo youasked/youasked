@@ -1,6 +1,6 @@
 // "Build it": turns a request into a prompt a coding agent can act on, and optionally a GitHub issue.
 import { Hono } from "hono";
-import { loadRequestById, ref, setStatus } from "./actions";
+import { loadRequestById, ref, rootOf, setStatus } from "./actions";
 import { overLimit } from "./spam";
 import { aiAllowed } from "./plans";
 import { aiJson } from "./ai";
@@ -25,7 +25,8 @@ async function gather(env: Env, app: AppRow, r: RequestRow, origin: string) {
   const [{ results: comments }, { results: files }, { results: merged }, { results: others }, voters] = await Promise.all([
     db.prepare("SELECT body, is_team FROM comments WHERE request_id = ? ORDER BY created_at LIMIT 30").bind(r.id).all<Comment>(),
     db.prepare("SELECT id FROM uploads WHERE request_id = ? ORDER BY created_at").bind(r.id).all<{ id: string }>(),
-    db.prepare("SELECT * FROM requests WHERE merged_into = ? ORDER BY vote_count DESC LIMIT 10").bind(r.id).all<RequestRow>(),
+    // Duplicates folded in, and private conversations filed under it: each is someone asking for this.
+    db.prepare("SELECT * FROM requests WHERE merged_into = ?1 OR linked_to = ?1 ORDER BY vote_count DESC, created_at LIMIT 10").bind(r.id).all<RequestRow>(),
     db
       .prepare("SELECT * FROM requests WHERE app_id = ? AND id != ? AND status IN ('open','planned','in_progress') ORDER BY vote_count DESC LIMIT 200")
       .bind(app.id, r.id)
@@ -55,7 +56,7 @@ async function refine(env: Env, app: AppRow, r: RequestRow, g: Awaited<ReturnTyp
     `Request title: ${r.title}`,
     `Request details: ${clip(r.body || "(none)", 1500)}`,
     ...g.comments.filter((c) => !c.is_team).slice(0, 8).map((c) => `User said: ${clip(oneLine(c.body), 300)}`),
-    ...g.merged.slice(0, 4).map((m) => `Duplicate request: ${m.title}`),
+    ...g.merged.slice(0, 4).map((m) => `${m.linked_to ? "Also asked as" : "Duplicate request"}: ${m.title}`),
   ].join("\n");
   return aiJson<Refined>(
     env,
@@ -121,7 +122,7 @@ export async function composeBuildPrompt(env: Env, app: AppRow, r: RequestRow, o
   if (g.merged.length || g.related.length) {
     out.push("", "## Related requests", "");
     out.push("```user-content");
-    for (const m of g.merged) out.push(`- Merged duplicate ${ref(m)}: ${fenceSafe(clip(oneLine(m.title), 160))}${m.body ? `: ${fenceSafe(clip(oneLine(m.body), 200))}` : ""} (same ask, cover it too)`);
+    for (const m of g.merged) out.push(`- ${m.linked_to ? "Also asked privately in" : "Merged duplicate"} ${ref(m)}: ${fenceSafe(clip(oneLine(m.title), 160))}${m.body ? `: ${fenceSafe(clip(oneLine(m.body), 200))}` : ""} (same ask, cover it too)`);
     for (const o of g.related) out.push(`- ${ref(o)} (${o.vote_count} votes): ${fenceSafe(clip(oneLine(o.title), 160))}. Look at it so the two fit together, but do not build it unless it is the same thing`);
     out.push("```");
   }
@@ -332,16 +333,20 @@ export async function handoff(env: Env, app: AppRow, r: RequestRow, origin: stri
 
 build.post("/requests/:id/build", async (c) => {
   const app = c.get("app");
-  const r = await loadRequestById(c.env.DB, app.id, c.req.param("id"));
-  if (!r) fail(404, "not_found");
+  const found = await loadRequestById(c.env.DB, app.id, c.req.param("id"));
+  if (!found) fail(404, "not_found");
+  // A private conversation filed under a request builds that request, with everyone's words.
+  const r = await rootOf(c.env.DB, found);
   const { prompt, issueUrl, refined, cursorUrl } = await buildFor(c.env, app, r, new URL(c.req.url).origin);
   return c.json({ prompt, ...(issueUrl ? { issueUrl } : {}), refined, cursorUrl, github: Boolean(await githubAccess(c.env, app.id)) });
 });
 
 build.post("/requests/:id/handoff", async (c) => {
   const app = c.get("app");
-  const r = await loadRequestById(c.env.DB, app.id, c.req.param("id"));
-  if (!r) fail(404, "not_found");
+  const found = await loadRequestById(c.env.DB, app.id, c.req.param("id"));
+  if (!found) fail(404, "not_found");
+  // A private conversation filed under a request builds that request, with everyone's words.
+  const r = await rootOf(c.env.DB, found);
   const body = await c.req.json<{ agent?: string }>().catch(() => ({}) as { agent?: string });
   const agent = body.agent as Agent;
   if (!AGENTS.includes(agent)) fail(400, "bad_agent", { message: `agent is one of ${AGENTS.join(", ")}` });

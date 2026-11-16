@@ -28,13 +28,14 @@ export function siteUrl(env: Env): string {
   return (env.SITE_URL || "https://youasked.dev").replace(/\/$/, "");
 }
 
-export function publicUrl(env: Env, app: Pick<AppRow, "slug" | "public_board">): string | null {
-  return app.slug && app.public_board ? `${siteUrl(env)}/${app.slug}` : null;
+export function publicUrl(env: Env, app: Pick<AppRow, "slug" | "public_board" | "private_mode">): string | null {
+  return app.slug && app.public_board && !app.private_mode ? `${siteUrl(env)}/${app.slug}` : null;
 }
 
 /** The page and the picture to post when a request ships. Null until the app has a slug. */
-export function shareFields(env: Env, app: Pick<AppRow, "slug">, r: Pick<RequestRow, "status" | "number">) {
-  if (r.status !== "shipped" || !app.slug) return { shareUrl: null, shareImage: null };
+export function shareFields(env: Env, app: Pick<AppRow, "slug">, r: Pick<RequestRow, "status" | "number" | "private">) {
+  // A private conversation is never published, not even once it ships.
+  if (r.status !== "shipped" || !app.slug || r.private) return { shareUrl: null, shareImage: null };
   return {
     shareUrl: `${siteUrl(env)}/${app.slug}/shipped/${r.number}`,
     shareImage: `${siteUrl(env)}/og/${app.slug}/${r.number}.png`,
@@ -109,7 +110,8 @@ const SELECT = `SELECT r.*, u.name AS author_name FROM requests r LEFT JOIN user
 async function boardApp(c: { env: Env; req: { param(k: string): string } }, requireBoard = true): Promise<AppRow> {
   const slug = c.req.param("slug").toLowerCase();
   const row = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ?").bind(slug).first<AppRow>();
-  if (!row || (requireBoard && !row.public_board)) notFound();
+  // An app in private mode has no board: every request in it belongs to one person and the team.
+  if (!row || (requireBoard && (!row.public_board || row.private_mode))) notFound();
   return row as AppRow;
 }
 
@@ -117,7 +119,7 @@ async function boardApp(c: { env: Env; req: { param(k: string): string } }, requ
 pub.get("/apps", async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT a.slug, a.name, COALESCE((SELECT MAX(updated_at) FROM requests r WHERE r.app_id = a.id), a.created_at) AS updated_at
-     FROM apps a WHERE a.public_board = 1 AND a.slug IS NOT NULL ORDER BY a.created_at LIMIT 2000`,
+     FROM apps a WHERE a.public_board = 1 AND a.private_mode = 0 AND a.slug IS NOT NULL ORDER BY a.created_at LIMIT 2000`,
   ).all<{ slug: string; name: string; updated_at: number }>();
   return c.json({ apps: results.map((a) => ({ slug: a.slug, name: a.name, updatedAt: a.updated_at })) });
 });
@@ -126,7 +128,7 @@ pub.get("/apps/:slug", async (c) => {
   const a = await boardApp(c);
   const { results } = await c.env.DB.prepare(
     `SELECT status, COUNT(*) AS n, COALESCE(SUM(vote_count), 0) AS votes FROM requests
-     WHERE app_id = ? AND status IN ('open','planned','in_progress','shipped') GROUP BY status`,
+     WHERE app_id = ? AND private = 0 AND status IN ('open','planned','in_progress','shipped') GROUP BY status`,
   )
     .bind(a.id)
     .all<{ status: Shown; n: number; votes: number }>();
@@ -146,7 +148,7 @@ pub.get("/apps/:slug/requests", async (c) => {
   const filter = status && (SHOWN as readonly string[]).includes(status) ? [status] : ["open", "planned", "in_progress"];
   const marks = filter.map(() => "?").join(",");
   const { results } = await c.env.DB.prepare(
-    `${SELECT} WHERE r.app_id = ? AND r.status IN (${marks}) ORDER BY ${sort} LIMIT 200`,
+    `${SELECT} WHERE r.app_id = ? AND r.private = 0 AND r.status IN (${marks}) ORDER BY ${sort} LIMIT 200`,
   )
     .bind(a.id, ...filter)
     .all<Row>();
@@ -157,7 +159,7 @@ pub.get("/apps/:slug/roadmap", async (c) => {
   const a = await boardApp(c);
   const list = async (status: Shown, order: string, limit: number) =>
     (
-      await c.env.DB.prepare(`${SELECT} WHERE r.app_id = ? AND r.status = ? ORDER BY ${order} LIMIT ${limit}`)
+      await c.env.DB.prepare(`${SELECT} WHERE r.app_id = ? AND r.private = 0 AND r.status = ? ORDER BY ${order} LIMIT ${limit}`)
         .bind(a.id, status)
         .all<Row>()
     ).results.map(shape);
@@ -171,7 +173,7 @@ pub.get("/apps/:slug/roadmap", async (c) => {
 pub.get("/apps/:slug/changelog", async (c) => {
   const a = await boardApp(c);
   const { results } = await c.env.DB.prepare(
-    `${SELECT} WHERE r.app_id = ? AND r.status = 'shipped' ORDER BY r.shipped_at DESC, r.number DESC LIMIT 200`,
+    `${SELECT} WHERE r.app_id = ? AND r.private = 0 AND r.status = 'shipped' ORDER BY r.shipped_at DESC, r.number DESC LIMIT 200`,
   )
     .bind(a.id)
     .all<Row>();
@@ -183,7 +185,7 @@ pub.get("/apps/:slug/shipped/:number", async (c) => {
   const a = await boardApp(c, false);
   const n = Number(c.req.param("number"));
   if (!Number.isInteger(n) || n < 1) notFound();
-  const r = await c.env.DB.prepare(`${SELECT} WHERE r.app_id = ? AND r.number = ? AND r.status = 'shipped'`)
+  const r = await c.env.DB.prepare(`${SELECT} WHERE r.app_id = ? AND r.number = ? AND r.status = 'shipped' AND r.private = 0`)
     .bind(a.id, n)
     .first<Row>();
   if (!r) notFound();

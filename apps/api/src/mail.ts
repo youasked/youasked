@@ -31,8 +31,9 @@ async function appNameOf(db: D1Database, appId: string): Promise<string> {
   return (await db.prepare("SELECT name FROM apps WHERE id = ?").bind(appId).first<{ name: string }>())?.name ?? "the app";
 }
 
-/** The request's public share page, when the app has a slug (shipped requests get one even on a private board). */
+/** The request's public share page, when the app has a slug (shipped requests get one even on a private board). Never for a private conversation. */
 async function sharePageOf(env: Env, r: RequestRow): Promise<string | null> {
+  if (r.private) return null;
   const a = await env.DB.prepare("SELECT slug FROM apps WHERE id = ?").bind(r.app_id).first<{ slug: string | null }>();
   return a?.slug ? `${siteUrl(env)}/${a.slug}/shipped/${r.number}` : null;
 }

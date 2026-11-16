@@ -12,3 +12,4 @@ MOCK_PORT=19711 node test/mock.mjs > /tmp/ya-mock.log 2>&1 &
 npx wrangler dev --local --config test/wrangler.test.jsonc --persist-to /tmp/ya-state --port 18733 --inspector-port 19333 --test-scheduled > /tmp/ya-dev.log 2>&1 &
 until curl -s localhost:18733/ > /dev/null; do sleep 1; done
 node test/scenario.mjs
+node test/private.mjs

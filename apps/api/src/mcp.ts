@@ -54,11 +54,18 @@ type Summary = {
   elsewhere?: number;
   shipNote: string | null;
   createdAt: number;
+  /** Private-mode conversation: only the person who wrote it and the team can see it. */
+  private?: boolean;
+  needsReply?: boolean;
+  linkedTo?: string | null;
+  linkedCount?: number;
+  author?: { name: string | null; anonymous: boolean };
+  last?: { body: string; team: boolean; at: number };
 };
 type Run = {
   /** The app this call is about (list_apps doesn't use one). */
   api: (appArg: unknown) => Promise<Api>;
-  apps: () => Promise<{ id: string; name: string }[]>;
+  apps: () => Promise<{ id: string; name: string; private?: boolean }[]>;
 };
 type Api = ReturnType<typeof makeApi>;
 
@@ -73,7 +80,11 @@ const ref = (n: number) => `YA-${n}`;
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const line = (r: Summary) =>
-  `${ref(r.number)}  [${r.status}]  ${plural(r.votes, "vote")}, ${plural(r.comments, "comment")}  ${r.title}${r.shipNote ? `  (ship note: ${r.shipNote})` : ""}`;
+  r.private
+    ? // A private conversation: who it's with, where it stands, and the last word, never a vote count.
+      `${ref(r.number)}  [${r.status}${r.needsReply ? ", needs a reply" : ""}]  private, from ${r.author?.name ?? "someone"}${r.linkedTo ? ", linked to another request" : r.linkedCount ? `, ${plural(r.linkedCount + 1, "person", "people")} asked` : ""}  ${r.title}` +
+      (r.last ? `\n      last: ${r.last.team ? "team" : "them"}: ${r.last.body.replace(/\s+/g, " ").slice(0, 140)}` : "")
+    : `${ref(r.number)}  [${r.status}]  ${plural(r.votes, "vote")}, ${plural(r.comments, "comment")}  ${r.title}${r.shipNote ? `  (ship note: ${r.shipNote})` : ""}`;
 
 const requestRef: Prop = { type: "string", description: 'Request number like "YA-12" (or just 12). A request id (req_…) also works.' };
 
@@ -118,15 +129,19 @@ function makeApi(c: Context<{ Bindings: Env }>, app: AppRow, dispatch: Dispatch)
         request: Summary & { body: string; mergedInto: string | null; shippedAt: number | null };
         comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number }[];
         voters: number;
+        needsReply: boolean;
+        linkedTo: { ref: string; title: string; status: string } | null;
+        linkedCount: number;
       }>("GET", `/lookup?ref=${encodeURIComponent(r)}`),
     search: (q: string) => call<{ requests: (Summary & { score: number })[] }>("GET", `/search?q=${encodeURIComponent(q)}`),
     digest: (days: number) =>
       call<{ days: number; top: Summary[]; new: Summary[]; shipped: Summary[]; votes: number; comments: number }>("GET", `/digest?days=${days}`),
-    reply: (id: string, body: string) => call<{ id: string; notified: number }>("POST", `/requests/${id}/comments`, { body }),
+    reply: (id: string, body: string, everyone = false) =>
+      call<{ id: string; notified: number; conversations: number }>("POST", `/requests/${id}/comments`, { body, ...(everyone ? { everyone: true } : {}) }),
     setStatus: (id: string, status: string, shipNote?: string) =>
-      call<{ notified: boolean; told: number }>("PATCH", `/requests/${id}`, { status, ...(shipNote === undefined ? {} : { shipNote }) }),
+      call<{ notified: boolean; told: number; linked?: number; root?: { number: number } }>("PATCH", `/requests/${id}`, { status, ...(shipNote === undefined ? {} : { shipNote }) }),
     build: (id: string) => call<{ prompt: string; issueUrl?: string }>("POST", `/requests/${id}/build`),
-    merge: (id: string, into: string) => call<{ ok: true }>("POST", `/requests/${id}/merge`, { into }),
+    merge: (id: string, into: string) => call<{ ok: true; linked: boolean }>("POST", `/requests/${id}/merge`, { into }),
   };
 }
 
@@ -164,7 +179,7 @@ const TOOLS: Tool[] = [
     run: async (x) => {
       const apps = await x.apps();
       if (!apps.length) return "This account has no apps yet. Create one at https://app.youasked.dev.";
-      return `${plural(apps.length, "app")}:\n\n${apps.map((a) => `${a.name}  (id ${a.id})`).join("\n")}`;
+      return `${plural(apps.length, "app")}:\n\n${apps.map((a) => `${a.name}  (id ${a.id}${a.private ? ", private mode: one-to-one conversations" : ""})`).join("\n")}`;
     },
   },
   {
@@ -173,24 +188,33 @@ const TOOLS: Tool[] = [
     description:
       "List feature requests from the app's users, most wanted first. Start here to decide what to build: " +
       "by default it shows requests that are still open, planned or in progress, sorted by votes. " +
-      "Each line has the YA number, status, votes and comment count. Then call get_request on the one you pick.",
+      "Each line has the YA number, status, votes and comment count. Then call get_request on the one you pick. " +
+      'Apps in private mode hold one-to-one conversations instead of a public board: status "needs_reply" lists the ones where the person wrote last and is waiting on the team, newest first.',
     properties: {
       app: APP_ARG,
-      status: { type: "string", enum: ["active", "open", "planned", "in_progress", "shipped", "declined", "all"], default: "active", description: '"active" = open + planned + in_progress (default). "all" includes shipped and declined.' },
+      status: {
+        type: "string",
+        enum: ["active", "open", "planned", "in_progress", "shipped", "declined", "all", "needs_reply"],
+        default: "active",
+        description: '"active" = open + planned + in_progress (default). "all" includes shipped and declined. "needs_reply" = conversations waiting on a reply from the team.',
+      },
       sort: { type: "string", enum: ["votes", "newest"], default: "votes" },
       limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
     },
     annotations: READ,
     run: async (x, a) => {
-      const status = oneOf(a.status, ["active", "open", "planned", "in_progress", "shipped", "declined", "all"] as const, "active", "status");
-      const sort = oneOf(a.sort, ["votes", "newest"] as const, "votes", "sort");
+      const status = oneOf(a.status, ["active", "open", "planned", "in_progress", "shipped", "declined", "all", "needs_reply"] as const, "active", "status");
+      const waiting = status === "needs_reply";
+      const sort = waiting ? "newest" : oneOf(a.sort, ["votes", "newest"] as const, "votes", "sort");
       const limit = int(a.limit, 20, 1, 100);
       const api = await x.api(a.app);
-      const { requests } = await api.list(status === "active" ? "all" : status);
+      const { requests } = await api.list(status === "active" || waiting ? "all" : status);
       const rows = requests
-        .filter((r) => (status === "active" ? ["open", "planned", "in_progress"].includes(r.status) : true))
-        .sort((p, q) => (sort === "newest" ? q.createdAt - p.createdAt : q.votes - p.votes || q.createdAt - p.createdAt));
-      if (!rows.length) return status === "active" ? "No open requests right now." : `No requests with status "${status}".`;
+        .filter((r) => (status === "active" ? ["open", "planned", "in_progress"].includes(r.status) : waiting ? Boolean(r.needsReply) : true))
+        .sort((p, q) =>
+          waiting ? (q.last?.at ?? q.createdAt) - (p.last?.at ?? p.createdAt) : sort === "newest" ? q.createdAt - p.createdAt : q.votes - p.votes || q.createdAt - p.createdAt,
+        );
+      if (!rows.length) return status === "active" ? "No open requests right now." : waiting ? "Nobody is waiting on a reply." : `No requests with status "${status}".`;
       const shown = rows.slice(0, limit);
       const more = rows.length > shown.length ? `\n…and ${rows.length - shown.length} more (raise limit to see them).` : "";
       return `${plural(rows.length, "request")} (${status}, sorted by ${sort}):\n\n${shown.map(line).join("\n")}${more}`;
@@ -208,10 +232,15 @@ const TOOLS: Tool[] = [
     annotations: READ,
     run: async (x, a) => {
       const api = await x.api(a.app);
-      const { request: r, comments } = await api.lookup(str(a.request, "request", 1, 80).trim());
+      const { request: r, comments, needsReply, linkedTo, linkedCount } = await api.lookup(str(a.request, "request", 1, 80).trim());
       const out = [
         `${ref(r.number)}: ${r.title}`,
         `Status: ${r.status}${r.mergedInto ? ` (merged into another request, id ${r.mergedInto})` : ""}`,
+        r.private
+          ? `Private conversation: only this person and the team can see it. A reply reaches them alone.${needsReply ? " They are waiting on a reply." : ""}`
+          : "",
+        linkedTo ? `Linked to ${linkedTo.ref} "${linkedTo.title}" (${linkedTo.status}): it follows that request's status.` : "",
+        linkedCount ? `${plural(linkedCount, "other private conversation is", "other private conversations are")} linked to this one. reply with all_linked to answer everyone at once.` : "",
         `Votes: ${r.votes}  ·  Asked ${day(r.createdAt)}${r.shippedAt ? `  ·  Shipped ${day(r.shippedAt)}` : ""}`,
         r.shipNote ? `Ship note: ${r.shipNote}` : "",
         "",
@@ -269,8 +298,14 @@ const TOOLS: Tool[] = [
     title: "Reply to the people who asked",
     description:
       "Post a reply as the team. The person who asked and anyone who commented sees it as a message inside the app (and gets an email if the app sends them). " +
+      "In a private conversation it reaches only that one person; all_linked sends the same reply into every private conversation linked to the same request, each person in their own thread. " +
       "Keep it short, friendly and plain-English. Don't use this to announce a ship: set_status with a ship note (or a \"closes YA-n\" commit) already tells everyone.",
-    properties: { app: APP_ARG, request: requestRef, message: { type: "string", minLength: 1, maxLength: 2000, description: "What to say to the people who asked." } },
+    properties: {
+      app: APP_ARG,
+      request: requestRef,
+      message: { type: "string", minLength: 1, maxLength: 2000, description: "What to say to the people who asked." },
+      all_linked: { type: "boolean", default: false, description: "Private mode: also send it to every conversation linked to the same request." },
+    },
     required: ["request", "message"],
     // Adds a message; nothing is overwritten. It reaches real people and can't be unsent.
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -278,8 +313,8 @@ const TOOLS: Tool[] = [
       const message = str(a.message, "message", 1, 2000);
       const api = await x.api(a.app);
       const r = await resolve(api, a.request);
-      const { notified } = await api.reply(r.id, message);
-      return `Replied on ${r.ref}. ${plural(notified, "person", "people")} will see it in the app.`;
+      const { notified, conversations } = await api.reply(r.id, message, a.all_linked === true);
+      return `Replied on ${r.ref}${conversations > 1 ? ` and ${plural(conversations - 1, "linked conversation")}` : ""}. ${plural(notified, "person", "people")} will see it in the app.`;
     },
   },
   {
@@ -304,7 +339,9 @@ const TOOLS: Tool[] = [
       const api = await x.api(a.app);
       const r = await resolve(api, a.request);
       const res = await api.setStatus(r.id, status, shipNote);
-      return `${r.ref} is now ${status}.${status === "shipped" ? ` ${plural(res.told, "person", "people")} will be told in the app.` : ""}`;
+      const via = res.root && res.root.number !== Number(r.ref.slice(3)) ? ` (it's linked, so this changed ${ref(res.root.number)})` : "";
+      const linked = res.linked ? ` ${plural(res.linked, "linked conversation")} followed.` : "";
+      return `${r.ref} is now ${status}${via}.${linked}${status === "shipped" ? ` ${plural(res.told, "person", "people")} will be told in the app.` : ""}`;
     },
   },
   {
@@ -312,7 +349,8 @@ const TOOLS: Tool[] = [
     title: "Merge a duplicate",
     description:
       "Fold one request into another when they ask for the same thing. Votes are combined on the target and the duplicate disappears from the board. " +
-      "Use search first to find duplicates. Merge before you build so the votes add up.",
+      "Use search first to find duplicates. Merge before you build so the votes add up. " +
+      "Private conversations are linked instead of merged: each person keeps their own conversation, follows the target's status, and is told when it ships.",
     properties: {
       app: APP_ARG,
       from: { ...requestRef, description: "The duplicate to fold away, e.g. YA-14." },
@@ -325,8 +363,10 @@ const TOOLS: Tool[] = [
       const api = await x.api(a.app);
       const [p, q] = await Promise.all([resolve(api, a.from), resolve(api, a.into)]);
       if (p.id === q.id) return "Those are the same request.";
-      await api.merge(p.id, q.id);
-      return `Merged ${p.ref} ("${p.title}") into ${q.ref} ("${q.title}"). Votes are combined.`;
+      const { linked } = await api.merge(p.id, q.id);
+      return linked
+        ? `Linked ${p.ref} ("${p.title}") to ${q.ref} ("${q.title}"). It stays a private conversation and follows ${q.ref}'s status.`
+        : `Merged ${p.ref} ("${p.title}") into ${q.ref} ("${q.title}"). Votes are combined.`;
     },
   },
   {
@@ -487,7 +527,7 @@ export function createMcp(dispatch: Dispatch) {
           .all<AppRow>()
       ).results;
     const run: Run = {
-      apps: async () => (await apps()).map((a) => ({ id: a.id, name: a.name })),
+      apps: async () => (await apps()).map((a) => ({ id: a.id, name: a.name, private: Boolean(a.private_mode) })),
       api: async (appArg) => {
         const mine = await apps();
         if (!mine.length) throw new ToolError("This account has no apps yet. Create one at https://app.youasked.dev.");
