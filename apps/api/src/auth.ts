@@ -7,7 +7,7 @@ import { cors } from "hono/cors";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { inviteEmail, sendEmail, signInEmail } from "./email";
-import { cleanText, newId } from "./lib";
+import { cleanText, newId, safeEqual } from "./lib";
 import { isLocalOrigin } from "./plans";
 import type { Env } from "./types";
 
@@ -232,7 +232,10 @@ const hasGoogle = (env: Env) => Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIEN
 const hasGithub = (env: Env) => Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
 
 // Email links are offered only once the domain can actually send (EMAIL_SIGN_IN is "off" until then).
-auth.get("/providers", (c) => c.json({ google: hasGoogle(c.env), github: hasGithub(c.env), email: c.env.EMAIL_SIGN_IN !== "off" }));
+const hasReviewLogin = (env: Env) => Boolean(env.REVIEW_LOGIN_EMAIL && env.REVIEW_LOGIN_HASH);
+auth.get("/providers", (c) =>
+  c.json({ google: hasGoogle(c.env), github: hasGithub(c.env), email: c.env.EMAIL_SIGN_IN !== "off", password: hasReviewLogin(c.env) }),
+);
 
 const loginError = (c: Context<any>, error: string) => c.redirect(`${dashboardBase(c.env)}/login?error=${error}`, 302);
 
@@ -400,6 +403,28 @@ auth.get("/email/verify", async (c) => {
   const claimed = await c.env.DB.prepare("UPDATE login_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL").bind(Date.now(), id).run();
   if (!claimed.meta.changes) return loginError(c, "link_expired");
   return finish(c, { provider: "email", subject: row.email, email: row.email }, safeNext(c.req.query("next")));
+});
+
+// ---- reviewer password
+
+/**
+ * A plain form POST from the sign-in page (so the redirect sets the cookie like the other methods).
+ * Works for exactly one address, REVIEW_LOGIN_EMAIL, the account app store reviewers use. Same identity
+ * as an email link for that address, so it lands on the seeded demo account.
+ */
+auth.post("/password", async (c) => {
+  const form = await c.req.parseBody().catch(() => ({}) as Record<string, unknown>);
+  const next = safeNext(typeof form.next === "string" ? form.next : undefined);
+  const back = (error: string) => c.redirect(`${dashboardBase(c.env)}/login?error=${error}&next=${encodeURIComponent(next)}`, 302);
+  if (!hasReviewLogin(c.env)) return back("provider_unavailable");
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  if ((await overLimit(c.env.DB, `signin-pw:${ip}`, 10)) || (await overLimit(c.env.DB, "signin-pw:all", 100))) return back("too_many_tries");
+  const email = cleanText(form.email, 320).toLowerCase();
+  const password = typeof form.password === "string" ? form.password : "";
+  const right =
+    safeEqual(email, c.env.REVIEW_LOGIN_EMAIL!.trim().toLowerCase()) && safeEqual(await sha256Hex(password), c.env.REVIEW_LOGIN_HASH!.trim().toLowerCase());
+  if (!right) return back("wrong_password");
+  return finish(c, { provider: "email", subject: email, email }, next);
 });
 
 auth.post("/logout", async (c) => {

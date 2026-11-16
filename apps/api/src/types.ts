@@ -48,6 +48,15 @@ export type Env = {
   AI_MODEL?: string;
   /** Overridable in tests; default https://api.github.com */
   GITHUB_API?: string;
+  /**
+   * One password sign-in, for app store reviewers only (they can't receive our email links, and Google challenges
+   * new logins). Off unless both are set. The hash is the SHA-256 hex of the password; the password lives in
+   * ~/.config/youasked/reviewer.env, never in the repo.
+   */
+  REVIEW_LOGIN_EMAIL?: string;
+  REVIEW_LOGIN_HASH?: string;
+  /** The verification token OpenAI's app portal asks us to serve at /.well-known/openai-apps-challenge. */
+  OPENAI_APPS_CHALLENGE?: string;
   /** Test only: serve listening sources from fixtures at this base URL instead of the real services. */
   LISTENING_FIXTURES?: string;
 };

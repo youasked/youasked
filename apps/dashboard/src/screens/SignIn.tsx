@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { api, signInUrl } from "../api";
+import { API_URL, api, signInUrl } from "../api";
 import { mockEnabled } from "../mock";
 import { Button, ErrorState, GitHubMark, GoogleG, Icon, Mark, Spinner, useFail, useLoad } from "../ui";
 
-type Providers = { google: boolean; github: boolean; email: boolean };
+type Providers = { google: boolean; github: boolean; email: boolean; password?: boolean };
 
 const LOGIN_ERRORS: Record<string, string> = {
   link_expired: "That sign-in link has expired. Request a new one below.",
@@ -13,6 +13,8 @@ const LOGIN_ERRORS: Record<string, string> = {
   provider_unavailable: "That sign-in option isn't available right now. Try another way.",
   provider_error: "The provider had a problem signing you in. Try again, or use another way.",
   email_unverified: "That account's email isn't verified with the provider. Verify it there, or use an email link instead.",
+  wrong_password: "That email and password don't match. Check both and try again.",
+  too_many_tries: "Too many tries. Wait an hour, then try again.",
 };
 
 export function SignIn({ next, onSignedIn, error }: { next: string; onSignedIn: () => void; error?: string | null }) {
@@ -20,6 +22,8 @@ export function SignIn({ next, onSignedIn, error }: { next: string; onSignedIn: 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Password sign-in exists for one app store review account; everyone else uses Google, GitHub or a link.
+  const [withPassword, setWithPassword] = useState(error === "wrong_password" || error === "too_many_tries");
   const fail = useFail();
   const mock = mockEnabled();
 
@@ -85,7 +89,22 @@ export function SignIn({ next, onSignedIn, error }: { next: string; onSignedIn: 
                     </Button>
                   </form>
                 )}
-                {!p.google && !p.github && !p.email && (
+                {p.password &&
+                  (withPassword ? (
+                    <form method="post" action={`${API_URL}/v1/auth/password`} className="signin-password">
+                      <input type="hidden" name="next" value={next} />
+                      <label htmlFor="pw-email" className="sr-only">Email address</label>
+                      <input id="pw-email" name="email" className="input" type="email" required placeholder="Email" autoComplete="username" />
+                      <label htmlFor="pw-password" className="sr-only">Password</label>
+                      <input id="pw-password" name="password" className="input" type="password" required placeholder="Password" autoComplete="current-password" />
+                      <Button type="submit" className="btn-wide">Sign in</Button>
+                    </form>
+                  ) : (
+                    <button type="button" className="linklike signin-pw-link" onClick={() => setWithPassword(true)}>
+                      Sign in with a password
+                    </button>
+                  ))}
+                {!p.google && !p.github && !p.email && !p.password && (
                   <p className="hint">Sign-in isn't set up on this server yet. If you run it yourself, add a Google, GitHub or email provider.</p>
                 )}
               </div>

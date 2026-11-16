@@ -289,6 +289,10 @@ app.onError((err, c) => {
 });
 
 app.get("/", (c) => c.text("youasked api"));
+// OpenAI's app portal checks that we control the MCP host by fetching this; the body is the token alone.
+app.get("/.well-known/openai-apps-challenge", (c) =>
+  c.env.OPENAI_APPS_CHALLENGE ? c.text(c.env.OPENAI_APPS_CHALLENGE.trim()) : c.text("not found", 404),
+);
 app.get("/admin", (c) => c.html(adminMovedPage(dashboardBase(c.env))));
 app.get("/admin/legacy", (c) => c.html(adminPage));
 app.route("/v1/hooks", hooks);

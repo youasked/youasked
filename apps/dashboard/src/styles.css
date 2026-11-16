@@ -740,3 +740,5 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
   .cv-msg { max-width: 92%; }
   .cv-kbd { display: none; }
 }
+.signin-pw-link { justify-self: center; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.signin-password { margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line); }

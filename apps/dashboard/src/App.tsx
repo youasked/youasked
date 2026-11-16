@@ -85,7 +85,9 @@ function Root() {
   if (!me) {
     if (!meError) return <Splash />;
     if (meError instanceof ApiError && meError.status !== 401) return <div className="center-page"><ErrorState error={meError} retry={loadMe} /></div>;
-    const next = path === "/login" ? "/" : key;
+    // On /login itself, keep where they were headed (a failed password sign-in comes back here with ?next=).
+    const asked = query.get("next");
+    const next = path === "/login" ? (asked && asked.startsWith("/") && !asked.startsWith("//") ? asked : "/") : key;
     return <SignIn error={query.get("error")} next={next} onSignedIn={async () => { await loadMe(); navigate(next, true); }} />;
   }
   if (path === "/login") {
