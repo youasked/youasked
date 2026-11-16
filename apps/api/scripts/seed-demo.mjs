@@ -15,7 +15,7 @@ const q = (s) => (s === null || s === undefined ? "NULL" : `'${String(s).replace
 const rid = (prefix, n = 16) => `${prefix}_${randomBytes(n).toString("hex").slice(0, n)}`;
 const DAY = 86_400_000;
 
-export function buildSeedSql({ email, appName = "Orbit Habits (demo)", workspaceName = "Demo workspace", session = null, now = Date.now() }) {
+export function buildSeedSql({ email, appName = "Orbit Habits (demo)", workspaceName = "Demo workspace", session = null, now = Date.now(), privateDemo = false }) {
   const e = email.trim().toLowerCase();
   // Stable ids from the email, so a rerun replaces instead of piling up.
   const tag = Buffer.from(e).toString("hex").slice(0, 12);
@@ -32,6 +32,14 @@ export function buildSeedSql({ email, appName = "Orbit Habits (demo)", workspace
   run(`DELETE FROM requests WHERE app_id = ${q(app)}`);
   run(`DELETE FROM users WHERE app_id = ${q(app)}`);
   run(`DELETE FROM apps WHERE id = ${q(app)}`);
+  // The private-mode demo app (only seeded with --private), cleared either way.
+  const papp = `app_demopriv${tag}`;
+  run(`DELETE FROM comments WHERE request_id IN (SELECT id FROM requests WHERE app_id = ${q(papp)})`);
+  run(`DELETE FROM votes WHERE request_id IN (SELECT id FROM requests WHERE app_id = ${q(papp)})`);
+  run(`DELETE FROM notifications WHERE request_id IN (SELECT id FROM requests WHERE app_id = ${q(papp)})`);
+  run(`DELETE FROM requests WHERE app_id = ${q(papp)}`);
+  run(`DELETE FROM users WHERE app_id = ${q(papp)}`);
+  run(`DELETE FROM apps WHERE id = ${q(papp)}`);
   run(`DELETE FROM members WHERE workspace_id = ${q(ws)}`);
   run(`DELETE FROM workspaces WHERE id = ${q(ws)}`);
 
@@ -76,6 +84,43 @@ export function buildSeedSql({ email, appName = "Orbit Habits (demo)", workspace
     );
   });
 
+  // Private mode: one-to-one conversations. Two people asked for the same export, so Priya's is linked
+  // to Jonas's; Maya and Tom are waiting on a reply.
+  if (privateDemo) {
+    run(
+      `INSERT INTO apps (id, name, public_key, secret_key, workspace_id, always_live, private_mode, created_at) VALUES (${q(papp)}, 'Orbit Support (demo)', ${q(rid("ya_pub", 24))}, ${q(rid("ya_sec", 32))}, ${q(ws)}, 1, 1, ${now})`,
+    );
+    const pid = (i) => `usr_demopriv${tag}${i}`;
+    people.slice(0, 4).forEach((n, i) => {
+      run(
+        `INSERT INTO users (id, app_id, external_id, email, name, is_anon, created_at, last_seen_at) VALUES (${q(pid(i))}, ${q(papp)}, ${q(`demo-${i}`)}, NULL, ${q(n)}, 0, ${now - 30 * DAY}, ${now - DAY})`,
+      );
+    });
+    // [title, body, status, author, ageDays, linkedTo index, comments[[who|null=team, text]]]
+    const convos = [
+      ["Sync stopped on my iPad", "My check-ins from yesterday aren't on my iPad.", "open", 0, 3, null, [[null, "Sorry about that. Can you sign out and back in? That resets sync."], [0, "Tried that, still missing yesterday."]]],
+      ["Can I export my streaks to Excel?", "My coach wants a spreadsheet of my streaks every month.", "planned", 1, 8, null, [[null, "A few people asked for this, so it's planned for next month."]]],
+      ["Spreadsheet of my habits for my coach", "", "planned", 2, 5, 1, []],
+      ["How do I change the reminder sound?", "", "open", 3, 1, null, []],
+    ];
+    convos.forEach(([title, body, status, author, age, link, comments], i) => {
+      const id = `req_demopriv${tag}${i}`;
+      const created = now - age * DAY;
+      const votes = 1 + convos.filter((c) => c[5] === i).length;
+      run(
+        `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, comment_count, private, linked_to, created_at, updated_at) VALUES (` +
+          [q(id), q(papp), q(pid(author)), i + 1, q(title), q(body), q(status), votes, comments.length, 1, link === null ? "NULL" : q(`req_demopriv${tag}${link}`), created, created].join(", ") +
+          `)`,
+      );
+      run(`INSERT INTO votes (request_id, user_id, created_at) VALUES (${q(id)}, ${q(pid(author))}, ${created})`);
+      comments.forEach(([who, text], j) =>
+        run(
+          `INSERT INTO comments (id, request_id, user_id, is_team, body, created_at) VALUES (${q(`cmt_demopriv${tag}${i}${j}`)}, ${q(id)}, ${who === null ? "NULL" : q(pid(who))}, ${who === null ? 1 : 0}, ${q(text)}, ${created + 3600_000 * (j + 1)})`,
+        ),
+      );
+    });
+  }
+
   // Local tests only: a ready-made dashboard session for the account (token hash is computed by the caller).
   if (session) run(`INSERT INTO sessions (id, account_id, created_at, expires_at) VALUES (${q(session)}, (SELECT id FROM accounts WHERE email = ${q(e)}), ${now}, ${now + DAY})`);
   return { sql: sql.join("\n") + "\n", appId: app, accountId: acc };
@@ -88,8 +133,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   };
   const email = arg("email");
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    console.error("usage: node seed-demo.mjs --email <address the reviewer signs in with> [--app-name <name>]");
+    console.error("usage: node seed-demo.mjs --email <address the reviewer signs in with> [--app-name <name>] [--private]");
     process.exit(1);
   }
-  process.stdout.write(buildSeedSql({ email, appName: arg("app-name") }).sql);
+  process.stdout.write(buildSeedSql({ email, appName: arg("app-name"), privateDemo: process.argv.includes("--private") }).sql);
 }

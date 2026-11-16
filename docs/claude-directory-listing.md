@@ -87,10 +87,10 @@ Read tools carry end-user text (request titles, bodies, comments); every result 
 The portal's Test & launch step only asks you to confirm you ran every tool (MCP Inspector or as a custom connector in Claude). It says not to put credentials in the portal. For a Community listing no test account is needed. If the listing is escalated to Verified review, a reviewer emails hello@youasked.dev asking for test access: reply then with the reviewer account details (never store them in this repo). Instructions to send in that email, after Aden has done the steps in "What Aden does by hand" below:
 
 1. Add `https://api.youasked.dev/mcp` as a custom connector and choose Connect.
-2. On the YouAsked sign-in page choose "Continue with Google" and sign in with the reviewer account (sent in the email).
+2. On the YouAsked sign-in page choose "Sign in with a password" and use the reviewer email and password (sent in the email).
 3. Read the consent screen and choose Allow.
-4. The account owns one demo app, "Orbit Habits (demo)", with seven fictional requests, votes and comments (dark mode and dark theme duplicates, a CSV export, an offline mode in progress, a shipped reminder, a declined one). No real people can be contacted: the demo users have no email addresses.
-5. Try: "Which YouAsked apps do I have?", "What are my users asking for?", "Show me YA-5 in full", "Search for dark theme requests", "Merge YA-2 into YA-1", "Reply to YA-4: Thanks, we are looking at a widget", "Mark YA-3 shipped with the note: Find it in Settings, then Export", "What should I build next?"
+4. The account owns two demo apps with fictional data. "Orbit Habits (demo)" is a public board with seven requests, votes and comments (dark mode and dark theme duplicates, a CSV export, an offline mode in progress, a shipped reminder, a declined one). "Orbit Support (demo)" is in private mode with four one-to-one conversations (two waiting on a reply, two people asking for the same export, linked). No real people can be contacted: the demo users have no email addresses.
+5. Try: "Which YouAsked apps do I have?", "Which conversations in Orbit Support need a reply?", "Reply to everyone who asked for the Excel export in Orbit Support: it's planned for next month", "What are Orbit Habits users asking for?", "Show me YA-5 in full", "Search for dark theme requests", "Merge YA-2 into YA-1", "Reply to YA-4: Thanks, we are looking at a widget", "Mark YA-3 shipped with the note: Find it in Settings, then Export", "What should I build next?"
 6. To disconnect: dashboard, AI assistants, Disconnect (https://app.youasked.dev/assistants).
 
 ## Compliance step
@@ -104,18 +104,12 @@ Optional, and only used by tools that call `ui/open-link` (ours do not; the conn
 - https://youasked.dev
 - https://app.youasked.dev
 
-## What Aden does by hand before submitting
+## Status and what's left (2026-11-16)
 
-Nothing below has been done. No account was created and nothing was run against production.
+Done: private mode and this listing are deployed (API, dashboard, site); the reviewer demo account `reviewer@youasked.dev` is seeded in production with both demo apps (`node apps/api/scripts/seed-demo.mjs --email reviewer@youasked.dev --private`, rerun to reset after a review).
 
-1. Merge the private-mode branch, then deploy: `npm run deploy:api` applies the pending migrations (including `0011_mcp_oauth.sql`) to the remote D1 and deploys the Worker; deploy the dashboard and the site.
-2. Reviewer sign-in: create a Google account used only for review (for example `youasked.reviewer@gmail.com`). Keep its password out of the repo and out of the portal; send it only if a reviewer emails for test access.
-3. Seed the demo data (prints SQL only, safe to rerun):
-   ```sh
-   node apps/api/scripts/seed-demo.mjs --email youasked.reviewer@gmail.com > /tmp/seed.sql
-   cd apps/api && npx wrangler d1 execute youasked --remote --file /tmp/seed.sql
-   ```
-   Sign in once yourself with that Google account to confirm the dashboard shows "Orbit Habits (demo)". The seeder has no private-mode app; the demo app is a public board, which is enough for the listed prompts.
-4. Dry run: in claude.ai, Settings, Connectors, add a custom connector with the server URL, connect, and run each tool once from the prompts above. Optionally `npx @modelcontextprotocol/inspector --cli https://api.youasked.dev/mcp --transport http --method tools/list` (needs a token, so the chat test is easier) and `claude mcp add --transport http youasked https://api.youasked.dev/mcp`.
-5. Open https://claude.ai/directory/manage (any paid Claude plan), Submit new, MCP connector, and fill each step from this file. Accept the directory terms and the seven compliance boxes yourself. Check the Tools step shows no missing title or annotation warnings.
-6. If the portal's test tool reports 403 forbidden_origin, add its origin to the allow-list in `apps/api/src/mcp.ts` (now claude.ai, claude.com, anthropic.com, chatgpt.com, youasked.dev, localhost).
+Left, in order:
+1. Turn on the reviewer password sign-in (Aden, in his own Terminal): create `~/.config/youasked/reviewer.env` with `REVIEW_LOGIN_EMAIL=reviewer@youasked.dev` and a random `REVIEW_LOGIN_PASSWORD`, then set the Worker secrets `REVIEW_LOGIN_EMAIL` and `REVIEW_LOGIN_HASH` (SHA-256 hex of the password) with `npx wrangler secret put`. The sign-in page shows "Sign in with a password" once both are set.
+2. Dry run: in claude.ai, Settings, Connectors, add a custom connector with the server URL, sign in as the reviewer, and run each tool once from the prompts above.
+3. Open https://claude.ai/directory/manage (any paid Claude plan), Submit new, MCP connector, and fill each step from this file. Accept the directory terms and the seven compliance boxes yourself. Check the Tools step shows no missing title or annotation warnings.
+4. If the portal's test tool reports 403 forbidden_origin, add its origin to the allow-list in `apps/api/src/mcp.ts` (now claude.ai, claude.com, anthropic.com, chatgpt.com, youasked.dev, localhost).
