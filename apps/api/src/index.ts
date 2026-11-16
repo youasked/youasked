@@ -293,6 +293,8 @@ app.get("/", (c) => c.text("youasked api"));
 app.get("/.well-known/openai-apps-challenge", (c) =>
   c.env.OPENAI_APPS_CHALLENGE ? c.text(c.env.OPENAI_APPS_CHALLENGE.trim()) : c.text("not found", 404),
 );
+// Claude and ChatGPT show the MCP host's favicon next to the connector, so point it at the site's.
+app.get("/favicon.ico", (c) => c.redirect("https://youasked.dev/favicon.ico", 301));
 app.get("/admin", (c) => c.html(adminMovedPage(dashboardBase(c.env))));
 app.get("/admin/legacy", (c) => c.html(adminPage));
 app.route("/v1/hooks", hooks);
