@@ -105,7 +105,8 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
   // If the widget's own config load failed (offline when the page opened), ask again from here.
   const probe = useLoad(() => (config ? Promise.resolve(null) : client.config()), [client, Boolean(config)]);
   const cfg = config ?? probe.data;
-  const isPrivate = Boolean(cfg?.private);
+  // The whole app in private mode, or this one sheet opened as a private message (open({ private: true })).
+  const isPrivate = Boolean(cfg?.private || route.private);
   const ready = cfg != null;
   // Private mode shows your own conversations; otherwise what everyone is asking for.
   const top = useLoad(() => (ready && !isPrivate ? client.list("top", "active") : Promise.resolve([])), [client, ready, isPrivate]);
@@ -215,7 +216,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
     const message = text.trim();
     if (message.length < 3 || sending) return;
     const attached = shots;
-    const credited = credit && Boolean(config?.canCredit);
+    const credited = credit && Boolean(config?.canCredit) && !isPrivate;
     setText("");
     setSimilar([]);
     setShots([]);
@@ -227,7 +228,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
       const attachments = await Promise.all(attached.map((s) => client.upload(s.blob).then((a) => a.id)));
       const context = { path: location.pathname, topic: route.topic };
       const [request] = await Promise.all([
-        client.create({ title, body, attachments, context, credit: credited }),
+        client.create({ title, body, attachments, context, credit: credited, ...(isPrivate ? { private: true } : {}) }),
         new Promise((r) => setTimeout(r, 650)),
       ]);
       setThread((th) => [...th.filter((t) => t.kind !== "typing"), { kind: "posted", request }]);
@@ -482,7 +483,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
             <IconFrame />
             Show us
           </button>
-          {config?.canCredit && text.trim().length > 0 && (
+          {config?.canCredit && !isPrivate && text.trim().length > 0 && (
             <button type="button" className="ya-switch-row" role="switch" aria-checked={credit} onClick={() => setCredit((c) => !c)}>
               Credit me when it ships
               <span className="ya-switch" aria-hidden="true" />

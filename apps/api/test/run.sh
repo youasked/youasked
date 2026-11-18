@@ -13,3 +13,4 @@ npx wrangler dev --local --config test/wrangler.test.jsonc --persist-to /tmp/ya-
 until curl -s localhost:18733/ > /dev/null; do sleep 1; done
 node test/scenario.mjs
 node test/private.mjs
+node test/private-message.mjs

@@ -82,6 +82,8 @@ export type NewRequest = {
   attachments?: string[];
   context?: { path?: string; topic?: string };
   credit?: boolean;
+  /** A private conversation with the team, even when the app's board is public. */
+  private?: boolean;
 };
 
 export type RequestDetail = {

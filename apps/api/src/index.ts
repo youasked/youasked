@@ -982,11 +982,14 @@ pub.post("/requests", async (c) => {
   const me = requireUser(c);
   const a = c.get("app");
   const body = await c.req
-    .json<{ title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown }>()
-    .catch(() => ({}) as { title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown });
+    .json<{ title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown; private?: unknown }>()
+    .catch(() => ({}) as { title?: string; body?: string; attachments?: unknown; context?: unknown; credit?: unknown; private?: unknown });
+  // A private conversation: only its author and the team ever see it. Apps in private mode make every
+  // request one; otherwise a "message the team" entry point (open({ private: true })) asks for it.
+  const priv = Boolean(a.private_mode) || body.private === true;
   const title = cleanText(body.title, 120);
   const context = cleanContext(body.context);
-  const credit = body.credit === true && !me.is_anon && Boolean(me.name) && !a.private_mode ? 1 : 0;
+  const credit = body.credit === true && !me.is_anon && Boolean(me.name) && !priv ? 1 : 0;
   const uploadIds = (Array.isArray(body.attachments) ? body.attachments : [])
     .filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x))
     .slice(0, MAX_ATTACHMENTS);
@@ -999,7 +1002,7 @@ pub.post("/requests", async (c) => {
   const verdict = await guardContent(c.env, c.req.raw.headers, a.id, "request", `${title}\n${text}`);
   // Moderation holds everything for approval; text that looks off is held even when moderation is off.
   // A private conversation is never shown to anyone else, so there is nothing to hold it back from.
-  const status = !a.private_mode && (a.moderation === "approve" || verdict === "review") ? "pending" : "open";
+  const status = !priv && (a.moderation === "approve" || verdict === "review") ? "pending" : "open";
   const id = newId("req");
   const t = now();
   const insert = () =>
@@ -1007,7 +1010,7 @@ pub.post("/requests", async (c) => {
       c.env.DB.prepare(
         `INSERT INTO requests (id, app_id, author_id, number, title, body, status, vote_count, context, credit, private, created_at, updated_at)
          VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(number), 0) + 1 FROM requests WHERE app_id = ?2), ?4, ?5, ?9, 1, ?7, ?8, ?10, ?6, ?6)`,
-      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit, status, a.private_mode ? 1 : 0),
+      ).bind(id, a.id, me.id, title, text, t, context ? JSON.stringify(context) : null, credit, status, priv ? 1 : 0),
       c.env.DB.prepare("INSERT INTO votes (request_id, user_id, created_at) VALUES (?, ?, ?)").bind(id, me.id, t),
       // Only the author's own, not-yet-used uploads can be attached.
       ...uploadIds.map((u) =>

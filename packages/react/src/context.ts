@@ -14,10 +14,15 @@ export type OpenOptions = {
   topic?: string;
   /** Replaces the composer's placeholder. */
   placeholder?: string;
+  /**
+   * Opens a private message to the team instead of a public request: only this person and the team
+   * ever see it, even when the app's board is public. Use it for "contact us" and help entry points.
+   */
+  private?: boolean;
 };
 
 export type Route =
-  | { view: "home"; draft?: string; focus?: boolean; topic?: string; placeholder?: string }
+  | { view: "home"; draft?: string; focus?: boolean; topic?: string; placeholder?: string; private?: boolean }
   | { view: "board"; tab?: "top" | "new" | "shipped" }
   /** `from` is where Back goes: the list they opened it from. */
   | { view: "detail"; id: string; from?: "home" | "board" | "mine" }
@@ -30,7 +35,7 @@ export function toRoute(o: OpenOptions = {}): Route {
   if (o.requestId) return { view: "detail", id: o.requestId };
   const topic = o.topic?.trim() || undefined;
   const placeholder = o.placeholder ?? (topic && !o.draft && !QUIET_TOPICS.has(topic) ? `What would make ${topic} better?` : undefined);
-  const scope = { topic, placeholder };
+  const scope = { topic, placeholder, ...(o.private ? { private: true } : {}) };
   switch (o.view) {
     case "new":
       return { view: "home", draft: o.draft, focus: true, ...scope };
