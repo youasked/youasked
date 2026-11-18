@@ -28,7 +28,8 @@ export type DemoClient = Client & {
   onNotice: (fn: (n: Notice) => void) => () => void;
 };
 
-export function createDemoClient(appName = "this app"): DemoClient {
+/** `quiet`: no sample "what's new" on load, for previews of the corner message. */
+export function createDemoClient(appName = "this app", { quiet = false }: { quiet?: boolean } = {}): DemoClient {
   const t0 = Date.now();
   let seq = 100;
   const listeners = new Set<(n: Notice) => void>();
@@ -125,7 +126,7 @@ export function createDemoClient(appName = "this app"): DemoClient {
     identified: true,
     canCredit: true,
     unseen: [],
-    whatsNew: {
+    whatsNew: quiet ? null : {
       total: shippedMine.length,
       items: [...shippedMine]
         .sort((a, b) => Number(b.mine) - Number(a.mine) || (b.shippedAt ?? 0) - (a.shippedAt ?? 0))

@@ -235,12 +235,44 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-live svg{width:15px;height:15px}
 .ya-toast-note{font-size:13.5px;color:var(--_muted);margin-top:6px;overflow-wrap:anywhere}
 .ya-toast[data-place=top]{top:calc(16px + env(safe-area-inset-top));bottom:auto}
-.ya-nudge-body{display:flex;gap:12px;align-items:flex-start;margin-top:6px}
-.ya-nudge-body .ya-card-icon{flex:none;margin-top:2px}
-.ya-nudge-body .ya-toast-title{margin-top:0}
 .ya-toast-actions{display:flex;gap:8px;margin-top:12px}
 .ya-toast-quote{color:var(--_fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ya-toast .ya-icon-btn{width:30px;height:30px;margin:-6px -6px 0 0;background:none}
+
+/* ---------- the corner message: reads like a text from a person on the team */
+.ya-msg{position:fixed;z-index:2147483550;right:20px;bottom:calc(var(--_offset) + 72px + env(safe-area-inset-bottom));width:min(340px,calc(100vw - 32px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;transform-origin:bottom right;animation:ya-msg-in .5s cubic-bezier(.34,1.36,.64,1)}
+.ya-msg[data-pos=bottom-left]{right:auto;left:20px;transform-origin:bottom left}
+.ya-msg[data-trigger=none]{bottom:calc(var(--_offset) + env(safe-area-inset-bottom))}
+.ya-msg[data-place=top]{top:calc(16px + env(safe-area-inset-top));bottom:auto;transform-origin:top right}
+.ya-msg-row{display:flex;align-items:flex-end;gap:10px;width:100%}
+.ya-msg-bubble{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:11px 16px 13px;border-radius:22px 22px 22px 7px;background:var(--_bg);color:var(--_fg);box-shadow:0 0 0 1px var(--_border),0 14px 34px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.06);text-align:left;transition:transform .15s,box-shadow .15s}
+.ya-msg-bubble:hover{transform:translateY(-1px);box-shadow:0 0 0 1px var(--_border),0 18px 40px rgba(0,0,0,.17),0 2px 6px rgba(0,0,0,.06)}
+.ya-msg-from{display:flex;align-items:baseline;gap:6px;font-size:13px;line-height:1.3;min-width:0}
+.ya-msg-from b{font-weight:700;color:var(--_fg);white-space:nowrap}
+.ya-msg-from span{color:var(--_muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ya-msg-text{font-size:15px;line-height:1.42;overflow-wrap:anywhere;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;animation:ya-fade .25s ease}
+.ya-msg .ya-typing{display:flex;padding:7px 0 4px}
+.ya-msg-reply{display:flex;align-items:center;gap:10px;height:44px;padding:0 5px 0 18px;width:calc(100% - 48px);border-radius:var(--ya-button-radius,999px);background:var(--_bg);color:var(--_muted);font-size:14.5px;box-shadow:0 0 0 1px var(--_border),0 8px 24px rgba(0,0,0,.1);animation:ya-msg-reply .4s ease 1.2s both;transition:transform .15s}
+.ya-msg-reply:hover{color:var(--_fg)}
+.ya-msg-reply:active,.ya-msg-bubble:active{transform:scale(.97)}
+.ya-msg-reply > span:first-child{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ya-msg-send{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--_accent);color:var(--_accent-fg);flex:none}
+.ya-msg-send svg{width:16px;height:16px}
+.ya-msg-close{position:absolute;top:-11px;right:-7px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--_bg);color:var(--_muted);box-shadow:0 0 0 1px var(--_border),0 2px 8px rgba(0,0,0,.12);z-index:1;opacity:0;transition:opacity .15s}
+.ya-msg:hover .ya-msg-close,.ya-msg-close:focus-visible{opacity:1}
+@media (hover:none){.ya-msg-close{opacity:1}}
+.ya-msg-close svg{width:13px;height:13px}
+.ya-persona{display:block;flex:none;border-radius:50%;object-fit:cover;background:var(--_surface);box-shadow:0 0 0 2px var(--_bg),0 3px 10px rgba(0,0,0,.14)}
+.ya-persona-initial{display:grid;place-items:center;background:var(--_accent);color:var(--_accent-fg);font-weight:700;line-height:1}
+@media (max-width:480px){.ya-msg{right:16px}.ya-msg[data-pos=bottom-left]{left:16px}}
+/* inside the chat: who the first messages are from */
+.ya-from{display:flex;align-items:center;gap:9px;align-self:flex-start}
+.ya-from .ya-persona{box-shadow:none}
+.ya-from-text{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.ya-from-text b{font-size:14px;font-weight:700}
+.ya-from-text span{font-size:12.5px;color:var(--_muted)}
+@keyframes ya-msg-in{from{opacity:0;transform:translateY(14px) scale(.9)}}
+@keyframes ya-msg-reply{from{opacity:0;transform:translateY(6px)}}
 
 /* ---------- inline entry points */
 .ya-askbar{display:flex;align-items:center;gap:12px;width:100%;padding:8px 8px 8px 10px;border-radius:var(--ya-button-radius,999px);background:var(--_bg);border:1px solid var(--_border);color:var(--_muted);font-size:15.5px;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:border-color .15s,transform .12s}

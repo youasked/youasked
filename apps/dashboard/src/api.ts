@@ -91,7 +91,11 @@ export type AppInfo = {
   description?: string | null;
   publicKey?: string;
   privateMode?: boolean;
+  /** Who the widget's messages come from. The photo is uploaded with uploadAvatar. */
+  persona?: Persona | null;
 };
+
+export type Persona = { name: string | null; role: string | null; avatar: string | null; intro: string | null };
 
 export type NewApp = { id: string; name: string; publicKey: string; secretKey: string };
 
@@ -195,6 +199,21 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<T
 
 /** Same as api() but for app routes: /v1/dash/apps/:appId/… */
 export const appApi = <T = unknown>(appId: string, path: string, opts?: Opts) => api<T>(`/v1/dash/apps/${appId}${path}`, opts);
+
+/** The photo for "Your message": the image itself as the body, saved straight onto the app. */
+export async function uploadAvatar(appId: string, image: Blob): Promise<{ url: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/v1/dash/apps/${appId}/app/avatar`, { method: "POST", credentials: "include", headers: { "content-type": image.type }, body: image });
+  } catch {
+    throw new ApiError(0, "network");
+  }
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new ApiError(res.status, j.error ?? "", false, j.message ?? "");
+  }
+  return (await res.json()) as { url: string };
+}
 
 export async function download(appId: string, format: "csv" | "json") {
   const path = `/v1/dash/apps/${appId}/export?format=${format}`;

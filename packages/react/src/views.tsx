@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { YouAskedError, type FeatureRequest, type Notice, type RequestComment } from "./client";
 import { useInternal, type Route } from "./context";
 import { IconCheck, IconChevron, IconClose, IconFrame, IconLock, IconPlus, IconSend, IconSpark } from "./icons";
+import { MessageFrom } from "./message";
 import { ConversationList, LockNote } from "./private";
 import {
   AppAvatar,
@@ -100,7 +101,7 @@ function Confetti() {
 }
 
 function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, { view: "home" }> }) {
-  const { client, config, appName, appIcon, greeting, markSeen, whatsNew, dismissWhatsNew, pointAtIt } = useInternal();
+  const { client, config, appName, appIcon, greeting, persona, message, markSeen, whatsNew, dismissWhatsNew, pointAtIt } = useInternal();
   // Until the config says which mode the app is in, load nothing, so a private app never flashes a board.
   // If the widget's own config load failed (offline when the page opened), ask again from here.
   const probe = useLoad(() => (config ? Promise.resolve(null) : client.config()), [client, Boolean(config)]);
@@ -261,14 +262,20 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
         onClose={onClose}
       />
       <div className="ya-body ya-chat" ref={bodyRef}>
-        <div className="ya-bubble ya-bubble-in">
-          {asking
-            ? `Let's talk about ${asking}. What's missing, or what bugs you?`
-            : (greeting ??
-              (isPrivate
-                ? `Hi! Questions, ideas, something not working? Tell us here. Only the ${appName} team sees what you send.`
-                : `Hey! What would make ${appName} better for you?`))}
-        </div>
+        {/* A real person's welcome when the developer set one up; opened from the corner message, the chat starts with it. */}
+        {persona && !asking && <MessageFrom persona={persona} appName={appName} appIcon={appIcon} />}
+        {route.via === "message" && !asking && <div className="ya-bubble ya-bubble-in">{message}</div>}
+        {!(route.via === "message" && !asking && !persona?.intro && !greeting) && (
+          <div className="ya-bubble ya-bubble-in">
+            {asking
+              ? `Let's talk about ${asking}. What's missing, or what bugs you?`
+              : (greeting ??
+                persona?.intro ??
+                (isPrivate
+                  ? `Hi! Questions, ideas, something not working? Tell ${persona ? "me" : "us"} here. Only the ${appName} team sees what you send.`
+                  : `Hey! What would make ${appName} better for you?`))}
+          </div>
+        )}
         {news && (
           <div className={yours ? "ya-bubble ya-bubble-in ya-bubble-win ya-bubble-news" : "ya-bubble ya-bubble-in ya-bubble-news"}>
             {yours && <Confetti />}

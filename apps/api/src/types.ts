@@ -81,6 +81,8 @@ export type AppRow = {
   description: string | null;
   /** 1 when each person sees only their own conversations with the team (no public board, no votes). */
   private_mode?: number;
+  /** JSON: who the widget's messages come from (name, role, photo, welcome note). NULL means not set. */
+  persona?: string | null;
 };
 
 export type UserRow = {

@@ -313,7 +313,7 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
   // Members triage (reply, set status, merge, approve, build). Settings, integrations (which hold
   // tokens and webhook secrets), imports, exports and deleting requests are for owners and admins.
   const ADMIN_ONLY: [RegExp, string[]][] = [
-    [/^\/app\/?$/, ["PATCH", "PUT", "POST", "DELETE"]],
+    [/^\/app(\/avatar)?\/?$/, ["PATCH", "PUT", "POST", "DELETE"]],
     [/^\/integrations(\/|$)/, ["GET", "PUT", "POST", "PATCH", "DELETE"]],
     [/^\/(import|export|embeddings)(\/|$)/, ["GET", "POST", "PUT"]],
     [/^\/requests\/[^/]+\/?$/, ["DELETE"]],

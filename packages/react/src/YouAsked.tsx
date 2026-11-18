@@ -4,7 +4,8 @@ import { createClient, YouAskedError, type Config, type Notice, type WhatsNew, t
 import { YouAskedContext, toRoute, type InternalContext, type OpenOptions, type Route } from "./context";
 import { createDemoClient } from "./demo";
 import { IconCheck, IconClose, IconIdea } from "./icons";
-import { NudgeToast, resolveNudge, useNudge, type NudgeSettings } from "./nudge";
+import { resolveNudge, useNudge, type NudgeSettings } from "./nudge";
+import { MessagePopup, defaultMessage, resolvePersona, type Persona } from "./message";
 import { injectStyles } from "./styles";
 import { resolveTokens, tokenStyle, type Appearance } from "./theme";
 import { whatsNewHeading } from "./shared";
@@ -20,8 +21,9 @@ export type YouAskedProps = {
   /**
    * Runs entirely in the browser with sample requests and a pretend team, no network. Posting, voting,
    * commenting and a reply a few seconds later all work. For docs, Storybook and landing pages.
+   * "quiet" starts without the sample "what's new", e.g. to preview the corner message.
    */
-  demo?: boolean;
+  demo?: boolean | "quiet";
   /** Who's asking. Leave out for anonymous visitors. */
   user?: YouAskedUser | null;
   /** hex HMAC-SHA256 of user.id with your secret key, made on your server (see `signUser`). */
@@ -52,6 +54,12 @@ export type YouAskedProps = {
    * changes individual settings, e.g. `{ everyDays: 14, activeSeconds: 60 }`.
    */
   nudge?: boolean | Partial<NudgeSettings>;
+  /**
+   * Who the corner message and the chat's first message come from: your photo, name, a short role line
+   * and a welcome note. Set it up in the dashboard ("Message from you"); this overrides it, and false
+   * goes back to the app's icon and name.
+   */
+  persona?: Partial<Persona> | false;
   apiUrl?: string;
   children?: ReactNode;
 };
@@ -77,6 +85,7 @@ export function YouAsked({
   demo = false,
   cards = true,
   nudge: nudgeProp,
+  persona: personaProp,
   user,
   signature,
   ready = true,
@@ -98,7 +107,7 @@ export function YouAsked({
   const client = useMemo(
     () =>
       demo
-        ? createDemoClient(appName)
+        ? createDemoClient(appName, { quiet: demo === "quiet" })
         : createClient({ appKey, apiUrl, user: userId == null ? null : { id: userId, email: userEmail, name: userName }, signature }),
     [demo, appName, appKey, apiUrl, userId, userEmail, userName, signature],
   );
@@ -236,6 +245,14 @@ export function YouAsked({
   );
 
   const unseen = config?.unseen ?? [];
+  const personaKey = typeof personaProp === "object" ? JSON.stringify(personaProp) : personaProp;
+  const persona = useMemo(
+    () => resolvePersona(config?.persona, personaProp),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(config?.persona ?? null), personaKey],
+  );
+  const shownName = appName ?? config?.app.name ?? "us";
+  const message = config?.nudge?.message ?? (typeof nudgeProp === "object" ? nudgeProp.message : null) ?? defaultMessage(shownName, persona);
   const value = useMemo<InternalContext>(
     () => ({
       open,
@@ -253,8 +270,10 @@ export function YouAsked({
       appIcon: appIcon === false ? null : (appIcon ?? detectedIcon),
       title,
       greeting,
+      persona,
+      message,
     }),
-    [open, close, route, unseen.length, client, config, markSeen, whatsNew, dismissWhatsNew, pointAtIt, scopeStyle, tokens?.mode, appName, appIcon, detectedIcon, title, greeting],
+    [open, close, route, unseen.length, client, config, markSeen, whatsNew, dismissWhatsNew, pointAtIt, scopeStyle, tokens?.mode, appName, appIcon, detectedIcon, title, greeting, persona, message],
   );
 
   // "It's live" notices for things already in the what's-new list wait for that list instead of saying it twice.
@@ -286,7 +305,7 @@ export function YouAsked({
                 position={position}
                 label={label}
                 isOpen={route !== null}
-                badge={unseen.length > 0}
+                badge={unseen.length > 0 || Boolean(nudgeSettings && nudge.show && !busy)}
                 onClick={() => (route ? close() : open())}
               />
             )}
@@ -300,12 +319,15 @@ export function YouAsked({
               />
             )}
             {nudgeSettings && nudge.show && !busy && (
-              <NudgeToast
-                settings={nudgeSettings}
-                appName={appName ?? config?.app.name ?? "us"}
+              <MessagePopup
+                persona={persona}
+                text={nudgeSettings.message ?? message}
+                appName={shownName}
+                appIcon={value.appIcon}
                 position={position}
                 trigger={trigger}
-                onOpen={() => open({ view: "new" })}
+                place={nudgeSettings.position}
+                onOpen={() => open({ view: "new", via: "message" })}
                 onDismiss={nudge.dismiss}
               />
             )}

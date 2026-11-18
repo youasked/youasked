@@ -68,6 +68,8 @@ export type Config = {
   mode?: "test" | "live";
   /** The occasional in-app prompt, as set in the dashboard. null when it's off. */
   nudge?: import("./nudge").NudgeSettings | null;
+  /** Who the widget's messages come from (photo, name, welcome note), as set in the dashboard. */
+  persona?: import("./message").Persona | null;
   /**
    * Private mode: no public board. Each person sees only their own conversations with the team,
    * like a support chat. Set in the dashboard.

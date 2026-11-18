@@ -5,6 +5,12 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 // Newest first. Static for now: see the note at the bottom of the page.
 export const ENTRIES: Entry[] = [
   {
+    date: "2026-11-19",
+    title: "A message from you, not a pop-up",
+    body: "The occasional prompt in the corner is now a message from you: your photo, your name and a line you wrote, with a reply box under it, like a text. Tapping it opens the chat, where your welcome note says who you are and how quickly you reply. Set it up under Your message in the dashboard, with a live preview as you type, or with the persona prop. In @youasked/react 0.9.0 and @youasked/js 0.3.0.",
+    tags: ["New", "Web"],
+  },
+  {
     date: "2026-11-07",
     title: "“Show us” stays clear of your tab bar",
     body: "The bars you use while showing us something now sit above your app's bottom bar, using the same offset as the launcher. Drag either bar anywhere if it covers something you need, and the bar fades while you draw a box. In @youasked/react 0.7.4 and @youasked/js 0.1.3.",

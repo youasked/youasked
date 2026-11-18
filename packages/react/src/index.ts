@@ -1,5 +1,6 @@
 export { YouAsked, DEFAULT_API_URL } from "./YouAsked";
 export type { NudgeSettings } from "./nudge";
+export type { Persona } from "./message";
 export type { YouAskedProps } from "./YouAsked";
 export { useYouAsked, openYouAsked } from "./context";
 export type { OpenOptions } from "./context";

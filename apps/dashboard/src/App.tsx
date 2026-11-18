@@ -15,6 +15,7 @@ import { Heard } from "./screens/Heard";
 import { Integrations } from "./screens/Integrations";
 import { Board } from "./screens/Board";
 import { Settings } from "./screens/Settings";
+import { MessageSetup } from "./screens/Message";
 import { Team } from "./screens/Team";
 import { Billing } from "./screens/Billing";
 import { Connect } from "./screens/Connect";
@@ -141,6 +142,7 @@ function Page({ path }: { path: string }) {
     if (sub === "integrations") return <Integrations app={app} />;
     if (sub === "board") return <Board app={app} />;
     if (sub === "settings") return <Settings app={app} />;
+    if (sub === "message") return <MessageSetup app={app} />;
     if (sub === "install") return <Install app={app} />;
   }
   return <Empty icon="warn" title="That page doesn't exist" action={<a className="btn btn-default" href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Go to your inbox</a>} />;

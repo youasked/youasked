@@ -292,7 +292,8 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     return json({ ...rest, publicUrl: rest.publicBoard && rest.slug ? `https://youasked.dev/${rest.slug}` : null });
   }
   if (r === "/app" && method === "PATCH") {
-    for (const k of ["name", "watermark", "requireSignature", "allowedOrigins", "moderation", "slug", "publicBoard", "description"]) if (k in b) (s.app as any)[k] = b[k];
+    for (const k of ["name", "watermark", "requireSignature", "allowedOrigins", "moderation", "slug", "publicBoard", "description", "nudge", "privateMode"]) if (k in b) (s.app as any)[k] = b[k];
+    if ("persona" in b) (s.app as any).persona = b.persona === null ? null : { name: null, role: null, avatar: null, intro: null, ...((s.app as any).persona ?? {}), ...b.persona };
     return json({ ok: true });
   }
 

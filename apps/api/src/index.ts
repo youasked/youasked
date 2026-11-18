@@ -78,7 +78,7 @@ function readNudge(raw: string | null | undefined): Nudge | null {
 
 function normaliseNudge(v: unknown): Nudge {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  const message = typeof o.message === "string" ? cleanText(o.message, 120) : "";
+  const message = typeof o.message === "string" ? cleanText(o.message, 200) : "";
   return {
     everyDays: pick(o.everyDays, [1, 3, 7, 14, 30] as const, NUDGE_DEFAULTS.everyDays),
     activeSeconds: pick(o.activeSeconds, [10, 30, 60, 120] as const, NUDGE_DEFAULTS.activeSeconds),
@@ -87,6 +87,32 @@ function normaliseNudge(v: unknown): Nudge {
     position: pick(o.position, ["bottom", "top"] as const, NUDGE_DEFAULTS.position),
   };
 }
+
+/**
+ * Who the widget's messages come from: the corner pop-up and the chat's first message read like a text
+ * from this person. Stored as JSON on apps.persona; NULL means not set (the widget uses the app's icon and name).
+ */
+type Persona = { name: string | null; role: string | null; avatar: string | null; intro: string | null };
+
+function readPersona(raw: string | null | undefined): Persona | null {
+  if (!raw) return null;
+  try {
+    return normalisePersona(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function normalisePersona(v: unknown): Persona {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const text = (x: unknown, max: number) => (typeof x === "string" ? cleanText(x, max) : "") || null;
+  // https only (plain http just for a local dev server).
+  const avatar = typeof o.avatar === "string" && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/)[^\s"'<>]{1,490}$/.test(o.avatar) ? o.avatar : null;
+  return { name: text(o.name, 40), role: text(o.role, 60), avatar, intro: text(o.intro, 600) };
+}
+
+/** The upload id of a photo we host, so replacing or removing it can delete the old file. */
+const ownUpload = (url: string | null | undefined) => url?.match(/\/v1\/uploads\/(upl_[a-z0-9]{24})$/)?.[1] ?? null;
 
 /** Lets actions.ts send "it shipped" and reply emails after the response. */
 const mailOf = (c: Ctx): Mail => ({ env: c.env, waitUntil: (p) => c.executionCtx.waitUntil(p) });
@@ -354,6 +380,7 @@ admin.get("/app", (c) => {
     description: a.description,
     publicUrl: publicUrl(c.env, a),
     nudge: readNudge(a.nudge),
+    persona: readPersona(a.persona),
     privateMode: Boolean(a.private_mode),
   });
 });
@@ -372,6 +399,8 @@ admin.patch("/app", async (c) => {
     nudge?: Partial<Nudge> | null;
     /** Each person sees only their own conversations with the team. */
     privateMode?: boolean;
+    /** Who the widget's messages come from, or null to clear it. The photo is set with POST /app/avatar. */
+    persona?: Partial<Persona> | null;
   }>();
   if (body.moderation !== undefined && body.moderation !== "off" && body.moderation !== "approve") fail(400, "bad_moderation");
   const a = c.get("app");
@@ -403,6 +432,15 @@ admin.patch("/app", async (c) => {
     const nudge = body.nudge === null ? null : JSON.stringify(normaliseNudge({ ...readNudge(a.nudge), ...body.nudge }));
     await c.env.DB.prepare("UPDATE apps SET nudge = ? WHERE id = ?").bind(nudge, a.id).run();
   }
+  if (body.persona !== undefined) {
+    const before = readPersona(a.persona);
+    const next = body.persona === null ? null : normalisePersona({ ...before, ...body.persona });
+    const empty = next && !next.name && !next.role && !next.avatar && !next.intro;
+    await c.env.DB.prepare("UPDATE apps SET persona = ? WHERE id = ?").bind(next && !empty ? JSON.stringify(next) : null, a.id).run();
+    // A photo we host that is no longer used goes.
+    const old = ownUpload(before?.avatar);
+    if (old && old !== ownUpload(next?.avatar)) c.executionCtx.waitUntil(c.env.UPLOADS.delete(old));
+  }
   if (body.privateMode !== undefined) {
     // Conversations written while private stay private (requests.private) if this is switched off later.
     await c.env.DB.prepare("UPDATE apps SET private_mode = ? WHERE id = ?").bind(body.privateMode ? 1 : 0, a.id).run();
@@ -413,6 +451,31 @@ admin.patch("/app", async (c) => {
       .run();
   }
   return c.json({ ok: true });
+});
+
+/**
+ * The photo for the widget's messages. Raw image body (png, jpeg or webp, up to 2 MB), like the widget's
+ * uploads. Saved straight onto the app's persona; the previous photo is deleted. Returns its URL.
+ */
+admin.post("/app/avatar", async (c) => {
+  const a = c.get("app");
+  if (await overLimit(c.env.DB, `avatar:${a.id}`, 30)) fail(429, "slow_down");
+  if (Number(c.req.header("content-length") ?? 0) > MAX_UPLOAD) fail(400, "too_large");
+  const declared = (c.req.header("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  if (!IMAGE_TYPES.includes(declared)) fail(400, "bad_image");
+  const bytes = await c.req.arrayBuffer();
+  if (bytes.byteLength > MAX_UPLOAD) fail(400, "too_large");
+  if (sniffImage(new Uint8Array(bytes)) !== declared) fail(400, "bad_image");
+  // Not in the uploads table, so the sweep for abandoned screenshots never touches it.
+  const id = newId("upl", 24);
+  await c.env.UPLOADS.put(id, bytes, { httpMetadata: { contentType: declared } });
+  const url = uploadUrl(new URL(c.req.url).origin, id);
+  const before = readPersona(a.persona);
+  const next = normalisePersona({ ...before, avatar: url });
+  await c.env.DB.prepare("UPDATE apps SET persona = ? WHERE id = ?").bind(JSON.stringify(next), a.id).run();
+  const old = ownUpload(before?.avatar);
+  if (old) c.executionCtx.waitUntil(c.env.UPLOADS.delete(old));
+  return c.json({ url, persona: next }, 201);
 });
 
 admin.get("/requests", async (c) => {
@@ -826,6 +889,7 @@ pub.get("/config", async (c) => {
     app: { name: a.name },
     mode: c.get("mode"),
     nudge: readNudge(a.nudge),
+    persona: readPersona(a.persona),
     watermark: Boolean(a.watermark),
     identified: me ? !me.is_anon : false,
     // Credit names the person on the public share page, which private conversations never get.

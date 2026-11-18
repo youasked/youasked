@@ -1,5 +1,6 @@
 import { FeatureBoard, YouAsked, type Appearance } from "@youasked/react";
 import { useEffect, useRef, useState } from "react";
+import { MessageCard } from "./MessageCard";
 
 /*
  * A phone with the real YouAsked sheet running inside it, in demo mode. The frame is drawn in CSS
@@ -43,11 +44,11 @@ export const CARDS: Record<Card, { label: string; kicker: string; title: string;
     actions: ["Reply", "Later"],
   },
   nudge: {
-    label: "“Got an idea?”",
-    kicker: "Help shape your app",
-    title: "Got an idea for your app?",
-    body: "Ask for a feature or vote on what others want.",
-    actions: ["Share an idea", "Not now"],
+    label: "A message from you",
+    kicker: "",
+    title: "",
+    body: "Hey! Got an idea for the app, or something not working? Tell me here.",
+    actions: ["Reply", "Not now"],
   },
 };
 
@@ -55,7 +56,7 @@ export function Phone({ card = null, onClose = () => {}, look }: { card?: { kind
   const appearance = { ...LOOK, ...look };
   const dark = appearance.mode === "dark";
   const screen = useRef<HTMLDivElement>(null);
-  // "Share an idea" on the prompt does what it does in an app: puts you in the composer.
+  // Replying to the corner message does what it does in an app: puts you in the composer.
   const ask = () => screen.current?.querySelector<HTMLElement>("textarea, input")?.focus({ preventScroll: true });
   return (
     <figure className="ph" aria-label="The YouAsked sheet on a phone. It's live: tap, type and vote.">
@@ -107,6 +108,19 @@ function InAppCard({ kind, onClose, onPrimary }: { kind: Card; onClose: () => vo
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  if (kind === "nudge") {
+    return (
+      <MessageCard
+        className={leaving ? "ph-msg-in-phone leaving" : "ph-msg-in-phone"}
+        text={c.body}
+        onClose={close}
+        onOpen={() => {
+          close();
+          onPrimary?.();
+        }}
+      />
+    );
+  }
   return (
     <div className={leaving ? "ph-card leaving" : "ph-card"} role="status" data-kind={kind}>
       <div className="ph-card-top">
@@ -116,19 +130,7 @@ function InAppCard({ kind, onClose, onPrimary }: { kind: Card; onClose: () => vo
         </span>
         <button type="button" className="ph-card-x" aria-label="Dismiss" onClick={close} />
       </div>
-      {kind === "nudge" ? (
-        <div className="ph-card-nudge">
-          <span className="ph-card-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
-              <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <p className="ph-card-title">{c.title}</p>
-        </div>
-      ) : (
-        <p className="ph-card-title">{c.title}</p>
-      )}
+      <p className="ph-card-title">{c.title}</p>
       <p className={c.quote ? "ph-card-body quote" : "ph-card-body"}>{c.quote ? `“${c.body}”` : c.body}</p>
       <div className="ph-card-actions">
         <button

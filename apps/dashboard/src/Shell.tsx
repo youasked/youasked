@@ -60,6 +60,7 @@ export function Shell({ children, theme, setTheme }: { children: ReactNode; them
         { to: appUrl(app.id, "/heard"), label: "Heard elsewhere", icon: "ear" },
         { to: appUrl(app.id, "/integrations"), label: "Integrations", icon: "plug" },
         { to: appUrl(app.id, "/board"), label: "Public board", icon: "globe" },
+        { to: appUrl(app.id, "/message"), label: "Your message", icon: "chat" },
         { to: appUrl(app.id, "/settings"), label: "Settings", icon: "cog" },
       ]
     : [];

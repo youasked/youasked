@@ -45,6 +45,20 @@ All of them open the same sheet, in your colours, font and dark mode.
 | `<FeatureBoard />` | Everything inline, for a `/feedback` page |
 | `useYouAsked().open({ view: "new", draft: "Export to Excel" })` | Any button, such as a locked feature |
 
+## A message from you
+
+Now and then a message from you pops up in the corner, like a text: your photo, your name and a line you wrote, with a reply box under it. The chat then opens with your welcome note. Set it up under **Your message** in the dashboard (with a live preview), or in code:
+
+```tsx
+<YouAsked
+  appKey="ya_pub_…"
+  persona={{ name: "Aden", role: "Made Acme", avatar: "https://acme.app/aden.jpg", intro: "I read every message myself." }}
+  nudge={{ message: "Hey! Anything I can help with?" }}
+/>
+```
+
+`persona={false}` goes back to your app's icon and name; `nudge={false}` turns the corner message off.
+
 ## Signed-in users
 
 Without this, visitors are anonymous (one ID per device). With sign-in, sign the user ID on your server so nobody can vote as someone else:

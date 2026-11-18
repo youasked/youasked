@@ -545,7 +545,7 @@
 .nc-stage[data-pos="top"] .nc-skel { inset: auto 22px 22px; }
 .nc-card { position: absolute; z-index: 1; left: 14px; right: 14px; top: calc(100% - 14px); bottom: auto; transform: translateY(-100%); animation: none; transition: top 0.7s var(--spring), transform 0.7s var(--spring); }
 .nc-stage[data-pos="top"] .nc-card { top: 14px; transform: none; }
-.nc-card .ph-card-title { animation: nc-roll 0.5s var(--spring) both; }
+.nc-card .ph-msg-text { animation: nc-roll 0.5s var(--spring) both; }
 .nc-card .ph-card-actions span { display: inline-flex; align-items: center; height: 36px; padding: 0 15px; border-radius: 999px; background: #f1f2f6; font: 600 13.5px Switzer, system-ui, sans-serif; }
 .nc-card .ph-card-actions span.primary { background: #2b4bee; color: #fff; }
 .nc-card .ph-card-title { overflow-wrap: anywhere; }
@@ -565,7 +565,7 @@
   .nc-tok { height: 32px; padding: 0 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .nc-tok > span, .nc-card .ph-card-title { animation: none; }
+  .nc-tok > span, .nc-card .ph-msg-text { animation: none; }
   .nc-card { transition: none; }
 }
 
@@ -630,3 +630,24 @@
 .pf-chips li.soon { color: var(--muted); background: var(--tint); box-shadow: 0 0 0 1px var(--line); }
 .pf-chips li.soon svg { opacity: 0.55; }
 .pf-chips li em { margin-left: 2px; padding: 3px 8px; border-radius: 999px; background: #fff; color: var(--muted); font: 600 11.5px/1 Switzer, system-ui, sans-serif; font-style: normal; box-shadow: 0 0 0 1px var(--line); }
+
+/* the corner message: a text from the person who made the app, as the SDK draws it */
+.ph-msg { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-family: Switzer, system-ui, sans-serif; color: #0b0d12; }
+.ph-msg-in-phone { position: absolute; z-index: 5; left: 14px; right: 14px; bottom: 40px; transform-origin: bottom right; animation: ph-msg-in 0.5s var(--spring) both; }
+.ph-msg-in-phone.leaving { animation: ph-card-out 0.26s ease-in both; }
+@keyframes ph-msg-in { from { opacity: 0; transform: translateY(14px) scale(0.9); } }
+.ph-msg-row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+.ph-msg-avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(160deg, #4e6bff, #2b4bee); color: #fff; font-weight: 700; font-size: 16px; box-shadow: 0 0 0 2px #fff, 0 3px 10px rgba(11, 13, 18, 0.16); }
+.ph-msg-bubble { flex: 1; min-width: 0; display: grid; gap: 3px; padding: 11px 15px 12px; border-radius: 22px 22px 22px 7px; background: #fff; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.07), 0 14px 34px -10px rgba(11, 13, 18, 0.3); cursor: pointer; }
+.ph-msg-from { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; }
+.ph-msg-from b { font-weight: 700; }
+.ph-msg-from span { color: #6e7385; }
+.ph-msg-text { margin: 0; font-size: 14.5px; line-height: 1.42; overflow-wrap: anywhere; }
+.ph-msg-reply { display: flex; align-items: center; gap: 10px; width: calc(100% - 48px); height: 42px; padding: 0 4px 0 16px; border-radius: 999px; background: #fff; color: #6e7385; font-size: 14px; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.07), 0 8px 22px -8px rgba(11, 13, 18, 0.25); cursor: pointer; }
+.ph-msg-reply span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-msg-reply i { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #2b4bee; color: #fff; flex: none; }
+.ph-msg-x { position: absolute; top: -10px; right: -6px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(11, 13, 18, 0.08), 0 2px 8px rgba(11, 13, 18, 0.12); cursor: pointer; z-index: 1; }
+.ph-msg-x::before, .ph-msg-x::after { content: ""; position: absolute; left: 8px; top: 12px; width: 10px; height: 1.8px; border-radius: 2px; background: #6e7385; transform: rotate(45deg); }
+.ph-msg-x::after { transform: rotate(-45deg); }
+.nc-card.ph-msg { left: 14px; right: 14px; }
+@media (prefers-reduced-motion: reduce) { .ph-msg-in-phone, .ph-msg-in-phone.leaving { animation: none; } }

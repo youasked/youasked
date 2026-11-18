@@ -19,10 +19,12 @@ export type OpenOptions = {
    * ever see it, even when the app's board is public. Use it for "contact us" and help entry points.
    */
   private?: boolean;
+  /** Set by the corner message: the chat starts with that message, so it reads as a reply to it. */
+  via?: "message";
 };
 
 export type Route =
-  | { view: "home"; draft?: string; focus?: boolean; topic?: string; placeholder?: string; private?: boolean }
+  | { view: "home"; draft?: string; focus?: boolean; topic?: string; placeholder?: string; private?: boolean; via?: "message" }
   | { view: "board"; tab?: "top" | "new" | "shipped" }
   /** `from` is where Back goes: the list they opened it from. */
   | { view: "detail"; id: string; from?: "home" | "board" | "mine" }
@@ -35,7 +37,7 @@ export function toRoute(o: OpenOptions = {}): Route {
   if (o.requestId) return { view: "detail", id: o.requestId };
   const topic = o.topic?.trim() || undefined;
   const placeholder = o.placeholder ?? (topic && !o.draft && !QUIET_TOPICS.has(topic) ? `What would make ${topic} better?` : undefined);
-  const scope = { topic, placeholder, ...(o.private ? { private: true } : {}) };
+  const scope = { topic, placeholder, ...(o.private ? { private: true } : {}), ...(o.via === "message" ? { via: "message" as const } : {}) };
   switch (o.view) {
     case "new":
       return { view: "home", draft: o.draft, focus: true, ...scope };
@@ -73,6 +75,10 @@ export type InternalContext = {
   appIcon: string | null;
   title: string;
   greeting?: string;
+  /** Who the corner message and the chat's first message come from, if the developer set it up. */
+  persona: import("./message").Persona | null;
+  /** The corner message's words. */
+  message: string;
 };
 
 export const YouAskedContext = createContext<InternalContext | null>(null);

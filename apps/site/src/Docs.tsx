@@ -5,6 +5,7 @@ const TOC: [string, string][] = [
   ["install", "Install"],
   ["test-mode", "Test mode"],
   ["entry-points", "Entry points"],
+  ["message", "A message from you"],
   ["more-ways", "More ways to ask"],
   ["identity", "Identify your users"],
   ["theming", "Theming"],
@@ -100,6 +101,25 @@ export function FeatureRequests({ children }: { children: React.ReactNode }) {
               </tbody>
             </table>
           </div>
+
+          <h2 id="message">A message from you</h2>
+          <p>
+            Now and then a message from you pops up in the corner, like a text: your photo, your name and a line you wrote, with a reply box under it. Tapping it opens the chat, where your welcome note says who you are and how quickly you reply. People write back to a person, not a form. Set it up in the dashboard under <b>Your message</b>, with a live preview as you type. It waits until someone has used your app for a while, never shows next to a reply, and backs off each time they close it.
+          </p>
+          <p>Or set it in code. Props win over the dashboard:</p>
+          <Code label="App.tsx">{`<YouAsked
+  appKey="ya_pub_…"
+  persona={{
+    name: "Aden",
+    role: "Made Acme",
+    avatar: "https://acme.app/aden.jpg",
+    intro: "I built Acme because I kept losing track of my own projects. I read every message myself and usually reply within a few hours.",
+  }}
+  nudge={{ message: "Hey! Anything I can help with?", activeSeconds: 60 }}
+/>`}</Code>
+          <p>
+            <code>persona={"{false}"}</code> goes back to your app&rsquo;s icon and name, and <code>nudge={"{false}"}</code> turns the corner message off. It needs <code>@youasked/react</code> 0.9 or <code>@youasked/js</code> 0.3; older versions keep the previous card.
+          </p>
 
           <h2 id="more-ways">More ways to ask</h2>
           <ul>

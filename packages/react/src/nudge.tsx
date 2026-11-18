@@ -3,7 +3,6 @@
 // skips their first visits, never shows twice within the chosen interval, steps back further each
 // time it's dismissed, and stays away from people who opened the sheet recently.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IconClose, IconIdea } from "./icons";
 
 export type NudgeSettings = {
   /** Show at most once every this many days. */
@@ -114,48 +113,4 @@ export function useNudge(settings: NudgeSettings | null, storageKey: string | nu
   }, [storageKey]);
 
   return { show, engaged, dismiss };
-}
-
-export function NudgeToast({
-  settings,
-  appName,
-  position,
-  trigger,
-  onOpen,
-  onDismiss,
-}: {
-  settings: NudgeSettings;
-  appName: string;
-  position: string;
-  trigger: string;
-  onOpen: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="ya-toast ya-nudge" role="status" data-pos={position} data-trigger={trigger} data-place={settings.position}>
-      <div className="ya-toast-top">
-        <p className="ya-toast-kicker">Help shape {appName}</p>
-        <button type="button" className="ya-icon-btn" onClick={onDismiss} aria-label="Dismiss">
-          <IconClose />
-        </button>
-      </div>
-      <div className="ya-nudge-body">
-        <span className="ya-card-icon" aria-hidden="true">
-          <IconIdea />
-        </span>
-        <div>
-          <p className="ya-toast-title">{settings.message ?? `Got an idea for ${appName}?`}</p>
-          <p className="ya-toast-note">Ask for a feature or vote on what others want.</p>
-        </div>
-      </div>
-      <div className="ya-toast-actions">
-        <button type="button" className="ya-btn ya-btn-sm" onClick={onOpen}>
-          Share an idea
-        </button>
-        <button type="button" className="ya-btn ya-btn-sm ya-btn-ghost" onClick={onDismiss}>
-          Not now
-        </button>
-      </div>
-    </div>
-  );
 }

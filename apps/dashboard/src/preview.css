@@ -1,0 +1,10 @@
+html, body { margin: 0; height: 100%; background: #f4f5f9; font-family: Switzer, ui-sans-serif, system-ui, sans-serif; color: #0b1020; overflow: hidden; }
+.stand-in { padding: 18px 18px 0; display: grid; gap: 14px; }
+.stand-in header { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.si-logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #dfe3ee; color: #6b7390; font-weight: 700; font-size: 14px; }
+.si-hero { height: 150px; border-radius: 18px; background: linear-gradient(160deg, #e7eaf3, #dde1ec); }
+.si-lines { display: grid; gap: 8px; }
+.stand-in i { display: block; height: 10px; border-radius: 6px; background: #e1e4ee; }
+.si-row { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(11, 16, 32, 0.05); }
+.si-row > span { width: 38px; height: 38px; border-radius: 12px; background: #e7eaf3; flex: none; }
+.si-row > div { flex: 1; display: grid; gap: 7px; }

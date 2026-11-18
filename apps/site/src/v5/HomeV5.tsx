@@ -13,6 +13,7 @@ import { Shader } from "./Shader";
 import { Showcase } from "./Showcase";
 import "../v3/v3.css";
 import "./v5.css";
+import { MessageCard } from "./MessageCard";
 
 export function HomeV5() {
   return (
@@ -280,7 +281,12 @@ const ROLL = {
   activeSeconds: [30, 60, 120, 10],
   skipVisits: [1, 2, 4, 0],
   position: ["bottom", "top"] as const,
-  message: ["Got an idea for your app?", "What should we build next?", "Missing something?", "How can we make this better?"],
+  message: [
+    "Hey! Got an idea for the app, or something not working? Tell me here.",
+    "Hi, I'm Sam. What would make this better for you?",
+    "Anything missing? I read every message myself.",
+    "Stuck on something? I'm around, just reply.",
+  ],
 };
 type RollKey = keyof typeof ROLL;
 const ORDER: RollKey[] = ["everyDays", "activeSeconds", "skipVisits", "position", "message"];
@@ -339,37 +345,16 @@ function NudgeConfig() {
           <i />
           <i />
         </div>
-        <div className="ph-card nc-card">
-          <div className="ph-card-top">
-            <span className="ph-card-kicker">Help shape your app</span>
-            <span className="ph-card-x" />
-          </div>
-          <div className="ph-card-nudge">
-            <span className="ph-card-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20">
-                <path d="M6 2.25h12a4.5 4.5 0 0 1 4.5 4.5V15a4.5 4.5 0 0 1-4.5 4.5h-6.75L6 23.25V19.5A4.5 4.5 0 0 1 1.5 15V6.75A4.5 4.5 0 0 1 6 2.25Z" fill="currentColor" />
-                <path d="M7.9 13.9 12 9.8l4.1 4.1" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            <p className="ph-card-title" key={message}>
-              {message}
-            </p>
-          </div>
-          <p className="ph-card-body">Ask for a feature or vote on what others want.</p>
-          <div className="ph-card-actions">
-            <span className="primary">Share an idea</span>
-            <span>Not now</span>
-          </div>
-        </div>
+        <MessageCard className="nc-card" text={message} />
       </div>
       <div className="nc-panel">
         <p className="nc-sentence" aria-live="off">
           Show it at most once every {tok("everyDays", days(everyDays))}, after {tok("activeSeconds", secs(activeSeconds))} of use, from their{" "}
           {tok("skipVisits", visit(skipVisits))} visit, at the {tok("position", position)} of the screen.
         </p>
-        <p className="nc-sentence nc-headline">Asking {tok("message", `“${message}”`)}</p>
+        <p className="nc-sentence nc-headline">Saying {tok("message", `“${message}”`)}</p>
         <p className="nc-note">
-          It also steps back each time someone dismisses it, and stays away from people who opened the sheet recently. Set all of it in your dashboard, without a release.
+          It comes from you: your photo, your name, your words, and a welcome note when the chat opens. It steps back each time someone closes it, and stays away from people who opened the chat recently. Set all of it in your dashboard, with a live preview, without a release.
         </p>
         <pre className="m5-code nc-code" aria-label="The nudge prop for these settings">
           <span className="k">{"<YouAsked"}</span> nudge={"{{"}
