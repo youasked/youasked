@@ -83,7 +83,7 @@ export function MessagePopup({
   const who = persona?.name ?? appName;
   const first = firstName(persona?.name ?? null);
   return (
-    <div className="ya-msg" role="status" aria-live="polite" data-pos={position} data-trigger={trigger} data-place={place} data-typing={typing || undefined}>
+    <div className="ya-cmsg" role="status" aria-live="polite" data-pos={position} data-trigger={trigger} data-place={place} data-typing={typing || undefined}>
       <button type="button" className="ya-msg-close" onClick={onDismiss} aria-label="Dismiss">
         <IconClose />
       </button>
