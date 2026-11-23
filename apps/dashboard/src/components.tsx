@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { appApi, uploadReplyImage, type Attachment, type Req, type Status } from "./api";
-import { Button, Dialog, Icon, STATUS_LABEL, StatusChip, useFail } from "./ui";
+import { Button, Dialog, Icon, STATUS_LABEL, StatusChip, useFail, useKeepInView, useNarrow } from "./ui";
 
 export const PICKABLE: Status[] = ["open", "planned", "in_progress", "shipped", "declined"];
 
 /** A popover listing statuses. The caller controls when it is open, so the keyboard shortcut can open it too. */
 export function StatusPopover({ current, onPick, onClose }: { current: Status; onPick: (s: Status) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const narrow = useNarrow();
+  useKeepInView(ref, !narrow);
   useEffect(() => {
     const down = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
     const key = (e: KeyboardEvent) => {
@@ -25,18 +28,22 @@ export function StatusPopover({ current, onPick, onClose }: { current: Status; o
       document.removeEventListener("keydown", key);
     };
   }, [onClose, onPick]);
-  return (
-    <div className="menu status-menu" role="menu" ref={ref} data-align="right">
-      <div className="menu-note">Change status <span className="kbd-hint">press 1 to 5</span></div>
+  const menu = (
+    <div className="menu status-menu" role="menu" aria-label="Set status" ref={ref} data-align="right" data-sheet={narrow || undefined}>
+      {narrow && <div className="sheet-grab" />}
+      <div className="menu-note">{narrow ? "Set status" : "Change status"} <span className="kbd-hint">press 1 to 5</span></div>
       {PICKABLE.map((s, i) => (
         <button key={s} role="menuitem" className="menu-item" data-active={s === current || undefined} onClick={() => onPick(s)}>
           <StatusChip status={s} />
           <span className="spacer" />
+          {s === current && <Icon name="check" size={16} className="tick" />}
           <kbd>{i + 1}</kbd>
         </button>
       ))}
     </div>
   );
+  // On a phone the menu is a bottom sheet, rendered on the body so no ancestor can clip or offset it.
+  return narrow ? createPortal(<div className="scrim sheet-scrim status-scrim">{menu}</div>, document.body) : menu;
 }
 
 /** "Mark shipped" asks for an optional note, which goes to everyone who asked. */

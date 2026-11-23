@@ -47,7 +47,7 @@ export type Comment = { id: string; body: string; is_team: number; created_at: n
 export type Voter = { email: string | null; name: string | null; is_anon: number };
 
 export type Account = { id: string; email: string; name: string | null; avatarUrl: string | null };
-export type WorkspaceSummary = { id: string; name: string; role: Role; plan: Plan | null; live: boolean };
+export type WorkspaceSummary = { id: string; name: string; role: Role; plan: Plan | null; live: boolean; /** True when an app in the workspace is live on its own (always_live) without a plan. */ appLive?: boolean };
 export type Role = "owner" | "admin" | "member";
 export type Plan = "solo" | "pro" | "studio";
 export type Interval = "month" | "year";

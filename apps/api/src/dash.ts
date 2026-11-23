@@ -99,13 +99,13 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
   dash.get("/me", async (c) => {
     const a = c.get("account");
     const { results } = await c.env.DB.prepare(
-      "SELECT w.id, w.name, w.plan, w.subscription_status, m.role FROM workspaces w JOIN members m ON m.workspace_id = w.id WHERE m.account_id = ? ORDER BY m.created_at",
+      "SELECT w.id, w.name, w.plan, w.subscription_status, m.role, (SELECT COUNT(*) FROM apps x WHERE x.workspace_id = w.id AND x.always_live = 1) AS live_apps FROM workspaces w JOIN members m ON m.workspace_id = w.id WHERE m.account_id = ? ORDER BY m.created_at",
     )
       .bind(a.id)
-      .all<{ id: string; name: string; plan: WorkspaceRow["plan"]; subscription_status: string | null; role: Role }>();
+      .all<{ id: string; name: string; plan: WorkspaceRow["plan"]; subscription_status: string | null; role: Role; live_apps: number }>();
     return c.json({
       account: { id: a.id, email: a.email, name: a.name, avatarUrl: a.avatar_url },
-      workspaces: results.map((w) => ({ id: w.id, name: w.name, role: w.role, plan: w.plan, live: isLive(w) })),
+      workspaces: results.map((w) => ({ id: w.id, name: w.name, role: w.role, plan: w.plan, live: isLive(w), appLive: w.live_apps > 0 })),
     });
   });
 

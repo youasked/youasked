@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { explain, type Status } from "./api";
 
 // ---------- icons (24px grid, 1.8 stroke)
@@ -230,9 +230,51 @@ export function Toasts({ children }: { children: ReactNode }) {
 }
 
 // ---------- popover menu
+/** True on phone-sized screens, where popovers become bottom sheets. */
+export function useNarrow(): boolean {
+  const q = "(max-width: 860px)";
+  const [n, setN] = useState(() => typeof matchMedia === "function" && matchMedia(q).matches);
+  useEffect(() => {
+    const m = matchMedia(q);
+    const f = () => setN(m.matches);
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, []);
+  return n;
+}
+
+/** Nudges an absolutely positioned popover back inside the viewport (sideways, and above its trigger if it would run off the bottom). */
+export function useKeepInView(ref: { current: HTMLElement | null }, active = true) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !active) return;
+    const fit = () => {
+      el.style.translate = "";
+      el.style.top = "";
+      el.style.bottom = "";
+      const r = el.getBoundingClientRect();
+      const pad = 8;
+      const vw = document.documentElement.clientWidth;
+      let dx = 0;
+      if (r.left < pad) dx = pad - r.left;
+      else if (r.right > vw - pad) dx = vw - pad - r.right;
+      if (dx) el.style.translate = `${Math.round(dx)}px 0`;
+      if (r.bottom > innerHeight - pad && r.top - r.height - 12 > pad) {
+        el.style.top = "auto";
+        el.style.bottom = "calc(100% + 6px)";
+      }
+    };
+    fit();
+    addEventListener("resize", fit);
+    return () => removeEventListener("resize", fit);
+  }, [ref, active]);
+}
+
 export function Menu({ trigger, children, align = "left", label }: { trigger: (open: boolean) => ReactNode; children: (close: () => void) => ReactNode; align?: "left" | "right"; label: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useKeepInView(menuRef, open);
   useEffect(() => {
     if (!open) return;
     const down = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
@@ -250,7 +292,7 @@ export function Menu({ trigger, children, align = "left", label }: { trigger: (o
         {trigger(open)}
       </button>
       {open && (
-        <div className="menu" role="menu" data-align={align}>
+        <div className="menu" role="menu" data-align={align} ref={menuRef}>
           {children(() => setOpen(false))}
         </div>
       )}

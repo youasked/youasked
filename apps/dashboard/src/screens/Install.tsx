@@ -115,11 +115,13 @@ export function Install({ app }: { app: WorkspaceApp }) {
         </dl>
       </section>
 
-      <div className="note-line">
-        <Icon name="clock" size={16} />
-        <span><b>Test mode:</b> it works on localhost until you pick a plan.</span>
-        <Link to="/billing">See plans</Link>
-      </div>
+      {!app.live && (
+        <div className="note-line">
+          <Icon name="clock" size={16} />
+          <span><b>Test mode:</b> it works on localhost until you pick a plan.</span>
+          <Link to="/billing">See plans</Link>
+        </div>
+      )}
 
       <div className="row">
         <Link to={appUrl(app.id)} className="btn btn-primary">{connected ? "Open your inbox" : "Skip to your inbox"}</Link>

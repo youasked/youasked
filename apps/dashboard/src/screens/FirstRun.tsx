@@ -127,7 +127,7 @@ export function Claim() {
             <input type="radio" name="ws" checked={pick === w.id} onChange={() => setPick(w.id)} />
             <span>
               <b>{w.name}</b>
-              <small>{w.live ? "Subscribed" : "Test mode"} · you are {w.role === "owner" ? "the owner" : `an ${w.role}`}</small>
+              <small>{w.live ? "Subscribed" : w.appLive ? "Live" : "Test mode"} · you are {w.role === "owner" ? "the owner" : `an ${w.role}`}</small>
             </span>
           </label>
         ))}

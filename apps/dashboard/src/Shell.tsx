@@ -14,7 +14,8 @@ export function Shell({ children, theme, setTheme }: { children: ReactNode; them
   const appId = seg[0] === "a" ? seg[1] : undefined;
   const app = findApp(ws, appId ?? "") ?? ws!.apps[0];
   const hasApps = ws!.apps.length > 0;
-  const live = ws!.workspace.live;
+  // A workspace plan makes every app live; an app can also be live on its own (always_live), which the API already folds into app.live.
+  const live = app ? app.live : ws!.workspace.live;
   const bare = !hasApps && (seg[0] === "new" || seg[0] === "claim");
 
   useEffect(() => setSheet(false), [path]);

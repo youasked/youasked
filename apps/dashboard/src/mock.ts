@@ -169,9 +169,10 @@ const WID = "ws_acme";
 function workspaceDetail() {
   const s = state();
   const live = Boolean(s.plan);
+  const appLive = live || scenario === "always";
   const limits = s.plan ? PLANS[s.plan as keyof typeof PLANS] : null;
   const apps = [
-    ...(s.app.id ? [{ id: s.app.id, name: s.app.name, publicKey: s.app.publicKey, secretKeyHint: "ya_sec_…" + s.app.secretKey.slice(-4), live, createdAt: ago(60 * day) }] : []),
+    ...(s.app.id ? [{ id: s.app.id, name: s.app.name, publicKey: s.app.publicKey, secretKeyHint: "ya_sec_…" + s.app.secretKey.slice(-4), live: appLive, createdAt: ago(60 * day) }] : []),
     ...s.extraApps.map((a) => ({ ...a, live })),
   ];
   return {
@@ -223,7 +224,7 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     if (!signedIn) return err(401, "unauthorized");
     return json({
       account: { id: "acc_1", email: "you@acme.app", name: "Alex Rivera", avatarUrl: null },
-      workspaces: [{ id: WID, name: "Acme", role: "owner", plan: s.plan, live: Boolean(s.plan) }],
+      workspaces: [{ id: WID, name: "Acme", role: "owner", plan: s.plan, live: Boolean(s.plan), appLive: scenario === "always" }],
     });
   }
   if (!signedIn) return err(401, "unauthorized");
