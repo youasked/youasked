@@ -41,6 +41,8 @@ export type RequestComment = {
   author: string | null;
   mine: boolean;
   createdAt: number;
+  /** Images sent with this message, by the team or the person. */
+  attachments?: Attachment[];
 };
 
 export type Notice = {
@@ -51,6 +53,8 @@ export type Notice = {
   title: string;
   shipNote: string | null;
   reply: string | null;
+  /** Images the team sent with the reply. */
+  replyAttachments?: Attachment[];
 };
 
 export type Config = {
@@ -181,8 +185,8 @@ export function createClient({ appKey, apiUrl, user, signature, getAnon }: Clien
     earlyAccess: (id: string) => call<{ earlyAccess: boolean }>(`/requests/${encodeURIComponent(id)}/early-access`, {}),
     whatsNewSeen: () => call<{ ok: true }>("/whats-new/seen", {}),
     vote: (id: string) => call<{ voted: boolean; votes: number }>(`/requests/${encodeURIComponent(id)}/vote`, {}),
-    comment: (id: string, body: string) =>
-      call<{ comment: RequestComment }>(`/requests/${encodeURIComponent(id)}/comments`, { body }).then((d) => d.comment),
+    comment: (id: string, body: string, attachments: string[] = []) =>
+      call<{ comment: RequestComment }>(`/requests/${encodeURIComponent(id)}/comments`, { body, ...(attachments.length ? { attachments } : {}) }).then((d) => d.comment),
     mine: () => call<{ requests: FeatureRequest[] }>("/me/requests").then((d) => d.requests),
     seen: (ids: string[]) => call<{ ok: true }>("/notifications/seen", { ids }),
   };

@@ -3,6 +3,7 @@ import { YouAskedError, type FeatureRequest, type Notice, type RequestComment } 
 import { useInternal, type Route } from "./context";
 import { IconCheck, IconChevron, IconClose, IconFrame, IconLock, IconPlus, IconSend, IconSpark } from "./icons";
 import { MessageFrom } from "./message";
+import { ReplyBar } from "./reply";
 import { ConversationList, LockNote } from "./private";
 import {
   AppAvatar,
@@ -61,7 +62,8 @@ function ReplyBubble({ notice, appName, onOpen }: { notice: Notice; appName: str
       <span className="ya-bubble-kicker">
         {appName} replied about {notice.title}
       </span>
-      <span>{notice.reply}</span>
+      <Pictures files={notice.replyAttachments} who={`Image from ${appName}`} />
+      {notice.reply && <span>{notice.reply}</span>}
       <button type="button" className="ya-bubble-link" onClick={onOpen}>
         Reply
       </button>
@@ -625,9 +627,6 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unseenHere, markSeen]);
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const [replyError, setReplyError] = useState<string | null>(null);
   const [voted, setVoted] = useState<boolean | null>(null);
   const [early, setEarly] = useState(false);
   useEffect(() => setEarly(Boolean(data?.earlyAccess)), [data?.earlyAccess]);
@@ -675,20 +674,11 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
     if (el) el.scrollTop = el.scrollHeight;
   }, [isPrivate, request?.id, lastId]);
 
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reply.trim() || sending || !request) return;
-    setSending(true);
-    setReplyError(null);
-    try {
-      const c = await client.comment(request.id, reply);
-      setData({ ...data, comments: [...comments, c], request: { ...request, comments: request.comments + 1 } });
-      setReply("");
-    } catch (err) {
-      setReplyError(errorText(err instanceof YouAskedError ? err.code : "network", err instanceof YouAskedError ? err.detail : undefined));
-    } finally {
-      setSending(false);
-    }
+  const uploadImage = (image: Blob) => client.upload(image).then((u) => u.id);
+  const send = async (text: string, attachments: string[]) => {
+    if (!request) return;
+    const c = await client.comment(request.id, text, attachments);
+    setData({ ...data, comments: [...comments, c], request: { ...request, comments: request.comments + 1 } });
   };
 
   if (isPrivate && request) {
@@ -758,31 +748,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
             </p>
           )}
         </div>
-        <form className="ya-composer ya-composer-bar" onSubmit={send}>
-          <textarea
-            className="ya-composer-input"
-            rows={1}
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Reply…"
-            aria-label="Reply"
-            maxLength={1000}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-              }
-            }}
-          />
-          <button type="submit" className="ya-send" disabled={!reply.trim() || sending} aria-label="Send reply">
-            <IconSend />
-          </button>
-          {replyError && (
-            <span className="ya-sr" role="alert">
-              {replyError}
-            </span>
-          )}
-        </form>
+        <ReplyBar placeholder="Reply…" label="Reply" upload={uploadImage} onSend={send} />
       </>
     );
   }
@@ -890,31 +856,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
         )}
       </div>
       {request && (
-        <form className="ya-composer ya-composer-bar" onSubmit={send}>
-          <textarea
-            className="ya-composer-input"
-            rows={1}
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Message"
-            aria-label="Message"
-            maxLength={1000}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-              }
-            }}
-          />
-          <button type="submit" className="ya-send" disabled={!reply.trim() || sending} aria-label="Send comment">
-            <IconSend />
-          </button>
-          {replyError && (
-            <span className="ya-sr" role="alert">
-              {replyError}
-            </span>
-          )}
-        </form>
+        <ReplyBar placeholder="Message" label="Message" upload={uploadImage} onSend={send} />
       )}
     </>
   );
@@ -926,7 +868,10 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
   if (comment.mine) {
     return (
       <div className="ya-msg ya-msg-out">
-        <div className="ya-bubble ya-bubble-out">{comment.body}</div>
+        <div className="ya-bubble ya-bubble-out">
+          <Pictures files={comment.attachments} who="Your image" />
+          {comment.body}
+        </div>
         <span className="ya-msg-meta">{when}</span>
       </div>
     );
@@ -940,8 +885,25 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
           {comment.team && <span className="ya-team">Team</span>}
           {when}
         </span>
-        <div className="ya-bubble ya-bubble-in">{comment.body}</div>
+        <div className="ya-bubble ya-bubble-in">
+          <Pictures files={comment.attachments} who={comment.team ? `Image from ${appName}` : "Image"} />
+          {comment.body}
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** Images in a message: small thumbnails that open the full picture in a new tab. */
+export function Pictures({ files, who }: { files?: { id: string; url: string }[]; who: string }) {
+  if (!files?.length) return null;
+  return (
+    <div className="ya-pics" data-n={Math.min(files.length, 4)}>
+      {files.map((f, i) => (
+        <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="ya-pic" aria-label={`${who} ${i + 1}, open full size`}>
+          <img src={f.url} alt={`${who} ${i + 1}`} loading="lazy" />
+        </a>
+      ))}
     </div>
   );
 }

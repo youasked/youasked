@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { appApi, type Req, type Status } from "./api";
+import { appApi, uploadReplyImage, type Attachment, type Req, type Status } from "./api";
 import { Button, Dialog, Icon, STATUS_LABEL, StatusChip, useFail } from "./ui";
 
 export const PICKABLE: Status[] = ["open", "planned", "in_progress", "shipped", "declined"];
@@ -112,3 +112,123 @@ export function RequestPicker({ appId, excludeId, onPick, placeholder = "Search 
 }
 
 export { STATUS_LABEL };
+
+const REPLY_TYPES = ["image/png", "image/jpeg", "image/webp"];
+export const MAX_REPLY_IMAGES = 4;
+const MAX_REPLY_BYTES = 2 * 1024 * 1024;
+type Picked = { key: number; blob: Blob; url: string };
+let pickKey = 1;
+
+/** Up to 4 images for a reply: pick, paste or drop them. `uploadAll` sends them and gives back the ids. */
+export function useReplyImages(appId: string) {
+  const [picked, setPicked] = useState<Picked[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [over, setOver] = useState(false);
+  const live = useRef(picked);
+  live.current = picked;
+  useEffect(() => () => live.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
+
+  const add = (files: File[]) => {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length) return;
+    const typed = images.filter((f) => REPLY_TYPES.includes(f.type));
+    const sized = typed.filter((f) => f.size <= MAX_REPLY_BYTES);
+    setError(typed.length < images.length ? "Use a PNG, JPEG or WebP image." : sized.length < typed.length ? "Images can be up to 2 MB each." : null);
+    setPicked((cur) => [...cur, ...sized.slice(0, Math.max(0, MAX_REPLY_IMAGES - cur.length)).map((blob) => ({ key: pickKey++, blob, url: URL.createObjectURL(blob) }))]);
+  };
+  const remove = (key: number) =>
+    setPicked((cur) => {
+      cur.filter((p) => p.key === key).forEach((p) => URL.revokeObjectURL(p.url));
+      return cur.filter((p) => p.key !== key);
+    });
+  const clear = () => {
+    picked.forEach((p) => URL.revokeObjectURL(p.url));
+    setPicked([]);
+    setError(null);
+  };
+  const uploadAll = async (): Promise<string[]> => Promise.all(picked.map((p) => uploadReplyImage(appId, p.blob).then((a) => a.id)));
+  /** Props for the box the images can be dropped on, and for the textarea (paste). */
+  const dropProps = {
+    onDragOver: (e: React.DragEvent) => {
+      if (Array.from(e.dataTransfer.types).includes("Files")) {
+        e.preventDefault();
+        setOver(true);
+      }
+    },
+    onDragLeave: () => setOver(false),
+    onDrop: (e: React.DragEvent) => {
+      setOver(false);
+      if (e.dataTransfer.files.length) {
+        e.preventDefault();
+        add(Array.from(e.dataTransfer.files));
+      }
+    },
+  };
+  const pasteProps = {
+    onPaste: (e: React.ClipboardEvent) => {
+      const files = Array.from(e.clipboardData.files);
+      if (files.some((f) => f.type.startsWith("image/"))) {
+        e.preventDefault();
+        add(files);
+      }
+    },
+  };
+  return { picked, add, remove, clear, uploadAll, over, error, setError, dropProps, pasteProps, full: picked.length >= MAX_REPLY_IMAGES };
+}
+
+/** The thumbnails waiting to go out, and the button that picks more. */
+export function ReplyImageTray({ images, disabled }: { images: ReturnType<typeof useReplyImages>; disabled?: boolean }) {
+  return images.picked.length === 0 && !images.error ? null : (
+    <div className="reply-tray">
+      {images.picked.length > 0 && (
+        <ul className="reply-thumbs" aria-label="Images to send">
+          {images.picked.map((p, i) => (
+            <li key={p.key}>
+              <img src={p.url} alt={`Image ${i + 1}`} />
+              <button type="button" className="reply-thumb-x" aria-label={`Remove image ${i + 1}`} onClick={() => images.remove(p.key)} disabled={disabled}>
+                <Icon name="x" size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {images.error && <p className="small reply-error" role="alert">{images.error}</p>}
+    </div>
+  );
+}
+
+export function AttachButton({ images, disabled }: { images: ReturnType<typeof useReplyImages>; disabled?: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        hidden
+        onChange={(e) => {
+          images.add(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <Button size="sm" kind="quiet" disabled={disabled || images.full} onClick={() => input.current?.click()} title="Attach images (or paste or drop them). Up to 4, 2 MB each.">
+        <Icon name="image" size={15} /> Attach
+      </Button>
+    </>
+  );
+}
+
+/** Images in a message, as thumbnails that open the full size. */
+export function Pictures({ files }: { files?: Attachment[] }) {
+  if (!files?.length) return null;
+  return (
+    <span className="cv-shots">
+      {files.map((a, i) => (
+        <a key={a.id} href={a.url} target="_blank" rel="noreferrer" aria-label={`Open image ${i + 1} full size`}>
+          <img src={a.url} alt={`Image ${i + 1}`} loading="lazy" />
+        </a>
+      ))}
+    </span>
+  );
+}

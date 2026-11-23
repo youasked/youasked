@@ -3,7 +3,7 @@
 // The URL holds the selection (/a/:app/r/:id), so Telegram and email links land on the right one.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, type Comment, type Linked, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
-import { RequestPicker, ShipDialog, StatusPopover } from "../components";
+import { AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useInterval, useLoad, useMedia, useToast } from "../ui";
@@ -231,6 +231,7 @@ function ThreadPane({
 }) {
   const d = useLoad(() => appApi<Thread>(app.id, `/requests/${id}`), [app.id, id]);
   const [reply, setReply] = useState("");
+  const images = useReplyImages(app.id);
   const [everyone, setEveryone] = useState(false);
   const [sending, setSending] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -281,11 +282,13 @@ function ThreadPane({
 
   const send = async () => {
     const body = reply.trim();
-    if (!body || sending) return;
+    if ((!body && !images.picked.length) || sending) return;
     setSending(true);
     try {
-      const out = await appApi<{ conversations: number }>(app.id, `/requests/${r.id}/comments`, { method: "POST", body: { body, everyone: Boolean(group && everyone) } });
+      const attachments = await images.uploadAll();
+      const out = await appApi<{ conversations: number }>(app.id, `/requests/${r.id}/comments`, { method: "POST", body: { body, everyone: Boolean(group && everyone), ...(attachments.length ? { attachments } : {}) } });
       setReply("");
+      images.clear();
       await d.reload();
       onRefreshList();
       toast(out.conversations > 1 ? `Sent to ${out.conversations} people, each in their own conversation.` : `Sent. Only ${first} sees it.`);
@@ -383,15 +386,15 @@ function ThreadPane({
           </Msg>
           {comments.map((c) =>
             c.is_team ? (
-              <Msg key={c.id} team who={app.name} at={c.created_at}>{c.body}</Msg>
+              <Msg key={c.id} team who={app.name} at={c.created_at}>{c.body}<Pictures files={c.attachments} /></Msg>
             ) : (
-              <Msg key={c.id} who={c.name ?? nameOf(person)} initials={initials(person)} at={c.created_at}>{c.body}</Msg>
+              <Msg key={c.id} who={c.name ?? nameOf(person)} initials={initials(person)} at={c.created_at}>{c.body}<Pictures files={c.attachments} /></Msg>
             ),
           )}
           {shippedLine}
         </ol>
 
-        <div className="cv-composer">
+        <div className={`cv-composer${images.over ? " reply-over" : ""}`} {...images.dropProps}>
           {group && (
             <div className="seg cv-to" role="group" aria-label="Who gets this reply">
               <button data-on={!everyone || undefined} onClick={() => setEveryone(false)}>Only {first}</button>
@@ -408,14 +411,19 @@ function ThreadPane({
             maxLength={2000}
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && send()}
+            {...images.pasteProps}
           />
+          <ReplyImageTray images={images} disabled={sending} />
           <div className="reply-foot">
             <span className="muted small">
               {person?.email ? `They see it in ${app.name} and get an email.` : `They see it next time they open ${app.name}.`} <kbd>⌘</kbd> <kbd>enter</kbd>
             </span>
-            <Button kind="primary" size="sm" busy={sending} disabled={!reply.trim()} onClick={send}>
-              <Icon name="send" size={15} /> Send
-            </Button>
+            <span className="reply-actions">
+              <AttachButton images={images} disabled={sending} />
+              <Button kind="primary" size="sm" busy={sending} disabled={!reply.trim() && !images.picked.length} onClick={send}>
+                <Icon name="send" size={15} /> Send
+              </Button>
+            </span>
           </div>
         </div>
       </section>

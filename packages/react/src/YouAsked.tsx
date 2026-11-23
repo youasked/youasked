@@ -628,7 +628,7 @@ function ShippedToast({
             </button>
           </div>
           <p className="ya-toast-title">{notice.title}</p>
-          <p className="ya-toast-note ya-toast-quote">{notice.reply}</p>
+          <p className="ya-toast-note ya-toast-quote">{notice.reply || (notice.replyAttachments?.length ? (notice.replyAttachments.length === 1 ? "Sent you an image." : `Sent you ${notice.replyAttachments.length} images.`) : "")}</p>
           <div className="ya-toast-actions">
             <button type="button" className="ya-btn ya-btn-sm" onClick={onOpen}>
               Reply

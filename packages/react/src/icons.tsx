@@ -60,6 +60,14 @@ export const IconFrame = () => (
     <circle cx="12" cy="12" r="2.2" fill="currentColor" strokeWidth={1} />
   </svg>
 );
+/** A picture: attach an image to a reply. */
+export const IconImage = () => (
+  <svg {...base}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="m4.5 17.5 4.5-4.5 3.5 3.5 2.5-2.5 4.5 4" />
+  </svg>
+);
 export const IconSpark = () => (
   <svg {...base}>
     <path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z" />

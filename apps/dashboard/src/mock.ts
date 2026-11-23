@@ -196,6 +196,9 @@ function search(q: string) {
     .map((r) => ({ id: r.id, ref: `YA-${r.number}`, number: r.number, title: r.title, status: r.status, votes: r.votes, comments: r.comments, score: 0.9 }));
 }
 
+/** Uploaded reply images, by id (data URLs, so they survive in the mock). */
+const uploaded: Record<string, string> = {};
+
 export async function mockFetch(method: string, path: string, body?: unknown): Promise<Response> {
   await wait(90 + Math.random() * 80);
   const s = state();
@@ -286,6 +289,15 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
   const mm = p.match(/^\/v1\/dash\/apps\/([^/]+)(\/.*)$/);
   if (!mm) return err(404, "not_found");
   const r = mm[2];
+  if (r === "/uploads" && method === "POST" && body instanceof Blob) {
+    const id = "upl_" + Math.random().toString(36).slice(2, 26).padEnd(24, "x");
+    uploaded[id] = await new Promise<string>((ok) => {
+      const fr = new FileReader();
+      fr.onload = () => ok(String(fr.result));
+      fr.readAsDataURL(body);
+    });
+    return json({ id, url: uploaded[id] }, 201);
+  }
 
   if (r === "/app" && method === "GET") {
     const { secretKey, secretShown, ...rest } = s.app;
@@ -335,8 +347,9 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
   if ((m = r.match(/^\/requests\/([^/]+)\/comments$/)) && method === "POST") {
     const x = find(m[1]);
     if (!x) return err(404, "not_found");
-    if (!String(b.body || "").trim()) return err(400, "body_required");
-    const c = { id: "c_" + Math.random().toString(36).slice(2, 7), body: String(b.body), is_team: 1, created_at: Date.now(), name: null, email: null };
+    const ids: string[] = Array.isArray(b.attachments) ? b.attachments : [];
+    if (!String(b.body || "").trim() && !ids.length) return err(400, "body_required");
+    const c = { id: "c_" + Math.random().toString(36).slice(2, 7), body: String(b.body ?? ""), is_team: 1, created_at: Date.now(), name: null, email: null, attachments: ids.map((id) => ({ id, url: uploaded[id] ?? "" })) };
     (s.comments[x.id] ??= []).push(c);
     x.comments += 1;
     return json({ comment: c });

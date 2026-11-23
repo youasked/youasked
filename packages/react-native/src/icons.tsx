@@ -162,3 +162,15 @@ export function IconSpark({ color, size = 18 }: P) {
     </View>
   );
 }
+
+/** A picture: attach an image to a reply. */
+export function IconImage({ color, size = 20 }: P) {
+  const w = Math.max(1.6, size * 0.09);
+  return (
+    <View style={box(size)}>
+      <View style={{ width: size * 0.85, height: size * 0.7, borderRadius: size * 0.18, borderWidth: w, borderColor: color }} />
+      <Bar w={size * 0.17} h={size * 0.17} color={color} x={-size * 0.15} y={-size * 0.1} />
+      <Bar w={size * 0.38} h={w} color={color} rotate="-35deg" x={size * 0.12} y={size * 0.12} />
+    </View>
+  );
+}

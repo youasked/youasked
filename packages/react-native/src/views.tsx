@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, FlatList, Image, RefreshControl, ScrollView, TextInput, View } from "react-native";
+import { Animated, Easing, FlatList, Image, Linking, RefreshControl, ScrollView, TextInput, View } from "react-native";
 import { YouAskedError, type FeatureRequest, type Notice, type RequestComment } from "./client";
 import { useInternal, type Route } from "./context";
-import { IconChevron, IconClose, IconFrame, IconPlus, IconSend, IconSpark } from "./icons";
+import { IconChevron, IconClose, IconFrame, IconImage, IconPlus, IconSend, IconSpark } from "./icons";
 import { haptic } from "./platform";
 import {
   AppAvatar,
@@ -26,6 +26,8 @@ import {
   useNative,
   whatsNewHeading,
 } from "./ui";
+
+const MAX_REPLY_IMAGES = 4;
 
 type NavProps = { route: Route; setRoute: (r: Route) => void; onClose?: () => void };
 
@@ -95,7 +97,8 @@ function ReplyBubble({ notice, appName, onOpen }: { notice: Notice; appName: str
       <T style={s.kicker}>
         {appName} replied about {notice.title}
       </T>
-      <T style={s.bubbleText}>{notice.reply}</T>
+      <Pictures files={notice.replyAttachments} who={`Image from ${appName}`} />
+      {notice.reply ? <T style={s.bubbleText}>{notice.reply}</T> : null}
       <Tap onPress={onOpen}>
         <T style={s.bubbleLink}>Reply</T>
       </Tap>
@@ -602,7 +605,7 @@ function Board({
 // ---------------------------------------------------------------- one request
 
 function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "board" | "mine"; setRoute: (r: Route) => void; onClose?: () => void }) {
-  const { client, config, markSeen, appName, appIcon, styles: s, theme } = useInternal();
+  const { client, config, markSeen, appName, appIcon, pickImage, styles: s, theme } = useInternal();
   const { data, error, setData } = useLoad(() => client.get(id), [client, id]);
 
   // Opening a request someone was told about counts as seeing it.
@@ -622,6 +625,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unseenHere, markSeen]);
   const [reply, setReply] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
   const [replyH, setReplyH] = useState(0);
   const [focused, setFocused] = useState(false);
   const [sending, setSending] = useState(false);
@@ -667,25 +671,41 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
   const request = data?.request;
   const comments = data?.comments ?? [];
 
+  const attach = async () => {
+    if (!pickImage || picked.length >= MAX_REPLY_IMAGES) return;
+    try {
+      const img = await pickImage();
+      if (img) {
+        setReplyError(null);
+        setPicked((all) => [...all, img.uri].slice(0, MAX_REPLY_IMAGES));
+      }
+    } catch {
+      setReplyError("Couldn't open your photos.");
+    }
+  };
+
   const send = async () => {
-    if (!reply.trim() || sending || !request) return;
+    if ((!reply.trim() && !picked.length) || sending || !request) return;
     setSending(true);
     setReplyError(null);
     try {
-      const c = await client.comment(request.id, reply.trim());
+      const ids = await Promise.all(picked.map(async (uri) => client.upload(await (await fetch(uri)).blob()).then((a) => a.id)));
+      const c = await client.comment(request.id, reply.trim(), ids);
       setData({ ...data, comments: [...comments, c], request: { ...request, comments: request.comments + 1 } });
       setReply("");
+      setPicked([]);
       setReplyH(0);
       haptic.light();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
     } catch (err) {
-      setReplyError(errorText(err instanceof YouAskedError ? err.code : "network"));
+      const code = err instanceof YouAskedError ? err.code : "network";
+      setReplyError(code === "too_large" ? "Images can be up to 2 MB each." : code === "bad_image" ? "Use a PNG, JPEG or WebP image." : errorText(code));
     } finally {
       setSending(false);
     }
   };
 
-  const canSend = reply.trim().length > 0 && !sending;
+  const canSend = (reply.trim().length > 0 || picked.length > 0) && !sending;
 
   return (
     <>
@@ -789,6 +809,18 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
       </ScrollView>
       {request && (
         <View style={s.composerBar}>
+          {picked.length > 0 && (
+            <View style={s.replyShots}>
+              {picked.map((uri) => (
+                <View key={uri}>
+                  <Image source={{ uri }} style={s.replyShot} accessibilityLabel="Image to send" />
+                  <Tap accessibilityLabel="Remove image" onPress={() => setPicked((all) => all.filter((x) => x !== uri))} style={s.replyShotX}>
+                    <IconClose color={theme.bg} size={11} />
+                  </Tap>
+                </View>
+              ))}
+            </View>
+          )}
           <View style={[s.composer, focused && s.composerFocus]}>
             <TextInput
               style={[s.input, { height: Math.max(40, Math.min(replyH, 132)) }, theme.fontFamily ? { fontFamily: theme.fontFamily } : null]}
@@ -806,6 +838,11 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
               selectionColor={theme.accent}
               keyboardAppearance={theme.mode}
             />
+            {pickImage && (
+              <Tap onPress={attach} disabled={sending || picked.length >= MAX_REPLY_IMAGES} accessibilityLabel="Attach an image" style={[s.attach, picked.length >= MAX_REPLY_IMAGES && s.sendOff]}>
+                <IconImage color={theme.muted} />
+              </Tap>
+            )}
             <Tap onPress={send} disabled={!canSend} accessibilityLabel="Send comment" style={[s.send, !canSend && s.sendOff]}>
               <IconSend color={theme.accentFg} />
             </Tap>
@@ -817,6 +854,21 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
   );
 }
 
+/** Images in a message: thumbnails that open the full picture in the browser. */
+function Pictures({ files, who }: { files?: { id: string; url: string }[]; who: string }) {
+  const { styles: s } = useInternal();
+  if (!files?.length) return null;
+  return (
+    <View style={s.pics}>
+      {files.map((f, i) => (
+        <Tap key={f.id} onPress={() => void Linking.openURL(f.url)} accessibilityLabel={`${who} ${i + 1}, open full size`} scale={false}>
+          <Image source={{ uri: f.url }} style={[s.pic, files.length === 1 && s.picOne]} resizeMode="cover" />
+        </Tap>
+      ))}
+    </View>
+  );
+}
+
 /** Team replies read as messages from the app, yours sit on the right like any chat. */
 function Message({ comment, appName, appIcon }: { comment: RequestComment; appName: string; appIcon: ReturnType<typeof useInternal>["appIcon"] }) {
   const { styles: s } = useInternal();
@@ -825,7 +877,8 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
     return (
       <View style={s.msgOut}>
         <View style={[s.bubble, s.bubbleOut, { maxWidth: "100%" }]}>
-          <T style={[s.bubbleText, s.bubbleTextOut]}>{comment.body}</T>
+          <Pictures files={comment.attachments} who="Your image" />
+          {comment.body ? <T style={[s.bubbleText, s.bubbleTextOut]}>{comment.body}</T> : null}
         </View>
         <View style={s.msgMeta}>{when}</View>
       </View>
@@ -845,7 +898,8 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
           {when}
         </View>
         <View style={[s.bubble, s.bubbleIn, { maxWidth: "100%" }]}>
-          <T style={s.bubbleText}>{comment.body}</T>
+          <Pictures files={comment.attachments} who={comment.team ? `Image from ${appName}` : "Image"} />
+          {comment.body ? <T style={s.bubbleText}>{comment.body}</T> : null}
         </View>
       </View>
     </View>

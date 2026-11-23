@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppState, Animated, Easing, Pressable, View, useColorScheme, type ImageSourcePropType, type StyleProp, type ViewStyle } from "react-native";
 import { createClient, type Config, type Notice, type WhatsNew, type YouAskedUser } from "./client";
-import { YouAskedContext, registerOpener, useInternal as useInternalStyles, toRoute, type CaptureScreenshot, type InternalContext, type OpenOptions, type Route } from "./context";
+import { YouAskedContext, registerOpener, useInternal as useInternalStyles, toRoute, type CaptureScreenshot, type PickImage, type InternalContext, type OpenOptions, type Route } from "./context";
 import { createDemoClient } from "./demo";
 import { IconCheck, IconClose, IconIdea } from "./icons";
 import { getAnonId, getItem, haptic, setItem } from "./platform";
@@ -55,6 +55,11 @@ export type YouAskedProps = {
    * react-native-view-shot, or null if they cancel. Leave out and the button doesn't show.
    */
   captureScreenshot?: CaptureScreenshot;
+  /**
+   * Lets people attach pictures to their replies in a conversation (up to 4). Return `{ uri }` of the image they
+   * chose, for example with expo-image-picker, or null if they cancel. Leave out and there is no attach button.
+   */
+  pickImage?: PickImage;
   children?: ReactNode;
 };
 
@@ -82,6 +87,7 @@ export function YouAsked({
   offset = 20,
   apiUrl = DEFAULT_API_URL,
   captureScreenshot,
+  pickImage,
   children,
 }: YouAskedProps) {
   const scheme = useColorScheme();
@@ -224,8 +230,9 @@ export function YouAsked({
       title,
       greeting,
       captureScreenshot,
+      pickImage,
     }),
-    [open, close, route, unseen.length, client, config, markSeen, whatsNew, dismissWhatsNew, theme, styles, disabled, appName, icon, title, greeting, captureScreenshot],
+    [open, close, route, unseen.length, client, config, markSeen, whatsNew, dismissWhatsNew, theme, styles, disabled, appName, icon, title, greeting, captureScreenshot, pickImage],
   );
 
   // "It's live" notices for things already in the what's-new list wait for that list instead of saying it twice.
@@ -376,7 +383,7 @@ function ShippedToast({
       <T style={s.toastTitle}>{notice.title}</T>
       {reply ? (
         <T style={[s.toastNote, { color: theme.fg }]} numberOfLines={3}>
-          {notice.reply}
+          {notice.reply || (notice.replyAttachments?.length ? (notice.replyAttachments.length === 1 ? "Sent you an image." : `Sent you ${notice.replyAttachments.length} images.`) : "")}
         </T>
       ) : (
         <>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { appApi, type ApiError, type Comment, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
 import { AgentLogo } from "../agent-logos";
-import { RequestPicker, ShipDialog, StatusPopover } from "../components";
+import { AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, CopyButton, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useLoad, useToast } from "../ui";
@@ -13,6 +13,7 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
   const { bump } = useSession();
   const d = useLoad(() => appApi<Detail>(app.id, `/requests/${requestId}`), [app.id, requestId]);
   const [reply, setReply] = useState("");
+  const images = useReplyImages(app.id);
   const [sending, setSending] = useState(false);
   const [dialog, setDialog] = useState<"ship" | "merge" | "build" | "delete" | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -21,6 +22,7 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
 
   useEffect(() => {
     setReply("");
+    images.clear();
     setDialog(null);
   }, [requestId]);
 
@@ -81,11 +83,13 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
 
   const send = async () => {
     const body = reply.trim();
-    if (!body || sending) return;
+    if ((!body && !images.picked.length) || sending) return;
     setSending(true);
     try {
-      await appApi(app.id, `/requests/${r.id}/comments`, { method: "POST", body: { body } });
+      const attachments = await images.uploadAll();
+      await appApi(app.id, `/requests/${r.id}/comments`, { method: "POST", body: { body, ...(attachments.length ? { attachments } : {}) } });
       setReply("");
+      images.clear();
       await d.reload();
       toast("Reply sent. The person is told.");
     } catch (e) {
@@ -179,12 +183,13 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
                       {c.is_team ? <span className="tag">your reply</span> : null}
                       <time>{timeAgo(c.created_at)}</time>
                     </p>
-                    <p className="text">{c.body}</p>
+                    {c.body && <p className="text">{c.body}</p>}
+                    <Pictures files={c.attachments} />
                   </div>
                 </li>
               ))}
             </ol>
-            <div className="reply">
+            <div className={`reply${images.over ? " reply-over" : ""}`} {...images.dropProps}>
               <label htmlFor="reply" className="sr-only">Reply</label>
               <textarea
                 id="reply"
@@ -195,12 +200,17 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
                 maxLength={2000}
                 onChange={(e) => setReply(e.target.value)}
                 onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && send()}
+                {...images.pasteProps}
               />
+              <ReplyImageTray images={images} disabled={sending} />
               <div className="reply-foot">
                 <span className="muted small">Posted as {app.name}. The person is told. <kbd>⌘</kbd> <kbd>enter</kbd> to send.</span>
-                <Button kind="primary" size="sm" busy={sending} disabled={!reply.trim()} onClick={send}>
-                  <Icon name="send" size={15} /> Reply
-                </Button>
+                <span className="reply-actions">
+                  <AttachButton images={images} disabled={sending} />
+                  <Button kind="primary" size="sm" busy={sending} disabled={!reply.trim() && !images.picked.length} onClick={send}>
+                    <Icon name="send" size={15} /> Reply
+                  </Button>
+                </span>
               </div>
             </div>
           </section>

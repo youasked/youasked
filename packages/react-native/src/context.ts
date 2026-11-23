@@ -55,6 +55,13 @@ export function toRoute(o: OpenOptions = {}): Route {
  */
 export type CaptureScreenshot = () => Promise<{ uri: string } | null>;
 
+/**
+ * A way for the host app to let people attach a picture to a reply. Return `{ uri }` of the image they
+ * chose (for example with expo-image-picker or expo-document-picker), or null if they cancelled. Leave
+ * it out and the reply box has no attach button. Images are sent as png, jpeg or webp, up to 2 MB.
+ */
+export type PickImage = () => Promise<{ uri: string } | null>;
+
 export type InternalContext = {
   open: (options?: OpenOptions) => void;
   close: () => void;
@@ -75,6 +82,7 @@ export type InternalContext = {
   title: string;
   greeting?: string;
   captureScreenshot?: CaptureScreenshot;
+  pickImage?: PickImage;
 };
 
 export const YouAskedContext = createContext<InternalContext | null>(null);

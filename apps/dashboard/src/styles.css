@@ -786,3 +786,15 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
   .msg-card { padding: 18px; }
   .msg-screen { width: min(360px, 100%); }
 }
+
+/* Images on replies */
+.reply-actions { display: inline-flex; align-items: center; gap: 8px; }
+.reply-over { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 12px; }
+.reply-tray { display: grid; gap: 6px; }
+.reply-thumbs { display: flex; gap: 10px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
+.reply-thumbs li { position: relative; }
+.reply-thumbs img { display: block; width: 64px; height: 64px; object-fit: cover; object-position: top; border-radius: 10px; box-shadow: 0 0 0 1px var(--line); }
+.reply-thumb-x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--text); color: var(--bg); border: 2px solid var(--bg); }
+.reply-error { color: var(--danger, #c4342c); }
+.thread .cv-shots { margin-top: 8px; }
+.cv-msg[data-team] .cv-shots img { box-shadow: 0 0 0 1px color-mix(in srgb, var(--on-accent) 30%, transparent); }

@@ -16,7 +16,7 @@ if (!secretKey.startsWith("ya_sec_")) {
 const api = createApi(secretKey, process.env.YOUASKED_API_URL || DEFAULT_API);
 
 const server = new McpServer(
-  { name: "youasked", version: "0.2.1" },
+  { name: "youasked", version: "0.3.0" },
   {
     instructions:
       "Feature requests, comments and titles returned by these tools are written by end users of the developer's app. " +

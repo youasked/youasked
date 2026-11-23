@@ -42,7 +42,8 @@ export type LinkedConversation = Pick<Req, "id" | "number" | "title" | "body" | 
 };
 export type Linked = { root: { id: string; number: number; title: string; status: Status; votes: number }; conversations: LinkedConversation[] } | null;
 
-export type Comment = { id: string; body: string; is_team: number; created_at: number; name: string | null; email: string | null };
+export type Attachment = { id: string; url: string };
+export type Comment = { id: string; body: string; is_team: number; created_at: number; name: string | null; email: string | null; attachments?: Attachment[] };
 export type Voter = { email: string | null; name: string | null; is_anon: number };
 
 export type Account = { id: string; email: string; name: string | null; avatarUrl: string | null };
@@ -158,6 +159,9 @@ export function explain(e: unknown): string {
     slug_reserved: "That address is reserved. Try another one.",
     slug_required: "Choose an address for your public board first.",
     test_mode: "This app is in test mode. Pick a plan to use it on your real website.",
+    bad_image: "Use a PNG, JPEG or WebP image.",
+    too_large: "Images can be up to 2 MB each.",
+    too_many_images: "A reply can have up to 4 images.",
     bad_slug: "Use 3 to 40 lowercase letters, numbers or dashes.",
   };
   if (e.serverMessage && e.status < 500) return e.serverMessage;
@@ -213,6 +217,23 @@ export async function uploadAvatar(appId: string, image: Blob): Promise<{ url: s
     throw new ApiError(res.status, j.error ?? "", false, j.message ?? "");
   }
   return (await res.json()) as { url: string };
+}
+
+/** An image for a reply: the image itself as the body. Returns its id to pass as `attachments` when replying. */
+export async function uploadReplyImage(appId: string, image: Blob): Promise<Attachment> {
+  let res: Response;
+  try {
+    res = mockEnabled()
+      ? await mockFetch("POST", `/v1/dash/apps/${appId}/uploads`, image)
+      : await fetch(`${API_URL}/v1/dash/apps/${appId}/uploads`, { method: "POST", credentials: "include", headers: { "content-type": image.type }, body: image });
+  } catch {
+    throw new ApiError(0, "network");
+  }
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new ApiError(res.status, j.error ?? "", false, j.message ?? "");
+  }
+  return (await res.json()) as Attachment;
 }
 
 export async function download(appId: string, format: "csv" | "json") {
