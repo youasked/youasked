@@ -103,6 +103,25 @@ function str(v: unknown, field: string, min: number, max: number): string {
   return v;
 }
 
+const MAX_IMAGE = 2 * 1024 * 1024;
+
+/** An image for a reply: an https URL (fetched here) or a base64 data: URI. The admin API checks type, size and first bytes again. */
+async function imageBytes(spec: unknown): Promise<{ bytes: ArrayBuffer; type: string }> {
+  if (typeof spec !== "string") throw new ToolError("Each image must be an https URL or a data: URI.");
+  const data = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/.exec(spec.trim());
+  if (data) {
+    const bin = atob(data[2].replace(/\s/g, ""));
+    if (bin.length > MAX_IMAGE) throw new ToolError("Images can be up to 2 MB each.");
+    return { bytes: Uint8Array.from(bin, (ch) => ch.charCodeAt(0)).buffer, type: data[1] };
+  }
+  if (!/^https:\/\//i.test(spec)) throw new ToolError("Each image must be an https URL or a data:image/png|jpeg|webp;base64 URI.");
+  const res = await fetch(spec, { redirect: "follow" }).catch(() => null);
+  if (!res?.ok) throw new ToolError(`Couldn't download ${spec.slice(0, 80)}.`);
+  const bytes = await res.arrayBuffer();
+  if (bytes.byteLength > MAX_IMAGE) throw new ToolError("Images can be up to 2 MB each.");
+  return { bytes, type: (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase() };
+}
+
 /** Calls the existing admin router in this Worker as the given app. */
 function makeApi(c: Context<{ Bindings: Env }>, app: AppRow, dispatch: Dispatch) {
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -127,7 +146,7 @@ function makeApi(c: Context<{ Bindings: Env }>, app: AppRow, dispatch: Dispatch)
     lookup: (r: string) =>
       call<{
         request: Summary & { body: string; mergedInto: string | null; shippedAt: number | null };
-        comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number }[];
+        comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number; attachments?: string[] }[];
         voters: number;
         needsReply: boolean;
         linkedTo: { ref: string; title: string; status: string } | null;
@@ -136,8 +155,23 @@ function makeApi(c: Context<{ Bindings: Env }>, app: AppRow, dispatch: Dispatch)
     search: (q: string) => call<{ requests: (Summary & { score: number })[] }>("GET", `/search?q=${encodeURIComponent(q)}`),
     digest: (days: number) =>
       call<{ days: number; top: Summary[]; new: Summary[]; shipped: Summary[]; votes: number; comments: number }>("GET", `/digest?days=${days}`),
-    reply: (id: string, body: string, everyone = false) =>
-      call<{ id: string; notified: number; conversations: number }>("POST", `/requests/${id}/comments`, { body, ...(everyone ? { everyone: true } : {}) }),
+    reply: (id: string, body: string, everyone = false, attachments: string[] = []) =>
+      call<{ id: string; notified: number; conversations: number }>("POST", `/requests/${id}/comments`, {
+        body,
+        ...(everyone ? { everyone: true } : {}),
+        ...(attachments.length ? { attachments } : {}),
+      }),
+    /** Stores an image on the app, for the next reply. */
+    upload: async (img: { bytes: ArrayBuffer; type: string }) => {
+      const res = await dispatch(
+        new Request(`${apiBase(c)}/v1/admin/uploads`, { method: "POST", headers: { authorization: `Bearer ${app.secret_key}`, "content-type": img.type }, body: img.bytes }),
+        c.env,
+        c.executionCtx,
+      );
+      const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (!res.ok || !json.id) throw new ToolError(json.error === "bad_image" ? "That file isn't a png, jpeg or webp image." : json.error === "too_large" ? "Images can be up to 2 MB each." : `The image upload failed (${json.error ?? res.status}).`);
+      return json.id;
+    },
     setStatus: (id: string, status: string, shipNote?: string) =>
       call<{ notified: boolean; told: number; linked?: number; root?: { number: number } }>("PATCH", `/requests/${id}`, { status, ...(shipNote === undefined ? {} : { shipNote }) }),
     build: (id: string) => call<{ prompt: string; issueUrl?: string }>("POST", `/requests/${id}/build`),
@@ -247,7 +281,7 @@ const TOOLS: Tool[] = [
         r.body || "(no description, just the title)",
         "",
         comments.length ? `Comments (${comments.length}):` : "No comments yet.",
-        ...comments.map((c) => `- ${c.team ? "[team]" : (c.author ?? "someone")} (${day(c.createdAt)}): ${c.body.replace(/\n+/g, " ")}`),
+        ...comments.map((c) => `- ${c.team ? "[team]" : (c.author ?? "someone")} (${day(c.createdAt)}): ${c.body.replace(/\n+/g, " ")}${c.attachments?.length ? ` [${plural(c.attachments.length, "image")}: ${c.attachments.join(" ")}]` : ""}`),
       ];
       return out.filter((l, i) => l !== "" || out[i - 1] !== "").join("\n");
     },
@@ -305,6 +339,12 @@ const TOOLS: Tool[] = [
       request: requestRef,
       message: { type: "string", minLength: 1, maxLength: 2000, description: "What to say to the people who asked." },
       all_linked: { type: "boolean", default: false, description: "Private mode: also send it to every conversation linked to the same request." },
+      images: {
+        type: "array",
+        maxItems: 4,
+        items: { type: "string" },
+        description: "Up to 4 images to show with the reply (png, jpeg or webp, 2 MB each): each an https URL or a data:image/png;base64,… URI. For example, example screenshots when you ask someone to send screenshots.",
+      },
     },
     required: ["request", "message"],
     // Adds a message; nothing is overwritten. It reaches real people and can't be unsent.
@@ -313,8 +353,12 @@ const TOOLS: Tool[] = [
       const message = str(a.message, "message", 1, 2000);
       const api = await x.api(a.app);
       const r = await resolve(api, a.request);
-      const { notified, conversations } = await api.reply(r.id, message, a.all_linked === true);
-      return `Replied on ${r.ref}${conversations > 1 ? ` and ${plural(conversations - 1, "linked conversation")}` : ""}. ${plural(notified, "person", "people")} will see it in the app.`;
+      const specs = a.images === undefined ? [] : Array.isArray(a.images) ? a.images : null;
+      if (!specs || specs.length > 4) throw new ToolError("images must be a list of up to 4 image URLs or data: URIs.");
+      const ids: string[] = [];
+      for (const spec of specs) ids.push(await api.upload(await imageBytes(spec)));
+      const { notified, conversations } = await api.reply(r.id, message, a.all_linked === true, ids);
+      return `Replied on ${r.ref}${ids.length ? ` with ${plural(ids.length, "image")}` : ""}${conversations > 1 ? ` and ${plural(conversations - 1, "linked conversation")}` : ""}. ${plural(notified, "person", "people")} will see it in the app.`;
     },
   },
   {

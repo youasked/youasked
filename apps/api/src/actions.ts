@@ -155,7 +155,7 @@ export async function addTeamComment(
   r: RequestRow,
   body: string,
   mail?: Mail,
-  opts: { everyone?: boolean } = {},
+  opts: { everyone?: boolean; images?: string[]; bucket?: R2Bucket } = {},
 ): Promise<{ id: string; notified: number; conversations: number }> {
   const targets = [r];
   if (opts.everyone) {
@@ -165,15 +165,34 @@ export async function addTeamComment(
   }
   let first = "";
   let notified = 0;
-  for (const target of targets) {
-    const out = await postTeamComment(db, target, body, mail);
+  for (const [i, target] of targets.entries()) {
+    // The first conversation takes the uploaded files; every other one gets its own copy, so deleting
+    // one conversation never takes an image away from another.
+    const images = i === 0 ? (opts.images ?? []) : await copyImages(db, opts.bucket, opts.images ?? [], target);
+    const out = await postTeamComment(db, target, body, mail, images);
     first ||= out.id;
     notified += out.notified;
   }
   return { id: first, notified, conversations: targets.length };
 }
 
-async function postTeamComment(db: D1Database, r: RequestRow, body: string, mail?: Mail): Promise<{ id: string; notified: number }> {
+/** New upload rows (and R2 objects) for the same images, filed under another conversation. */
+async function copyImages(db: D1Database, bucket: R2Bucket | undefined, ids: string[], r: RequestRow): Promise<string[]> {
+  if (!bucket || !ids.length) return [];
+  const out: string[] = [];
+  for (const id of ids) {
+    const object = await bucket.get(id);
+    if (!object) continue;
+    const copy = newId("upl", 24);
+    const type = object.httpMetadata?.contentType ?? "image/png";
+    await bucket.put(copy, await object.arrayBuffer(), { httpMetadata: { contentType: type } });
+    await db.prepare("INSERT INTO uploads (id, app_id, user_id, content_type, size, created_at) VALUES (?, ?, 'team', ?, ?, ?)").bind(copy, r.app_id, type, object.size, Date.now()).run();
+    out.push(copy);
+  }
+  return out;
+}
+
+async function postTeamComment(db: D1Database, r: RequestRow, body: string, mail?: Mail, images: string[] = []): Promise<{ id: string; notified: number }> {
   const id = newId("cmt");
   const t = Date.now();
   const results = await db.batch([
@@ -187,8 +206,9 @@ async function postTeamComment(db: D1Database, r: RequestRow, body: string, mail
                UNION SELECT user_id FROM comments WHERE request_id = ?1 AND is_team = 0 AND user_id IS NOT NULL) who`,
       )
       .bind(r.id, id, t),
+    ...images.map((u) => db.prepare("UPDATE uploads SET comment_id = ?, request_id = ? WHERE id = ?").bind(id, r.id, u)),
   ]);
-  if (mail) mail.waitUntil(emailReply(mail.env, r, body, id));
+  if (mail) mail.waitUntil(emailReply(mail.env, r, body, id, images));
   return { id, notified: results[2]?.meta.changes ?? 0 };
 }
 

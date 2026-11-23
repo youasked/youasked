@@ -70,6 +70,17 @@ export function accountEmail(o: { title: string; preheader: string; kicker: stri
   return shell({ title: o.title, preheader: o.preheader, body });
 }
 
+/** Image thumbnails that open the full picture. Email clients block a lot, so each one is a plain linked <img> with alt text. */
+function images(urls: string[]): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px">${urls
+    .slice(0, 4)
+    .map(
+      (u, i) =>
+        `<tr><td style="padding:0 0 10px"><a href="${esc(u)}"><img src="${esc(u)}" alt="Image ${i + 1} from the team (tap to open)" width="504" style="display:block;width:100%;max-width:504px;height:auto;border-radius:12px;border:1px solid ${LINE}"></a></td></tr>`,
+    )
+    .join("")}</table>`;
+}
+
 /** "It shipped" and "the team replied": to people who asked in somebody else's app. */
 export function requestEmail(o: {
   app: string;
@@ -82,6 +93,8 @@ export function requestEmail(o: {
   intro: string;
   quote: { caption: string; text: string; big?: boolean };
   note?: { caption: string; text: string } | null;
+  /** Public image URLs shown under the note as tappable thumbnails (a reply with screenshots). */
+  images?: string[];
   closing: string;
   cta?: { label: string; href: string } | null;
   unsubscribe: string;
@@ -89,7 +102,7 @@ export function requestEmail(o: {
   const body =
     appMasthead(o.app, o.tag) +
     card(
-      `${kicker(o.kicker, o.live)}${h1(o.title)}${o.greeting ? para(o.greeting, INK) : ""}${para(o.intro)}${quote(o.quote.caption, o.quote.text, o.quote.big)}${o.note ? quote(o.note.caption, o.note.text) : ""}${para(o.closing)}${o.cta ? button(o.cta.label, o.cta.href) : ""}`,
+      `${kicker(o.kicker, o.live)}${h1(o.title)}${o.greeting ? para(o.greeting, INK) : ""}${para(o.intro)}${quote(o.quote.caption, o.quote.text, o.quote.big)}${o.note && o.note.text ? quote(o.note.caption, o.note.text) : ""}${o.images?.length ? images(o.images) : ""}${para(o.closing)}${o.cta ? button(o.cta.label, o.cta.href) : ""}`,
     ) +
     footer([`You’re getting this because you shared an idea in ${o.app}.`], [{ label: "Unsubscribe", href: o.unsubscribe }], true);
   return shell({ title: o.title, preheader: o.preheader, body });

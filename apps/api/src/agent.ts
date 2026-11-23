@@ -53,6 +53,12 @@ agent.get("/lookup", async (c) => {
   )
     .bind(r.id)
     .all<{ id: string; body: string; is_team: number; created_at: number; name: string | null }>();
+  const origin = new URL(c.req.url).origin;
+  const { results: files } = await c.env.DB.prepare(
+    `SELECT id, comment_id FROM uploads WHERE comment_id IN (SELECT id FROM comments WHERE request_id = ?) ORDER BY created_at, id`,
+  )
+    .bind(r.id)
+    .all<{ id: string; comment_id: string }>();
   const voters = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM votes WHERE request_id = ?").bind(r.id).first<{ n: number }>();
   const conv = await c.env.DB.prepare(
     `SELECT r.*, ${LAST_MESSAGE_SQL} FROM requests r WHERE r.id = ?`,
@@ -69,6 +75,7 @@ agent.get("/lookup", async (c) => {
       team: Boolean(cm.is_team),
       author: cm.is_team ? "team" : cm.name,
       createdAt: cm.created_at,
+      attachments: files.filter((f) => f.comment_id === cm.id).map((f) => `${origin}/v1/uploads/${f.id}`),
     })),
     voters: voters?.n ?? 0,
     needsReply: conv ? needsReply(conv) : false,

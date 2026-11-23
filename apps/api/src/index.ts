@@ -177,6 +177,8 @@ const visibleSql = (a: AppRow, me: string) => (a.private_mode ? `r.author_id = $
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_UPLOAD = 2 * 1024 * 1024;
 const MAX_ATTACHMENTS = 3;
+/** Team replies may carry a few more than a request does: "send me screenshots like these". */
+const MAX_REPLY_IMAGES = 4;
 
 /** Checks the first bytes, so a file can't claim to be an image and be something else. */
 function sniffImage(b: Uint8Array): string | null {
@@ -206,10 +208,22 @@ async function attachmentsFor(db: D1Database, requestIds: string[], origin: stri
   const out = new Map<string, { id: string; url: string }[]>();
   if (!requestIds.length) return out;
   const { results } = await db
-    .prepare(`SELECT id, request_id FROM uploads WHERE request_id IN (${requestIds.map(() => "?").join(",")}) ORDER BY created_at`)
+    .prepare(`SELECT id, request_id FROM uploads WHERE comment_id IS NULL AND request_id IN (${requestIds.map(() => "?").join(",")}) ORDER BY created_at`)
     .bind(...requestIds)
     .all<{ id: string; request_id: string }>();
   for (const u of results) out.set(u.request_id, [...(out.get(u.request_id) ?? []), { id: u.id, url: uploadUrl(origin, u.id) }]);
+  return out;
+}
+
+/** Images on replies, by comment id. Same shape as a request's attachments. */
+async function commentFilesFor(db: D1Database, commentIds: string[], origin: string): Promise<Map<string, { id: string; url: string }[]>> {
+  const out = new Map<string, { id: string; url: string }[]>();
+  if (!commentIds.length) return out;
+  const { results } = await db
+    .prepare(`SELECT id, comment_id FROM uploads WHERE comment_id IN (${commentIds.map(() => "?").join(",")}) ORDER BY created_at, id`)
+    .bind(...commentIds)
+    .all<{ id: string; comment_id: string }>();
+  for (const u of results) out.set(u.comment_id, [...(out.get(u.comment_id) ?? []), { id: u.id, url: uploadUrl(origin, u.id) }]);
   return out;
 }
 
@@ -517,7 +531,8 @@ admin.get("/requests/:id", async (c) => {
      LEFT JOIN users u ON u.id = c.user_id WHERE c.request_id = ? ORDER BY c.created_at`,
   )
     .bind(r.id)
-    .all();
+    .all<{ id: string; body: string; is_team: number; created_at: number; name: string | null; email: string | null }>();
+  const replyFiles = await commentFilesFor(c.env.DB, comments.map((cm) => cm.id), new URL(c.req.url).origin);
   const { results: voters } = await c.env.DB.prepare(
     `SELECT u.email, u.name, u.is_anon FROM votes v JOIN users u ON u.id = v.user_id
      WHERE v.request_id = ? ORDER BY v.created_at LIMIT 200`,
@@ -542,7 +557,7 @@ admin.get("/requests/:id", async (c) => {
   return c.json({
     request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r), ...conversationFields(conv) },
     attachments: files.get(r.id) ?? [],
-    comments,
+    comments: comments.map((cm) => ({ ...cm, attachments: replyFiles.get(cm.id) ?? [] })),
     voters,
     earlyAccess: early,
     author: author ? { id: author.id, email: author.email, name: author.name, anonymous: Boolean(author.is_anon), conversations: author.conversations } : null,
@@ -613,12 +628,71 @@ admin.patch("/requests/:id", async (c) => {
   return c.json({ request: { ...publicRequest(after, null), ...shareFields(c.env, c.get("app"), after) }, notified: notified > 0, told: notified });
 });
 
+/**
+ * Stores one image for a team reply and returns its upload id. Same checks as the widget's uploads
+ * (png, jpeg or webp, up to 2 MB, first bytes must match). Unattached files are swept after a day.
+ */
+async function storeTeamImage(c: Ctx, bytes: ArrayBuffer, declared: string): Promise<{ id: string; url: string }> {
+  const a = c.get("app");
+  if (!IMAGE_TYPES.includes(declared)) fail(400, "bad_image");
+  if (bytes.byteLength > MAX_UPLOAD) fail(400, "too_large");
+  if (sniffImage(new Uint8Array(bytes)) !== declared) fail(400, "bad_image");
+  if (await overLimit(c.env.DB, `team-upload:${a.id}`, 120)) fail(429, "slow_down");
+  const id = newId("upl", 24);
+  await c.env.UPLOADS.put(id, bytes, { httpMetadata: { contentType: declared } });
+  await c.env.DB.prepare("INSERT INTO uploads (id, app_id, user_id, content_type, size, created_at) VALUES (?, ?, 'team', ?, ?, ?)")
+    .bind(id, a.id, declared, bytes.byteLength, now())
+    .run();
+  return { id, url: uploadUrl(new URL(c.req.url).origin, id) };
+}
+
+/** Raw image body, like the widget's /uploads. Returns an id to pass as `attachments` when replying. */
+admin.post("/uploads", async (c) => {
+  if (Number(c.req.header("content-length") ?? 0) > MAX_UPLOAD) fail(400, "too_large");
+  const declared = (c.req.header("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  return c.json(await storeTeamImage(c, await c.req.arrayBuffer(), declared), 201);
+});
+
+/**
+ * A reply as the team. JSON `{ body, everyone?, attachments?: [upload ids] }` (images uploaded first with
+ * POST /uploads), or multipart/form-data with `body`, `everyone` and up to 4 `images` files.
+ * The text may be empty when there are images.
+ */
 admin.post("/requests/:id/comments", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
-  const input = await c.req.json<{ body?: string; everyone?: boolean }>();
-  const body = cleanText(input.body, 2000);
-  if (!body) fail(400, "body_required");
-  return c.json(await addTeamComment(c.env.DB, r, body, mailOf(c), { everyone: input.everyone === true }));
+  let text: unknown;
+  let everyone = false;
+  let ids: string[] = [];
+  if ((c.req.header("content-type") ?? "").toLowerCase().startsWith("multipart/form-data")) {
+    const form = await c.req.formData().catch(() => null);
+    if (!form) fail(400, "bad_request");
+    text = form.get("body");
+    everyone = form.get("everyone") === "true";
+    const files = form.getAll("images").filter((f): f is File => typeof f !== "string");
+    if (files.length > MAX_REPLY_IMAGES) fail(400, "too_many_images");
+    for (const f of files) ids.push((await storeTeamImage(c, await f.arrayBuffer(), f.type.toLowerCase())).id);
+  } else {
+    const input = await c.req.json<{ body?: string; everyone?: boolean; attachments?: unknown }>();
+    text = input.body;
+    everyone = input.everyone === true;
+    ids = (Array.isArray(input.attachments) ? input.attachments : []).filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x));
+    ids = [...new Set(ids)];
+    if (ids.length > MAX_REPLY_IMAGES) fail(400, "too_many_images");
+  }
+  const body = cleanText(text, 2000);
+  if (!body && !ids.length) fail(400, "body_required");
+  // Only unused uploads of this app that the team made.
+  if (ids.length) {
+    const { results } = await c.env.DB.prepare(
+      `SELECT id FROM uploads WHERE app_id = ? AND user_id = 'team' AND request_id IS NULL AND comment_id IS NULL AND id IN (${ids.map(() => "?").join(",")})`,
+    )
+      .bind(c.get("app").id, ...ids)
+      .all<{ id: string }>();
+    if (results.length !== ids.length) fail(400, "bad_attachment");
+  }
+  const out = await addTeamComment(c.env.DB, r, body, mailOf(c), { everyone, images: ids, bucket: c.env.UPLOADS });
+  const files = await commentFilesFor(c.env.DB, [out.id], new URL(c.req.url).origin);
+  return c.json({ ...out, attachments: files.get(out.id) ?? [] });
 });
 
 /** Files a private conversation under another request; it follows that request's status from now on. */
@@ -868,15 +942,17 @@ pub.get("/config", async (c) => {
   let unseen: unknown[] = [];
   if (me) {
     const { results } = await c.env.DB.prepare(
-      `SELECT n.id, n.kind, r.id AS request_id, r.title, r.ship_note, cm.body AS reply
+      `SELECT n.id, n.kind, n.comment_id, r.id AS request_id, r.title, r.ship_note, cm.body AS reply
        FROM notifications n
        JOIN requests r ON r.id = n.request_id
        LEFT JOIN comments cm ON cm.id = n.comment_id
        WHERE n.user_id = ? AND n.seen_at IS NULL ORDER BY n.created_at DESC LIMIT 8`,
     )
       .bind(me.id)
-      .all<{ id: string; kind: string; request_id: string; title: string; ship_note: string | null; reply: string | null }>();
+      .all<{ id: string; kind: string; comment_id: string | null; request_id: string; title: string; ship_note: string | null; reply: string | null }>();
+    const replyFiles = await commentFilesFor(c.env.DB, results.map((n) => n.comment_id).filter((x): x is string => Boolean(x)), new URL(c.req.url).origin);
     unseen = results.map((n) => ({
+      replyAttachments: n.comment_id ? (replyFiles.get(n.comment_id) ?? []) : [],
       id: n.id,
       kind: n.kind,
       requestId: n.request_id,
@@ -1011,7 +1087,9 @@ pub.get("/requests/:id", async (c) => {
   )
     .bind(r.id)
     .all<{ id: string; body: string; is_team: number; created_at: number; user_id: string | null; name: string | null }>();
-  const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
+  const origin = new URL(c.req.url).origin;
+  const files = await attachmentsFor(c.env.DB, [r.id], origin);
+  const replyFiles = await commentFilesFor(c.env.DB, results.map((cm) => cm.id), origin);
   const early = me
     ? await c.env.DB.prepare("SELECT 1 AS x FROM early_access WHERE request_id = ? AND user_id = ?").bind(r.id, me.id).first()
     : null;
@@ -1027,6 +1105,7 @@ pub.get("/requests/:id", async (c) => {
       author: cm.is_team ? null : cm.name,
       mine: me ? cm.user_id === me.id : false,
       createdAt: cm.created_at,
+      attachments: replyFiles.get(cm.id) ?? [],
     })),
   });
 });
@@ -1119,16 +1198,22 @@ pub.post("/requests/:id/comments", async (c) => {
   const me = requireUser(c);
   const r = await loadRequest(c, c.req.param("id"));
   if (!visibleTo(c.get("app"), r, me)) fail(404, "not_found");
-  const body = cleanText((await c.req.json<{ body?: string }>().catch(() => ({}) as { body?: string })).body, 1000);
-  if (!body) fail(400, "body_required");
+  const input = await c.req.json<{ body?: string; attachments?: unknown }>().catch(() => ({}) as { body?: string; attachments?: unknown });
+  const body = cleanText(input.body, 1000);
+  // Up to 4 of their own, not-yet-used uploads (same rules as a request's screenshots).
+  const ids = [...new Set((Array.isArray(input.attachments) ? input.attachments : []).filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x)))].slice(0, MAX_REPLY_IMAGES);
+  if (!body && !ids.length) fail(400, "body_required");
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE user_id = ? AND created_at > ?")
     .bind(me.id, now() - 60 * 60 * 1000)
     .first<{ n: number }>();
   if ((recent?.n ?? 0) >= 30) reject(429, "slow_down", "That's a lot of comments in an hour. Try again a bit later.");
-  await guardContent(c.env, c.req.raw.headers, c.get("app").id, "comment", body);
+  if (body) await guardContent(c.env, c.req.raw.headers, c.get("app").id, "comment", body);
   const id = newId("cmt");
   const t = now();
   await c.env.DB.batch([
+    ...ids.map((u) =>
+      c.env.DB.prepare("UPDATE uploads SET comment_id = ?, request_id = ? WHERE id = ? AND user_id = ? AND app_id = ? AND request_id IS NULL AND comment_id IS NULL").bind(id, r.id, u, me.id, c.get("app").id),
+    ),
     c.env.DB.prepare("INSERT INTO comments (id, request_id, user_id, is_team, body, created_at) VALUES (?, ?, ?, 0, ?, ?)").bind(
       id,
       r.id,
@@ -1141,8 +1226,9 @@ pub.post("/requests/:id/comments", async (c) => {
     // Answering a reply means they've read it.
     c.env.DB.prepare("UPDATE notifications SET seen_at = ?1 WHERE user_id = ?2 AND request_id = ?3 AND kind = 'reply' AND seen_at IS NULL").bind(t, me.id, r.id),
   ]);
-  c.executionCtx.waitUntil(notifyTeam(c.env, c.get("app").id, { kind: "comment", appName: c.get("app").name, request: r, author: me, body }));
-  return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t } }, 201);
+  c.executionCtx.waitUntil(notifyTeam(c.env, c.get("app").id, { kind: "comment", appName: c.get("app").name, request: r, author: me, body: body || `📷 ${ids.length === 1 ? "an image" : `${ids.length} images`}` }));
+  const files = await commentFilesFor(c.env.DB, [id], new URL(c.req.url).origin);
+  return c.json({ comment: { id, body, team: false, author: me.name, mine: true, createdAt: t, attachments: files.get(id) ?? [] } }, 201);
 });
 
 /** Takes the image as the raw request body (not multipart). Returns an id to pass as `attachments` when posting. */

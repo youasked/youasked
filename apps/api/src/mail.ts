@@ -125,7 +125,7 @@ export async function emailShipped(env: Env, r: RequestRow): Promise<void> {
   });
 }
 
-export async function emailReply(env: Env, r: RequestRow, body: string, commentId: string): Promise<void> {
+export async function emailReply(env: Env, r: RequestRow, body: string, commentId: string, images: string[] = []): Promise<void> {
   const { results } = await env.DB.prepare(
     `SELECT DISTINCT u.id, u.email, u.name FROM users u
      WHERE ${REACHABLE} AND (u.id = ?1 OR u.id IN (SELECT user_id FROM comments WHERE request_id = ?2 AND is_team = 0 AND user_id IS NOT NULL))`,
@@ -134,21 +134,23 @@ export async function emailReply(env: Env, r: RequestRow, body: string, commentI
     .all<Person>();
   if (!results.length) return;
   const app = await appNameOf(env.DB, r.app_id);
+  const links = images.map((id) => `${apiOrigin(env)}/v1/uploads/${id}`);
   await deliver(env, results, r, `reply:${commentId}`, (p, unsubscribe) => {
     const first = p.name ? p.name.split(/\s+/)[0] : null;
     return {
       subject: `${app} replied to "${r.title}"`,
-      text: `${first ? `Hi ${first},\n\n` : ""}The ${app} team replied to "${r.title}":\n\n${body}\n\nYou can answer from the feedback sheet in the app.`,
+      text: `${first ? `Hi ${first},\n\n` : ""}The ${app} team replied to "${r.title}":\n\n${body}${links.length ? `\n\n${links.length === 1 ? "Image" : "Images"}:\n${links.join("\n")}` : ""}\n\nYou can answer from the feedback sheet in the app.`,
       html: requestEmail({
         app,
         tag: "New reply",
         title: `The ${app} team replied.`,
-        preheader: body.replace(/\s+/g, " ").slice(0, 110),
+        preheader: (body || (links.length === 1 ? "Sent you an image." : `Sent you ${links.length} images.`)).replace(/\s+/g, " ").slice(0, 110),
         kicker: "A reply to your request",
         greeting: first ? `Hi ${first},` : null,
         intro: "They answered your request:",
         quote: { caption: "Your request", text: r.title },
         note: { caption: "Their reply", text: body },
+        images: links,
         closing: "You can answer from the feedback sheet in the app.",
         unsubscribe,
       }),

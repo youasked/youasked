@@ -53,7 +53,7 @@ export function createApi(secretKey: string, baseUrl = DEFAULT_API) {
     lookup: (ref: string) =>
       call<{
         request: RequestSummary & { body: string; mergedInto: string | null; shippedAt: number | null };
-        comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number }[];
+        comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number; attachments?: string[] }[];
         voters: number;
       }>("GET", `/lookup?ref=${encodeURIComponent(ref)}`),
     search: (q: string) => call<{ requests: (RequestSummary & { score: number })[] }>("GET", `/search?q=${encodeURIComponent(q)}`),
@@ -62,7 +62,15 @@ export function createApi(secretKey: string, baseUrl = DEFAULT_API) {
         "GET",
         `/digest?days=${days}`,
       ),
-    reply: (id: string, body: string) => call<{ id: string; notified: number }>("POST", `/requests/${id}/comments`, { body }),
+    reply: (id: string, body: string, attachments: string[] = []) =>
+      call<{ id: string; notified: number }>("POST", `/requests/${id}/comments`, { body, ...(attachments.length ? { attachments } : {}) }),
+    /** Stores an image (png, jpeg or webp, up to 2 MB) on the app, for the next reply. Returns its upload id. */
+    upload: async (bytes: Uint8Array, type: string) => {
+      const res = await fetch(`${base}/v1/admin/uploads`, { method: "POST", headers: { authorization: `Bearer ${secretKey}`, "content-type": type }, body: new Blob([bytes as BlobPart]) });
+      const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (!res.ok || !json.id) throw new ApiError(res.status, json.error ?? "unknown");
+      return json.id;
+    },
     setStatus: (id: string, status: string, shipNote?: string) =>
       call<{ request: RequestSummary; notified: boolean; told: number }>("PATCH", `/requests/${id}`, {
         status,
