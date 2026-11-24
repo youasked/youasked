@@ -355,6 +355,14 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     x.comments += 1;
     return json({ comment: c });
   }
+  if ((m = r.match(/^\/requests\/([^/]+)\/comments\/([^/]+)$/)) && method === "PATCH") {
+    const c = (s.comments[m[1]] ?? []).find((x) => x.id === m![2] && x.is_team);
+    if (!c) return err(404, "not_found");
+    const body = String(b.body ?? "").trim();
+    if (!body) return err(400, "body_required");
+    c.body = body;
+    return json({ id: c.id, body });
+  }
   if ((m = r.match(/^\/requests\/([^/]+)\/merge$/)) && method === "POST") {
     const from = find(m[1]);
     const into = find(String(b.into));

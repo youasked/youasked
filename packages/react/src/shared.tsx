@@ -2,6 +2,27 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { YouAskedError, type Client, type FeatureRequest, type Status } from "./client";
 import { IconBack, IconChat, IconCheck, IconClose, IconUp } from "./icons";
 
+/** http(s) links in a message; trailing punctuation stays text, so "see https://x.com." links only the URL. */
+const URL_RE = /\bhttps?:\/\/[^\s<>"']*[^\s<>"'.,;:!?)\]}]/g;
+
+/** Message text as written: line breaks kept (via the class) and links you can tap. Only http(s) URLs become links. */
+export function Linked({ text, className = "ya-rich" }: { text: string; className?: string }) {
+  const parts: ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const i = m.index ?? 0;
+    if (i > last) parts.push(text.slice(last, i));
+    parts.push(
+      <a key={i} className="ya-url" href={m[0]} target="_blank" rel="noopener noreferrer nofollow">
+        {m[0].replace(/^https?:\/\//, "")}
+      </a>,
+    );
+    last = i + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <span className={className}>{parts}</span>;
+}
+
 export function useVote(client: Client, initial: FeatureRequest) {
   const [state, setState] = useState({ voted: initial.voted, votes: initial.votes });
   const busy = useRef(false);

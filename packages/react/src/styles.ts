@@ -96,6 +96,9 @@ box-shadow:0 0 0 1px var(--_border),0 24px 70px rgba(0,0,0,.22);padding-bottom:0
 .ya-chat{display:flex;flex-direction:column;gap:10px;padding-top:4px}
 .ya-bubble{max-width:86%;padding:10px 14px;border-radius:20px;font-size:15px;line-height:1.4;overflow-wrap:anywhere;animation:ya-bubble .3s cubic-bezier(.2,.9,.3,1.2);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .ya-bubble b{font-weight:650}
+.ya-rich{white-space:pre-wrap}
+.ya-url{color:inherit;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;overflow-wrap:anywhere}
+.ya-bubble-in .ya-url,.ya-text .ya-url{color:var(--_accent)}
 .ya-bubble-in{align-self:flex-start;background:var(--_surface);border-bottom-left-radius:6px}
 .ya-bubble-out{align-self:flex-end;background:var(--_accent);color:var(--_accent-fg);border-bottom-right-radius:6px;white-space:pre-wrap}
 .ya-bubble-win{background:color-mix(in srgb,var(--_green) 12%,var(--_bg))}

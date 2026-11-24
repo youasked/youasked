@@ -697,6 +697,27 @@ admin.post("/requests/:id/comments", async (c) => {
   return c.json({ ...out, attachments: files.get(out.id) ?? [] });
 });
 
+/**
+ * Fixes the text of a reply the team already sent: JSON `{ body }`. Only team replies, and the person isn't
+ * told again (the reply they were told about now just reads differently). Images stay as they are; the text
+ * may be emptied only when the reply has images.
+ */
+admin.patch("/requests/:id/comments/:commentId", async (c) => {
+  const r = await loadRequest(c, c.req.param("id"));
+  const cm = await c.env.DB.prepare("SELECT id FROM comments WHERE id = ? AND request_id = ? AND is_team = 1")
+    .bind(c.req.param("commentId"), r.id)
+    .first<{ id: string }>();
+  if (!cm) fail(404, "not_found");
+  const input = await c.req.json<{ body?: unknown }>().catch(() => ({}) as { body?: unknown });
+  const body = cleanText(input.body, 2000);
+  if (!body) {
+    const files = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM uploads WHERE comment_id = ?").bind(cm.id).first<{ n: number }>();
+    if (!files?.n) fail(400, "body_required");
+  }
+  await c.env.DB.prepare("UPDATE comments SET body = ? WHERE id = ?").bind(body, cm.id).run();
+  return c.json({ id: cm.id, body });
+});
+
 /** Files a private conversation under another request; it follows that request's status from now on. */
 admin.post("/requests/:id/link", async (c) => {
   const from = await loadRequest(c, c.req.param("id"));

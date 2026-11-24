@@ -9,6 +9,7 @@ import {
   AppAvatar,
   BigVote,
   Header,
+  Linked,
   RequestRow,
   Skeleton,
   StatusPill,
@@ -63,7 +64,7 @@ function ReplyBubble({ notice, appName, onOpen }: { notice: Notice; appName: str
         {appName} replied about {notice.title}
       </span>
       <Pictures files={notice.replyAttachments} who={`Image from ${appName}`} />
-      {notice.reply && <span>{notice.reply}</span>}
+      {notice.reply && <Linked text={notice.reply} />}
       <button type="button" className="ya-bubble-link" onClick={onOpen}>
         Reply
       </button>
@@ -316,7 +317,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
                 It's live
               </span>
               <span>
-                You asked for <b>{n.title}</b>. {n.shipNote ?? "Thanks for asking."}
+                You asked for <b>{n.title}</b>. {n.shipNote ? <Linked text={n.shipNote} /> : "Thanks for asking."}
               </span>
               <button type="button" className="ya-bubble-link" onClick={() => openRequest(n.requestId)}>
                 See it
@@ -717,7 +718,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
               <IconCheck />
               <span>
                 <b>It's live.</b>
-                {request.shipNote ? ` ${request.shipNote}` : " Thanks for asking."}
+                {request.shipNote ? <> <Linked text={request.shipNote} /></> : " Thanks for asking."}
               </span>
             </div>
           )}
@@ -768,7 +769,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
               <span className="ya-ref">YA-{request.number}</span>
             </div>
             <h3 className="ya-detail-title">{request.title}</h3>
-            {request.body && request.body !== request.title && <p className="ya-text">{request.body}</p>}
+            {request.body && request.body !== request.title && <p className="ya-text"><Linked text={request.body} /></p>}
             {data?.attachments && data.attachments.length > 0 && (
               <div className="ya-attachments">
                 {data.attachments.map((a) => (
@@ -837,7 +838,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
                 <IconCheck />
                 <span>
                   <b>It's live.</b>
-                  {request.shipNote ? ` ${request.shipNote}` : " Thanks for asking."}
+                  {request.shipNote ? <> <Linked text={request.shipNote} /></> : " Thanks for asking."}
                   {request.creditName && <span className="ya-credit">Thanks to {request.creditName} for asking.</span>}
                 </span>
               </div>
@@ -870,7 +871,7 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
       <div className="ya-msg ya-msg-out">
         <div className="ya-bubble ya-bubble-out">
           <Pictures files={comment.attachments} who="Your image" />
-          {comment.body}
+          {comment.body && <Linked text={comment.body} />}
         </div>
         <span className="ya-msg-meta">{when}</span>
       </div>
@@ -887,7 +888,7 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
         </span>
         <div className="ya-bubble ya-bubble-in">
           <Pictures files={comment.attachments} who={comment.team ? `Image from ${appName}` : "Image"} />
-          {comment.body}
+          {comment.body && <Linked text={comment.body} />}
         </div>
       </div>
     </div>

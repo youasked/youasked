@@ -419,6 +419,11 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 .thread .who { display: flex; align-items: center; gap: 8px; font-size: 14px; flex-wrap: wrap; }
 .thread time { color: var(--muted); font-size: 12.5px; }
 .thread .text { margin-top: 3px; color: var(--text-2); white-space: pre-wrap; text-wrap: pretty; }
+.thread .edit-link { font-size: 12.5px; color: var(--muted); padding: 2px 6px; margin-left: -4px; border-radius: 6px; }
+.thread .edit-link:hover { color: var(--text); background: var(--hover); }
+.thread .edit-reply { margin-top: 6px; display: grid; gap: 8px; }
+.thread .edit-reply textarea { width: 100%; resize: vertical; }
+.thread .edit-reply .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .reply { display: grid; gap: 10px; }
 .reply-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .detail-side { display: grid; gap: 22px; position: sticky; top: 24px; }

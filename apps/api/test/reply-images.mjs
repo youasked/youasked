@@ -113,6 +113,16 @@ const t2 = (await person("GET", `/requests/${req.id}`)).body;
 ok(t2.comments.find((c) => c.id === sent.body.comment.id)?.attachments?.length === 2 && t2.attachments.length === 0, "their images show in the thread, not as request screenshots");
 ok((await admin("GET", `/requests/${req.id}`)).body.comments.find((c) => c.id === sent.body.comment.id)?.attachments?.length === 2, "and in the dashboard");
 
+// Fixing a sent reply: new text everywhere, line breaks kept, team replies only.
+const fixed = await admin("PATCH", `/requests/${req.id}/comments/${reply.body.id}`, { body: "Could you send me screenshots?\n\nOne of each screen." });
+ok(fixed.status === 200 && fixed.body.body === "Could you send me screenshots?\n\nOne of each screen.", "a team reply can be edited, line breaks kept", JSON.stringify(fixed.body));
+const t3 = (await person("GET", `/requests/${req.id}`)).body;
+ok(t3.comments.find((c) => c.id === reply.body.id)?.body.startsWith("Could you send me screenshots?\n\n"), "the person sees the new text");
+ok((await admin("PATCH", `/requests/${req.id}/comments/${sent.body.comment.id}`, { body: "hijack" })).status === 404, "someone else's comment can't be edited");
+ok((await admin("PATCH", `/requests/${req.id}/comments/${reply.body.id}`, { body: "  " })).status === 200, "a reply with images may lose its text");
+const textOnly = await admin("POST", `/requests/${req.id}/comments`, { body: "Thanks!" });
+ok((await admin("PATCH", `/requests/${req.id}/comments/${textOnly.body.id}`, { body: "" })).status === 400, "a text-only reply can't be emptied");
+
 if (SEED) console.log(`SEED ${JSON.stringify({ publicKey: app.publicKey, secretKey: app.secretKey, device, requestId: req.id })}`);
 console.log(failures ? `\n${failures} reply-image check(s) failed` : "\nAll reply-image checks passed");
 process.exit(failures ? 1 : 0);

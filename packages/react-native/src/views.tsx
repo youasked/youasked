@@ -13,6 +13,7 @@ import {
   GreenDot,
   Header,
   LinkButton,
+  Linked,
   RequestRow,
   Section,
   Skeleton,
@@ -98,7 +99,7 @@ function ReplyBubble({ notice, appName, onOpen }: { notice: Notice; appName: str
         {appName} replied about {notice.title}
       </T>
       <Pictures files={notice.replyAttachments} who={`Image from ${appName}`} />
-      {notice.reply ? <T style={s.bubbleText}>{notice.reply}</T> : null}
+      {notice.reply ? <T style={s.bubbleText}><Linked text={notice.reply} /></T> : null}
       <Tap onPress={onOpen}>
         <T style={s.bubbleLink}>Reply</T>
       </Tap>
@@ -359,7 +360,7 @@ function Home({ route, setRoute, onClose }: NavProps & { route: Extract<Route, {
                 <T style={s.liveText}>It's live</T>
               </View>
               <T style={s.bubbleText}>
-                You asked for <T style={s.bold}>{n.title}</T>. {n.shipNote ?? "Thanks for asking."}
+                You asked for <T style={s.bold}>{n.title}</T>. {n.shipNote ? <Linked text={n.shipNote} /> : "Thanks for asking."}
               </T>
               <Tap onPress={() => openRequest(n.requestId)}>
                 <T style={s.bubbleLink}>See it</T>
@@ -733,7 +734,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
             <T style={s.detailTitle} accessibilityRole="header">
               {request.title}
             </T>
-            {request.body && request.body !== request.title ? <T style={s.text}>{request.body}</T> : null}
+            {request.body && request.body !== request.title ? <T style={s.text}><Linked text={request.body} /></T> : null}
             {data?.attachments?.map((a) => (
               <Image
                 key={a.id}
@@ -789,7 +790,7 @@ function Detail({ id, from, setRoute, onClose }: { id: string; from?: "home" | "
                 <GreenDot size={20} />
                 <T style={s.calloutText}>
                   <T style={s.bold}>It's live.</T>
-                  {request.shipNote ? ` ${request.shipNote}` : " Thanks for asking."}
+                  {request.shipNote ? <> <Linked text={request.shipNote} /></> : " Thanks for asking."}
                   {request.creditName ? `\nThanks to ${request.creditName} for asking.` : ""}
                 </T>
               </View>
@@ -871,14 +872,14 @@ function Pictures({ files, who }: { files?: { id: string; url: string }[]; who: 
 
 /** Team replies read as messages from the app, yours sit on the right like any chat. */
 function Message({ comment, appName, appIcon }: { comment: RequestComment; appName: string; appIcon: ReturnType<typeof useInternal>["appIcon"] }) {
-  const { styles: s } = useInternal();
+  const { styles: s, theme } = useInternal();
   const when = <T style={s.msgMetaText}>{ago(comment.createdAt)}</T>;
   if (comment.mine) {
     return (
       <View style={s.msgOut}>
         <View style={[s.bubble, s.bubbleOut, { maxWidth: "100%" }]}>
           <Pictures files={comment.attachments} who="Your image" />
-          {comment.body ? <T style={[s.bubbleText, s.bubbleTextOut]}>{comment.body}</T> : null}
+          {comment.body ? <T style={[s.bubbleText, s.bubbleTextOut]}><Linked text={comment.body} linkColor={theme.accentFg} /></T> : null}
         </View>
         <View style={s.msgMeta}>{when}</View>
       </View>
@@ -899,7 +900,7 @@ function Message({ comment, appName, appIcon }: { comment: RequestComment; appNa
         </View>
         <View style={[s.bubble, s.bubbleIn, { maxWidth: "100%" }]}>
           <Pictures files={comment.attachments} who={comment.team ? `Image from ${appName}` : "Image"} />
-          {comment.body ? <T style={s.bubbleText}>{comment.body}</T> : null}
+          {comment.body ? <T style={s.bubbleText}><Linked text={comment.body} /></T> : null}
         </View>
       </View>
     </View>

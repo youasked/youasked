@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   Image,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -24,6 +25,32 @@ export const useNative = Platform.OS !== "web";
 export function T({ style, ...props }: TextProps) {
   const { theme } = useInternal();
   return <Text maxFontSizeMultiplier={1.3} {...props} style={[{ color: theme.fg, fontFamily: theme.fontFamily }, style]} />;
+}
+
+/** http(s) links in a message; trailing punctuation stays text, so "see https://x.com." links only the URL. */
+const URL_RE = /\bhttps?:\/\/[^\s<>"']*[^\s<>"'.,;:!?)\]}]/g;
+
+/**
+ * Message text with links you can tap (only http(s) URLs). Nested inside a T it inherits that text's
+ * style; links are underlined, in the accent colour unless `linkColor` says otherwise (e.g. on an accent bubble).
+ */
+export function Linked({ text, linkColor }: { text: string; linkColor?: string }) {
+  const { theme } = useInternal();
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const i = m.index ?? 0;
+    if (i > last) parts.push(text.slice(last, i));
+    const url = m[0];
+    parts.push(
+      <Text key={i} accessibilityRole="link" onPress={() => Linking.openURL(url).catch(() => {})} style={{ color: linkColor ?? theme.accent, textDecorationLine: "underline" }}>
+        {url.replace(/^https?:\/\//, "")}
+      </Text>,
+    );
+    last = i + url.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
 }
 
 /** A pressable that dims slightly while held, the way native buttons do. */

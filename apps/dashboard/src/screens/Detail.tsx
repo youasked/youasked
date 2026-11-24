@@ -15,6 +15,8 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
   const [reply, setReply] = useState("");
   const images = useReplyImages(app.id);
   const [sending, setSending] = useState(false);
+  // A sent team reply being fixed in place: its id and the text so far.
+  const [editing, setEditing] = useState<{ id: string; text: string; saving?: boolean } | null>(null);
   const [dialog, setDialog] = useState<"ship" | "merge" | "build" | "delete" | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const toast = useToast();
@@ -96,6 +98,20 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
       fail(e);
     } finally {
       setSending(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editing || editing.saving) return;
+    setEditing({ ...editing, saving: true });
+    try {
+      const out = await appApi<{ body: string }>(app.id, `/requests/${r.id}/comments/${editing.id}`, { method: "PATCH", body: { body: editing.text } });
+      d.set((x) => ({ ...x, comments: x.comments.map((cm) => (cm.id === editing.id ? { ...cm, body: out.body } : cm)) }));
+      setEditing(null);
+      toast("Reply updated. They see the new text; nobody is told again.");
+    } catch (e) {
+      setEditing((x) => (x ? { ...x, saving: false } : x));
+      fail(e);
     }
   };
 
@@ -182,8 +198,41 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
                       <b>{c.is_team ? app.name : c.name ?? c.email ?? "Someone"}</b>
                       {c.is_team ? <span className="tag">your reply</span> : null}
                       <time>{timeAgo(c.created_at)}</time>
+                      {c.is_team && editing?.id !== c.id ? (
+                        <button type="button" className="edit-link" onClick={() => setEditing({ id: c.id, text: c.body })}>
+                          Edit
+                        </button>
+                      ) : null}
                     </p>
-                    {c.body && <p className="text">{c.body}</p>}
+                    {editing?.id === c.id ? (
+                      <div className="edit-reply">
+                        <label htmlFor={`edit-${c.id}`} className="sr-only">Edit reply</label>
+                        <textarea
+                          id={`edit-${c.id}`}
+                          className="input"
+                          rows={Math.min(10, Math.max(3, editing.text.split("\n").length + 1))}
+                          value={editing.text}
+                          maxLength={2000}
+                          autoFocus
+                          onChange={(e) => setEditing({ ...editing, text: e.target.value })}
+                          onKeyDown={(e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") saveEdit();
+                            if (e.key === "Escape") setEditing(null);
+                          }}
+                        />
+                        <div className="row">
+                          <Button kind="primary" size="sm" busy={editing.saving} disabled={!editing.text.trim() && !c.attachments?.length} onClick={saveEdit}>
+                            Save
+                          </Button>
+                          <Button kind="quiet" size="sm" onClick={() => setEditing(null)}>
+                            Cancel
+                          </Button>
+                          <span className="muted small">They see the new text. Nobody is told again.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      c.body && <p className="text">{c.body}</p>
+                    )}
                     <Pictures files={c.attachments} />
                   </div>
                 </li>

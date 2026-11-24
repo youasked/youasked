@@ -5,6 +5,18 @@ type Entry = { date: string; title: string; body: string; tags: string[] };
 // Newest first. Static for now: see the note at the bottom of the page.
 export const ENTRIES: Entry[] = [
   {
+    date: "2026-11-24",
+    title: "Replies keep their line breaks and links",
+    body: "Your replies show in the app the way you wrote them: line breaks stay, and links can be tapped. Sent something with a typo? Click Edit next to your reply in the dashboard. They see the new text, and nobody is told twice. In @youasked/react 0.11.0 and @youasked/js 0.5.0.",
+    tags: ["Improved", "Web"],
+  },
+  {
+    date: "2026-11-24",
+    title: "Webhooks to your server",
+    body: "Reach people your own way. Add your server under Integrations and YouAsked sends it a signed event when you reply to someone or ship what they asked for, naming them by the id you gave YouAsked. Send a push, an email or a chat message from there. Failed deliveries are retried for about two days, with a log and Resend in the dashboard.",
+    tags: ["New", "Integrations"],
+  },
+  {
     date: "2026-11-19",
     title: "A message from you, not a pop-up",
     body: "The occasional prompt in the corner is now a message from you: your photo, your name and a line you wrote, with a reply box under it, like a text. Tapping it opens the chat, where your welcome note says who you are and how quickly you reply. Set it up under Your message in the dashboard, with a live preview as you type, or with the persona prop. In @youasked/react 0.9.0 and @youasked/js 0.3.0.",
