@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { EVENT_TYPES, listDeliveries, newSecret, resend, sendTest, sweepDeliveries, type EventType, type EventsConfig } from "./events";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import {
@@ -56,7 +57,8 @@ type Vars = { app: AppRow; user: UserRow | null; mode: "test" | "live" };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 /** Must match the daily trigger in wrangler.jsonc. */
-const DAILY_CRON = "30 2 * * *";
+// Every 10 minutes: due webhook retries, and the daily jobs when the tick lands on 02:30 UTC.
+const TEN_MIN_CRON = "*/10 * * * *";
 
 const ACTIVE: Status[] = ["open", "planned", "in_progress"];
 
@@ -754,6 +756,9 @@ admin.get("/integrations", async (c) => {
       out.github = { payloadUrl: `${origin}/v1/hooks/github/${i.id}`, secret: gc.secret, repo: gc.repo ?? null, tokenConnected: Boolean(gc.tokenEnc) };
     } else if (i.kind === "webhook") {
       out.webhook = i.config;
+    } else if (i.kind === "events") {
+      const ec = i.config as EventsConfig;
+      out.events = { url: ec.url, events: ec.events, secret: ec.secret };
     }
   }
   return c.json(out);
@@ -851,6 +856,52 @@ admin.put("/integrations/webhook", async (c) => {
           : "json";
   await upsertIntegration(c.env.DB, c.get("app").id, "webhook", { url: url.toString(), format });
   return c.json({ ok: true, format });
+});
+
+// Signed webhooks to the app's own server: one endpoint per app, for the events it picks.
+admin.put("/integrations/events", async (c) => {
+  const body = await c.req.json<{ url?: string; events?: string[] }>();
+  let url: URL;
+  try {
+    url = new URL(body.url ?? "");
+  } catch {
+    fail(400, "bad_url");
+  }
+  // http only for localhost, for local testing; a deployed Worker can't reach it anyway.
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) fail(400, "https_only");
+  const events = (body.events ?? [...EVENT_TYPES]).filter((e): e is EventType => (EVENT_TYPES as readonly string[]).includes(e));
+  if (!events.length) fail(400, "no_events");
+  const appId = c.get("app").id;
+  const existing = (await loadIntegrations(c.env.DB, appId)).find((i) => i.kind === "events");
+  const config: EventsConfig = { url: url.toString(), events, secret: (existing?.config as EventsConfig | undefined)?.secret ?? newSecret() };
+  await upsertIntegration(c.env.DB, appId, "events", config);
+  return c.json(config);
+});
+
+admin.post("/integrations/events/rotate", async (c) => {
+  const appId = c.get("app").id;
+  const existing = (await loadIntegrations(c.env.DB, appId)).find((i) => i.kind === "events");
+  if (!existing) fail(404, "not_found");
+  const config: EventsConfig = { ...(existing.config as EventsConfig), secret: newSecret() };
+  await upsertIntegration(c.env.DB, appId, "events", config);
+  return c.json({ secret: config.secret });
+});
+
+admin.post("/integrations/events/test", async (c) => {
+  const out = await sendTest(c.env, c.get("app").id);
+  if (!out) fail(404, "not_found");
+  return c.json(out);
+});
+
+admin.get("/integrations/events/deliveries", async (c) => {
+  const limit = Math.min(Math.max(Number(c.req.query("limit")) || 50, 1), 100);
+  return c.json({ deliveries: await listDeliveries(c.env.DB, c.get("app").id, limit) });
+});
+
+admin.post("/integrations/events/deliveries/:id/resend", async (c) => {
+  const out = await resend(c.env, c.get("app").id, c.req.param("id"));
+  if (!out) fail(404, "not_found");
+  return c.json(out);
 });
 
 admin.delete("/integrations/:kind", async (c) => {
@@ -1326,12 +1377,18 @@ async function sweepUploads(env: Env): Promise<void> {
   await env.DB.batch(ids.map((id) => env.DB.prepare("DELETE FROM uploads WHERE id = ?").bind(id)));
 }
 
+async function tick(env: Env, at: Date) {
+  const daily = at.getUTCHours() === 2 && at.getUTCMinutes() >= 30 && at.getUTCMinutes() < 40;
+  await Promise.all([sweepDeliveries(env, daily), ...(daily ? [runListening(env), sweepUploads(env)] : [])]);
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    // Two triggers (see wrangler.jsonc): the daily Heard elsewhere scan, and the weekly digest.
+    // Two triggers (see wrangler.jsonc): the 10-minute tick (webhook retries, plus the daily Heard
+    // elsewhere scan and upload sweep at 02:30 UTC), and the weekly digest.
     ctx.waitUntil(
-      (event.cron === DAILY_CRON ? Promise.all([runListening(env), sweepUploads(env)]) : sendDigests(env)).catch((err) =>
+      (event.cron === TEN_MIN_CRON ? tick(env, new Date(event.scheduledTime)) : sendDigests(env)).catch((err) =>
         alert(env, `cron:${event.cron}`, `Scheduled job ${event.cron} failed: ${err instanceof Error ? err.message : String(err)}`, 6 * 60 * 60_000),
       ),
     );

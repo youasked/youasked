@@ -151,7 +151,7 @@ export function parseContext(raw: string | null): RequestContext | null {
 export type Integration<C = Record<string, unknown>> = {
   id: string;
   app_id: string;
-  kind: "telegram" | "github" | "webhook";
+  kind: "telegram" | "github" | "webhook" | "events";
   config: C;
 };
 

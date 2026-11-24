@@ -1,6 +1,7 @@
 // Things the team does to a request. The dashboard, Telegram and GitHub all go through here,
 // so everyone who asked hears about it the same way whichever one was used.
 import { newId } from "./lib";
+import { emitReply, emitShipped } from "./events";
 import { emailReply, emailShipped, type Mail } from "./mail";
 import type { RequestRow, Status } from "./types";
 
@@ -120,6 +121,7 @@ export async function setStatus(
         await emailLinkedShipped(mail, r.id);
       })(),
     );
+    mail.waitUntil(emitShipped(mail, { ...r, status, ship_note: note, shipped_at: shippedAt }));
   }
   const notified = becameShipped ? (results[2]?.meta.changes ?? 0) + (results[3]?.meta.changes ?? 0) : 0;
   return { notified, root: { ...r, status, ship_note: note, shipped_at: shippedAt }, linked };
@@ -209,6 +211,7 @@ async function postTeamComment(db: D1Database, r: RequestRow, body: string, mail
     ...images.map((u) => db.prepare("UPDATE uploads SET comment_id = ?, request_id = ? WHERE id = ?").bind(id, r.id, u)),
   ]);
   if (mail) mail.waitUntil(emailReply(mail.env, r, body, id, images));
+  if (mail) mail.waitUntil(emitReply(mail, r, { id, body, images }));
   return { id, notified: results[2]?.meta.changes ?? 0 };
 }
 

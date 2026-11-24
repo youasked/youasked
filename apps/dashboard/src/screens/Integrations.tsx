@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import qrcode from "qrcode-generator";
-import { appApi, type Integrations as Ints, type TelegramState, type WorkspaceApp } from "../api";
-import { Button, CopyButton, ErrorState, GitHubMark, Icon, PageHead, Skeleton, useFail, useInterval, useLoad, useToast } from "../ui";
+import { appApi, type EventDelivery, type EventType, type Integrations as Ints, type TelegramState, type WorkspaceApp } from "../api";
+import { Button, CopyButton, ErrorState, GitHubMark, Icon, PageHead, Skeleton, timeAgo, useFail, useInterval, useLoad, useToast } from "../ui";
 
 export function QR({ text }: { text: string }) {
   const cells = useMemo(() => {
@@ -35,6 +35,7 @@ export function Integrations({ app }: { app: WorkspaceApp }) {
           <TelegramCard app={app} state={data.telegram} reload={ints.reload} />
           <WebhookCard app={app} state={data.webhook} onChange={(webhook) => set({ webhook })} />
           <GithubCard app={app} state={data.github} reload={ints.reload} />
+          <EventsCard app={app} state={data.events} onChange={(events) => set({ events })} />
         </>
       )}
     </div>
@@ -227,6 +228,140 @@ function WebhookCard({ app, state, onChange }: { app: WorkspaceApp; state?: Ints
     </Section>
   );
 }
+const EVENT_INFO: { type: EventType; label: string; hint: string }[] = [
+  { type: "reply.created", label: "Reply sent", hint: "You replied to someone. Tell them, so they come back to read it." },
+  { type: "request.shipped", label: "Request shipped", hint: "Something a person asked for or voted on shipped." },
+];
+
+/** Signed webhooks to the app's own server, so it can reach its users its own way (push, email, chat). */
+function EventsCard({ app, state, onChange }: { app: WorkspaceApp; state?: Ints["events"]; onChange: (e: Ints["events"]) => void }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [test, setTest] = useState<{ ok: boolean; code: number | null; error: string | null; ms: number } | null>(null);
+  const log = useLoad(() => (state ? appApi<{ deliveries: EventDelivery[] }>(app.id, "/integrations/events/deliveries?limit=20") : Promise.resolve({ deliveries: [] })), [app.id, Boolean(state)]);
+  const toast = useToast();
+  const fail = useFail();
+  const save = async (e: FormEvent | null, patch: { url?: string; events?: EventType[] }) => {
+    e?.preventDefault();
+    setBusy(true);
+    try {
+      const r = await appApi<NonNullable<Ints["events"]>>(app.id, "/integrations/events", { method: "PUT", body: { url: patch.url ?? state?.url, events: patch.events ?? state?.events } });
+      onChange(r);
+      setUrl("");
+      if (!state) toast("Endpoint saved. Send a test event to check it.");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const toggle = (t: EventType) => {
+    if (!state) return;
+    const next = state.events.includes(t) ? state.events.filter((x) => x !== t) : [...state.events, t];
+    if (next.length) void save(null, { events: next });
+  };
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      setTest(await appApi(app.id, "/integrations/events/test", { method: "POST" }));
+      log.reload();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setTesting(false);
+    }
+  };
+  const rotate = async () => {
+    if (!state || !window.confirm("Make a new signing secret? Events are signed with the new one straight away, so update your server first.")) return;
+    try {
+      const r = await appApi<{ secret: string }>(app.id, "/integrations/events/rotate", { method: "POST" });
+      onChange({ ...state, secret: r.secret });
+      toast("New secret made");
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const resend = async (id: string) => {
+    try {
+      const r = await appApi<{ ok: boolean; code: number | null; error: string | null }>(app.id, `/integrations/events/deliveries/${id}/resend`, { method: "POST" });
+      toast(r.ok ? "Delivered" : `Still failing: ${r.error ?? r.code}`);
+      log.reload();
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const remove = async () => {
+    try {
+      await appApi(app.id, "/integrations/events", { method: "DELETE" });
+      onChange(undefined);
+      setTest(null);
+      toast("Endpoint removed");
+    } catch (e) {
+      fail(e);
+    }
+  };
+  return (
+    <Section icon={<Icon name="send" />} title="Your server" status={state ? <Connected text="Sending events" /> : undefined}>
+      {!state ? (
+        <form onSubmit={(e) => save(e, { url: url.trim() })}>
+          <p>Hear when one of your users should get a message: you replied to them, or something they asked for shipped. Your server gets a signed event with the user id you gave YouAsked, and you reach them your own way, with a push notification, an email or a chat message.</p>
+          <div className="inline-form">
+            <label htmlFor="events-url" className="sr-only">Endpoint URL</label>
+            <input id="events-url" className="input" placeholder="https://yourapp.com/api/youasked/webhook" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" />
+            <Button kind="primary" type="submit" busy={busy} disabled={!url.trim()}>Save</Button>
+          </div>
+          <p className="muted small">Only people your app identifies (signed user ids) get events. <a href="https://youasked.dev/docs#webhooks" target="_blank" rel="noreferrer">How to verify them</a></p>
+        </form>
+      ) : (
+        <>
+          <div className="cmdline"><code>{state.url}</code></div>
+          <h3>Events</h3>
+          {EVENT_INFO.map((e) => (
+            <label key={e.type} className="check">
+              <input type="checkbox" checked={state.events.includes(e.type)} disabled={busy || (state.events.length === 1 && state.events.includes(e.type))} onChange={() => toggle(e.type)} />
+              <span><b>{e.label}</b> <code>{e.type}</code>. {e.hint}</span>
+            </label>
+          ))}
+          <h3>Signing secret</h3>
+          <div className="cmdline"><code>{state.secret}</code><CopyButton text={state.secret} /></div>
+          <p className="muted small">Check the <code>YouAsked-Signature</code> header on every event. <a href="https://youasked.dev/docs#webhooks" target="_blank" rel="noreferrer">How</a></p>
+          <div className="row">
+            <Button kind="primary" size="sm" busy={testing} onClick={sendTest}>Send test event</Button>
+            <Button kind="quiet" size="sm" onClick={rotate}>New secret</Button>
+            <Button kind="quiet" size="sm" onClick={remove}>Remove</Button>
+          </div>
+          {test && (
+            <p className={test.ok ? "small" : "small error-text"}>
+              {test.ok ? `Delivered. Your server answered ${test.code} in ${test.ms} ms.` : `Didn't arrive: ${test.error ?? `HTTP ${test.code}`}. Check the address and that your server answers with a 2xx.`}
+            </p>
+          )}
+          {!!log.data?.deliveries.length && (
+            <>
+              <h3>Recent deliveries</h3>
+              <ul className="deliveries">
+                {log.data.deliveries.map((d) => (
+                  <li key={d.id}>
+                    <span className={`dot ${d.status}`} aria-hidden="true" />
+                    <span className="d-main">
+                      <code>{d.type}</code> {d.payload.data?.request?.ref ? <span className="muted">{d.payload.data.request.ref}</span> : null}
+                      <span className="muted small">
+                        {" · "}
+                        {d.status === "delivered" ? `delivered ${timeAgo(d.delivered_at)}` : d.status === "failed" ? `failed after ${d.attempts} ${d.attempts === 1 ? "try" : "tries"} (${d.last_error ?? d.last_code})` : `retrying, ${d.attempts} ${d.attempts === 1 ? "try" : "tries"} so far (${d.last_error ?? d.last_code ?? "queued"})`}
+                      </span>
+                    </span>
+                    {d.status !== "delivered" && <Button kind="quiet" size="sm" onClick={() => resend(d.id)}>Resend</Button>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
 const fmt = (f?: string) => (f === "slack" ? "Slack" : f === "discord" ? "Discord" : "Webhook");
 const maskUrl = (u: string) => {
   try {

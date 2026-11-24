@@ -15,4 +15,5 @@ node test/scenario.mjs
 node test/private.mjs
 node test/private-message.mjs
 node test/persona.mjs
+node test/events.mjs
 node test/reply-images.mjs "$@"

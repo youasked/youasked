@@ -10,6 +10,7 @@ const TOC: [string, string][] = [
   ["identity", "Identify your users"],
   ["theming", "Theming"],
   ["integrations", "Integrations"],
+  ["webhooks", "Webhooks"],
   ["ship", "Ship a request"],
   ["public-board", "Public board"],
   ["private-mode", "Private mode"],
@@ -202,6 +203,55 @@ export async function GET() {
               <b>GitHub.</b> Add the webhook shown in the dashboard. Then <code>closes YA-12</code> in a commit on the default branch, or in a merged pull request, marks YA-12 shipped. Add a token too, and Build it opens an issue you can <a href="#agents">hand to Copilot or @claude</a>.
             </li>
           </ul>
+
+          <h2 id="webhooks">Webhooks to your server</h2>
+          <p>
+            Your users only see a reply when they next open the sheet. To reach them sooner, add your server under <b>Integrations, Your server</b> in the dashboard. YouAsked then sends it a signed event whenever one of your users should hear something, with the user id you gave YouAsked, and you tell them your own way: a push notification, an email, a chat message. Your users&rsquo; emails and push tokens never leave your app.
+          </p>
+          <ul>
+            <li>
+              <code>reply.created</code>: you replied in a conversation. Sent to the person who started it and anyone else who wrote in it.
+            </li>
+            <li>
+              <code>request.shipped</code>: a request shipped. Sent to whoever asked for it or voted on it, with your ship note.
+            </li>
+          </ul>
+          <p>
+            Each event is about one person, and only people you <a href="#identity">identify with a signed user id</a> get them; anonymous people have no id of yours to send. The body is JSON:
+          </p>
+          <Code label="POST to your endpoint">{`{
+  "id": "evt_…",
+  "type": "reply.created",
+  "created": 1795504623,
+  "app": "app_…",
+  "data": {
+    "user": { "id": "the-user-id-you-signed" },
+    "request": { "id": "req_…", "ref": "YA-13", "number": 13, "title": "…", "status": "open", "private": true },
+    "reply": { "id": "cmt_…", "body": "Thanks so much for joining!…", "images": [] }
+  }
+}`}</Code>
+          <p>
+            <code>request.shipped</code> has <code>shipNote</code> in place of <code>reply</code>. Every request carries a <code>YouAsked-Event</code> header, a <code>YouAsked-Delivery</code> id you can use to skip duplicates, and a <code>YouAsked-Signature</code>: <code>t=</code> a Unix time and <code>v1=</code> the hex HMAC-SHA256 of <code>{"<t>.<raw body>"}</code> keyed with your signing secret. Check it against the raw body before you trust anything in it:
+          </p>
+          <Code label="app/api/youasked/webhook/route.ts">{`import { createHmac, timingSafeEqual } from "node:crypto";
+
+export async function POST(req: Request) {
+  const body = await req.text(); // the raw body, before any JSON parsing
+  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(req.headers.get("youasked-signature") ?? "");
+  if (!m) return new Response("bad signature", { status: 400 });
+  const expected = createHmac("sha256", process.env.YOUASKED_WEBHOOK_SECRET!).update(\`\${m[1]}.\${body}\`).digest();
+  const fresh = Math.abs(Date.now() / 1000 - Number(m[1])) < 300; // refuse replays older than 5 minutes
+  if (!fresh || !timingSafeEqual(expected, Buffer.from(m[2], "hex"))) return new Response("bad signature", { status: 400 });
+
+  const event = JSON.parse(body);
+  if (event.type === "reply.created") {
+    // look up event.data.user.id in your database and send a push, an email or a chat message
+  }
+  return new Response("ok");
+}`}</Code>
+          <p>
+            Answer with any 2xx within 10 seconds, and do slow work after you answer. Anything else is retried after 1, 5 and 30 minutes, then 2, 6, 12 and 24 hours, so about two days in all. The dashboard shows each delivery with its status, lets you resend one, and has a <b>Send test event</b> button that sends a <code>ping</code>. A new secret takes effect straight away, so update your server first.
+          </p>
 
           <h2 id="ship">Ship a request</h2>
           <p>

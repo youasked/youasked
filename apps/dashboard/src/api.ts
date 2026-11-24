@@ -114,6 +114,23 @@ export type Integrations = {
   telegram?: TelegramState;
   github?: { payloadUrl: string; secret: string; repo?: string | null; hasToken?: boolean; tokenConnected?: boolean };
   webhook?: { url: string; format: "slack" | "discord" | "json" };
+  events?: EventsEndpoint;
+};
+
+export type EventType = "reply.created" | "request.shipped";
+export type EventsEndpoint = { url: string; events: EventType[]; secret: string };
+export type EventDelivery = {
+  id: string;
+  event_id: string;
+  type: EventType | "ping";
+  payload: { data?: { user?: { id: string }; request?: { ref: string; title: string } } };
+  attempts: number;
+  status: "pending" | "delivered" | "failed";
+  last_code: number | null;
+  last_error: string | null;
+  next_at: number | null;
+  created_at: number;
+  delivered_at: number | null;
 };
 
 export type Competitor = { name: string; appStoreId?: string; playId?: string };

@@ -130,7 +130,7 @@ function seed() {
       id: "app_acme", name: "Acme", publicKey: "ya_pub_8fKq2mXc4vNd7sLw", secretKey: "ya_sec_p3R9tZb6YhJe1uQa5oVx", secretShown: false,
       watermark: true, requireSignature: false, allowedOrigins: ["https://acme.app"] as string[] | null, moderation: "off", slug: "acme", publicBoard: true, description: "What we're building next at Acme, and what just shipped.",
     },
-    integrations: { telegram: null as null | { botUsername: string; shared: boolean; mode: string; chatTitle: string | null; pendingUntil?: number; code?: string }, github: null as null | { id: string; secret: string; repo?: string; hasToken?: boolean }, webhook: null as null | { url: string; format: string } },
+    integrations: { telegram: null as null | { botUsername: string; shared: boolean; mode: string; chatTitle: string | null; pendingUntil?: number; code?: string }, github: null as null | { id: string; secret: string; repo?: string; hasToken?: boolean }, webhook: null as null | { url: string; format: string }, events: null as null | { url: string; events: string[]; secret: string } },
     members: [
       { accountId: "acc_1", email: "you@acme.app", name: "Alex Rivera", role: "owner" },
       { accountId: "acc_2", email: "dana@acme.app", name: "Dana Kowalski", role: "admin" },
@@ -426,6 +426,7 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     }
     if (s.integrations.github) out.github = { payloadUrl: `https://api.youasked.dev/v1/hooks/github/${s.integrations.github.id}`, secret: s.integrations.github.secret, repo: s.integrations.github.repo ?? null, hasToken: Boolean(s.integrations.github.hasToken) };
     if (s.integrations.webhook) out.webhook = s.integrations.webhook;
+    if (s.integrations.events) out.events = s.integrations.events;
     return json(out);
   }
   if (r === "/integrations/telegram/connect" && method === "POST") {
@@ -455,6 +456,22 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
     s.integrations.webhook = { url: String(b.url), format };
     return json({ ok: true, format });
   }
+  if (r === "/integrations/events" && method === "PUT") {
+    if (!String(b.url).startsWith("https://")) return err(400, "https_only");
+    s.integrations.events = { url: String(b.url), events: b.events ?? ["reply.created", "request.shipped"], secret: s.integrations.events?.secret ?? "whsec_" + Math.random().toString(36).slice(2, 18).padEnd(32, "x") };
+    return json(s.integrations.events);
+  }
+  if (r === "/integrations/events/rotate" && method === "POST" && s.integrations.events) {
+    s.integrations.events.secret = "whsec_" + Math.random().toString(36).slice(2, 18).padEnd(32, "y");
+    return json({ secret: s.integrations.events.secret });
+  }
+  if (r === "/integrations/events/test" && method === "POST") return json({ id: "dlv_test", ok: true, code: 200, error: null, ms: 142 });
+  if (r.startsWith("/integrations/events/deliveries") && method === "GET") {
+    const now = Date.now();
+    const d = (id: string, type: string, ref: string, status: string, extra: object = {}) => ({ id, event_id: "evt_" + id, type, payload: { data: { user: { id: "user_123" }, request: { ref, title: "Dark mode" } } }, attempts: 1, status, last_code: 200, last_error: null, next_at: null, created_at: now - 60_000, delivered_at: now - 60_000, ...extra });
+    return json({ deliveries: [d("dlv_1", "reply.created", "YA-12", "delivered"), d("dlv_2", "request.shipped", "YA-9", "pending", { attempts: 2, last_code: 503, last_error: "HTTP 503", next_at: now + 300_000, delivered_at: null }), d("dlv_3", "reply.created", "YA-7", "failed", { attempts: 8, last_code: null, last_error: "timed_out", delivered_at: null })] });
+  }
+  if (/^\/integrations\/events\/deliveries\/[^/]+\/resend$/.test(r) && method === "POST") return json({ ok: true, code: 200, error: null, ms: 90 });
   if ((m = r.match(/^\/integrations\/([^/]+)$/)) && method === "DELETE") {
     (s.integrations as any)[m[1]] = null;
     return json({ ok: true });

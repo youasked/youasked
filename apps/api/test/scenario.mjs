@@ -321,7 +321,8 @@ ok(new Set(items.map((i) => i.url)).size === items.length, "no duplicate URLs");
 sql(`UPDATE listening_config SET last_run_at = NULL WHERE app_id = '${shared.id}'`);
 const before = items.length;
 await reset();
-const cron = await fetch(`${API}/cdn-cgi/handler/scheduled?cron=${encodeURIComponent("30 2 * * *")}`);
+// The 10-minute tick runs the daily jobs when it lands on 02:30 UTC.
+const cron = await fetch(`${API}/cdn-cgi/handler/scheduled?cron=${encodeURIComponent("*/10 * * * *")}&time=1795487400000`);
 await sleep(2500);
 calls = await mock();
 ok(cron.status === 200 && calls.some((c) => c.kind === "fixture"), "daily cron trigger ran the listening scan", String(cron.status));
