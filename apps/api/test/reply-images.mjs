@@ -123,6 +123,11 @@ ok((await admin("PATCH", `/requests/${req.id}/comments/${reply.body.id}`, { body
 const textOnly = await admin("POST", `/requests/${req.id}/comments`, { body: "Thanks!" });
 ok((await admin("PATCH", `/requests/${req.id}/comments/${textOnly.body.id}`, { body: "" })).status === 400, "a text-only reply can't be emptied");
 
+// Taking a public request off the board: one-way.
+const madePrivate = await admin("PATCH", `/requests/${req.id}`, { private: true });
+ok(madePrivate.status === 200 && madePrivate.body.request?.private === true, "a request can be made private", JSON.stringify(madePrivate.body).slice(0, 160));
+ok((await admin("PATCH", `/requests/${req.id}`, { private: false })).status === 400, "and can't be made public again");
+
 if (SEED) console.log(`SEED ${JSON.stringify({ publicKey: app.publicKey, secretKey: app.secretKey, device, requestId: req.id })}`);
 console.log(failures ? `\n${failures} reply-image check(s) failed` : "\nAll reply-image checks passed");
 process.exit(failures ? 1 : 0);

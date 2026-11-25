@@ -17,7 +17,7 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
   const [sending, setSending] = useState(false);
   // A sent team reply being fixed in place: its id and the text so far.
   const [editing, setEditing] = useState<{ id: string; text: string; saving?: boolean } | null>(null);
-  const [dialog, setDialog] = useState<"ship" | "merge" | "build" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"ship" | "merge" | "build" | "delete" | "private" | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const toast = useToast();
   const fail = useFail();
@@ -316,6 +316,11 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
             <Button className="btn-wide" onClick={() => setDialog("merge")}>
               <Icon name="merge" size={16} /> Merge into another
             </Button>
+            {!r.private && (
+              <Button className="btn-wide" onClick={() => setDialog("private")}>
+                <Icon name="lock" size={16} /> Make private
+              </Button>
+            )}
             <Button kind="quiet" className="btn-wide danger-text" onClick={() => setDialog("delete")}>
               <Icon name="trash" size={16} /> Delete
             </Button>
@@ -339,6 +344,18 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
       )}
       {dialog === "merge" && <MergeDialog app={app} r={r} onClose={() => setDialog(null)} onDone={() => { bump(); navigate(appUrl(app.id)); }} />}
       {dialog === "build" && <BuildDialog app={app} r={r} onClose={() => setDialog(null)} />}
+      {dialog === "private" && (
+        <PrivateDialog
+          app={app}
+          r={r}
+          onClose={() => setDialog(null)}
+          onDone={() => {
+            update((p) => ({ ...p, private: true }));
+            setDialog(null);
+            bump();
+          }}
+        />
+      )}
       {dialog === "delete" && <DeleteDialog app={app} r={r} onClose={() => setDialog(null)} onDone={() => { bump(); navigate(appUrl(app.id)); }} />}
     </div>
   );
@@ -462,6 +479,39 @@ export function BuildDialog({ app, r, onClose }: { app: WorkspaceApp; r: Req; on
           )}
         </>
       )}
+    </Dialog>
+  );
+}
+
+/** Takes a request off the public board: only the person who asked (and your team) can see it. One-way. */
+export function PrivateDialog({ app, r, onClose, onDone }: { app: WorkspaceApp; r: Req; onClose: () => void; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const fail = useFail();
+  return (
+    <Dialog title="Make this private?" onClose={onClose}>
+      <p>YA-{r.number} "{r.title}" leaves the public board. Only the person who asked and your team can see it and its replies. Nobody is told.</p>
+      <p className="muted">Use it when a reply mentions someone's own account. It can't be made public again.</p>
+      <div className="dialog-actions">
+        <Button kind="quiet" onClick={onClose}>Keep it public</Button>
+        <Button
+          kind="primary"
+          busy={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await appApi(app.id, `/requests/${r.id}`, { method: "PATCH", body: { private: true } });
+              toast("Now private");
+              onDone();
+            } catch (e) {
+              fail(e);
+              setBusy(false);
+            }
+          }}
+        >
+          Make private
+        </Button>
+      </div>
     </Dialog>
   );
 }

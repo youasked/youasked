@@ -610,7 +610,13 @@ async function linkedFor(db: D1Database, appId: string, r: RequestRow) {
 
 admin.patch("/requests/:id", async (c) => {
   const r = await loadRequest(c, c.req.param("id"));
-  const body = await c.req.json<{ status?: string; title?: string; body?: string; shipNote?: string | null }>();
+  const body = await c.req.json<{ status?: string; title?: string; body?: string; shipNote?: string | null; private?: boolean }>();
+  // Making a request private is one-way: turning a private conversation public could show
+  // someone's own words or account details to everyone (asked for 26 Nov 2026).
+  if (body.private === false && r.private) fail(400, "cant_make_public");
+  if (body.private === true && !r.private) {
+    await c.env.DB.prepare("UPDATE requests SET private = 1, updated_at = ? WHERE id = ?").bind(now(), r.id).run();
+  }
   const status = (body.status ?? r.status) as Status;
   if (!(STATUSES as readonly string[]).includes(status) && status !== r.status) fail(400, "bad_status");
   if (body.title !== undefined || body.body !== undefined) {
@@ -626,7 +632,7 @@ admin.patch("/requests/:id", async (c) => {
   const shipNote = body.shipNote !== undefined ? cleanText(body.shipNote, 500) || null : undefined;
   const { notified } = await setStatus(c.env.DB, r, status, shipNote, mailOf(c));
   const after = await loadRequest(c, r.id);
-  if (body.title !== undefined || body.body !== undefined) c.executionCtx.waitUntil(upsertRequests(c.env, [after]));
+  if (body.title !== undefined || body.body !== undefined || body.private === true) c.executionCtx.waitUntil(upsertRequests(c.env, [after]));
   return c.json({ request: { ...publicRequest(after, null), ...shareFields(c.env, c.get("app"), after) }, notified: notified > 0, told: notified });
 });
 
