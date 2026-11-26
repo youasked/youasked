@@ -185,4 +185,12 @@ class ClientTest {
         assertEquals(2, c.whatsNew!!.total)
         assertTrue(c.whatsNew!!.items[0].mine)
     }
+
+    @Test
+    fun clientInfoHeaderNamesAppAndDevice() {
+        val h = clientInfoHeader("1.5.3", 109, "15", "Google", "Pixel 8")
+        assertEquals("platform=android&app=1.5.3&build=109&os=Android%2015&device=Google%20Pixel%208&sdk=android%2F$SDK_VERSION", h)
+        // A model that already starts with the brand isn't doubled; missing parts are left out.
+        assertEquals("platform=android&device=Samsung%20SM-S921B&sdk=android%2F$SDK_VERSION", clientInfoHeader(null, null, null, "samsung", "Samsung SM-S921B"))
+    }
 }

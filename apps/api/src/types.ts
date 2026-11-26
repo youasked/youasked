@@ -155,6 +155,8 @@ export type RequestContext = {
   subject?: string;
   /** Up to 6 short labels the app's server attaches (wedding: maya-and-daniel, source: chatgpt). */
   meta?: Record<string, string>;
+  /** App version, platform, OS and device, set by the server from the SDK's header (team-only). */
+  client?: import("./client-info").ClientInfo;
 };
 
 export function parseContext(raw: string | null): RequestContext | null {

@@ -38,6 +38,8 @@ export type Options = {
   user?: User | null;
   /** HMAC-SHA256 of user.id with your secret key, made on your server. */
   signature?: string | null;
+  /** Your app's version, shown to your team next to each request. Browser and OS are sent automatically. */
+  appVersion?: string | null;
   /** false while you're still fetching the signature. */
   ready?: boolean;
   appearance?: Appearance;

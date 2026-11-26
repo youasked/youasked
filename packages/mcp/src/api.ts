@@ -56,6 +56,7 @@ export function createApi(secretKey: string, baseUrl = DEFAULT_API) {
         comments: { id: string; body: string; team: boolean; author: string | null; createdAt: number; attachments?: string[] }[];
         voters: number;
         author?: { name: string | null; email: string | null; anonymous: boolean; appUserId: string | null } | null;
+        using?: string | null;
       }>("GET", `/lookup?ref=${encodeURIComponent(ref)}`),
     search: (q: string) => call<{ requests: (RequestSummary & { score: number })[] }>("GET", `/search?q=${encodeURIComponent(q)}`),
     digest: (days: number) =>

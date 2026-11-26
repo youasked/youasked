@@ -82,6 +82,25 @@ internal fun userHeaderJson(user: YouAskedUser): String {
     return o.toString()
 }
 
+/** Bump with each release. */
+internal const val SDK_VERSION = "0.4.0"
+
+/** "platform=android&app=1.5.3&build=109&os=Android 15&device=Google Pixel 8&sdk=android/0.4.0", URL-encoded. */
+internal fun clientInfoHeader(appVersion: String?, build: Long?, release: String?, manufacturer: String?, model: String?): String {
+    val m = model.orEmpty().trim()
+    val brand = manufacturer.orEmpty().trim().replaceFirstChar { it.uppercase() }
+    val device = if (brand.isNotEmpty() && m.isNotEmpty() && !m.startsWith(brand, ignoreCase = true)) "$brand $m" else m
+    return listOf(
+        "platform" to "android",
+        "app" to appVersion,
+        "build" to build?.toString(),
+        "os" to release?.let { "Android $it" },
+        "device" to device,
+        "sdk" to "android/$SDK_VERSION",
+    ).filter { !it.second.isNullOrBlank() }
+        .joinToString("&") { (k, v) -> "$k=" + URLEncoder.encode(v!!.take(60), "UTF-8").replace("+", "%20") }
+}
+
 internal class HttpClient(
     private val appKey: String,
     apiUrl: String,
@@ -89,6 +108,8 @@ internal class HttpClient(
     private val signature: String?,
     private val anonId: () -> String,
     private val debuggable: Boolean,
+    /** App version and device, for the app's team only (see [clientInfoHeader]). */
+    private val clientInfo: String = "",
     private val transport: Transport = UrlConnectionTransport,
 ) : Client {
     private val base = apiUrl.trimEnd('/') + "/v1"
@@ -101,6 +122,7 @@ internal class HttpClient(
             "x-youasked-platform" to "android",
         )
         if (debuggable) h["x-youasked-dev"] = "1"
+        if (clientInfo.isNotEmpty()) h["x-youasked-client"] = clientInfo
         if (user != null && user.id.isNotEmpty()) {
             h["x-youasked-user"] = base64Url(userHeaderJson(user))
             if (!signature.isNullOrEmpty()) h["x-youasked-sig"] = signature

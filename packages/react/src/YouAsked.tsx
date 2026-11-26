@@ -28,6 +28,8 @@ export type YouAskedProps = {
   user?: YouAskedUser | null;
   /** hex HMAC-SHA256 of user.id with your secret key, made on your server (see `signUser`). */
   signature?: string | null;
+  /** Your app's version (e.g. "2.3.1"), shown to your team next to each request. The browser and OS are sent automatically. */
+  appVersion?: string | null;
   /** Set false while you're still fetching the signature; the widget waits instead of acting anonymously. */
   ready?: boolean;
   appearance?: Appearance;
@@ -88,6 +90,7 @@ export function YouAsked({
   persona: personaProp,
   user,
   signature,
+  appVersion,
   ready = true,
   appearance,
   trigger = "floating",
@@ -108,8 +111,8 @@ export function YouAsked({
     () =>
       demo
         ? createDemoClient(appName, { quiet: demo === "quiet" })
-        : createClient({ appKey, apiUrl, user: userId == null ? null : { id: userId, email: userEmail, name: userName }, signature }),
-    [demo, appName, appKey, apiUrl, userId, userEmail, userName, signature],
+        : createClient({ appKey, apiUrl, user: userId == null ? null : { id: userId, email: userEmail, name: userName }, signature, appVersion }),
+    [demo, appName, appKey, apiUrl, userId, userEmail, userName, signature, appVersion],
   );
   const whatsNewKey = demo ? null : `youasked:whats-new:${appKey}:${userId ?? "anon"}`;
   const [mounted, setMounted] = useState(false);

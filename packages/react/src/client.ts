@@ -143,13 +143,18 @@ function base64Url(text: string): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export type ClientOptions = { appKey: string; apiUrl: string; user?: YouAskedUser | null; signature?: string | null };
+export type ClientOptions = { appKey: string; apiUrl: string; user?: YouAskedUser | null; signature?: string | null; appVersion?: string | null };
 
-export function createClient({ appKey, apiUrl, user, signature }: ClientOptions) {
+/** Bump with package.json. */
+export const SDK_VERSION = "0.12.0";
+
+export function createClient({ appKey, apiUrl, user, signature, appVersion }: ClientOptions) {
+  // For the app's team only: the SDK and the site's own version. The browser and OS come from the User-Agent.
+  const client = `platform=web&sdk=${encodeURIComponent(`react/${SDK_VERSION}`)}${appVersion ? `&app=${encodeURIComponent(String(appVersion).slice(0, 60))}` : ""}`;
   const base = apiUrl.replace(/\/$/, "") + "/v1";
 
   function headers(json: boolean): Record<string, string> {
-    const h: Record<string, string> = { "x-youasked-key": appKey, "x-youasked-anon": anonId() };
+    const h: Record<string, string> = { "x-youasked-key": appKey, "x-youasked-anon": anonId(), "x-youasked-client": client };
     if (user && user.id !== undefined && user.id !== null && user.id !== "") {
       h["x-youasked-user"] = base64Url(
         JSON.stringify({ id: String(user.id), email: user.email ?? undefined, name: user.name ?? undefined }),

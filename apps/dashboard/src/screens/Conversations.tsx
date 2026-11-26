@@ -3,7 +3,7 @@
 // The URL holds the selection (/a/:app/r/:id), so Telegram and email links land on the right one.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, type Comment, type Linked, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
-import { AppUserIdFact, AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
+import { AppUserIdFact, AttachButton, ClientFacts, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useInterval, useLoad, useMedia, useToast } from "../ui";
@@ -508,6 +508,7 @@ function ThreadPane({
           {r.context?.meta && Object.entries(r.context.meta).map(([k, v]) => <div key={k}><dt>{k[0].toUpperCase() + k.slice(1).replace(/_/g, " ")}</dt><dd>{v}</dd></div>)}
           {(person?.conversations ?? 0) > 1 && <div><dt>Conversations with {first}</dt><dd>{person!.conversations}</dd></div>}
           <AppUserIdFact id={person?.appUserId} />
+          <ClientFacts client={r.context?.client} />
         </dl>
 
         <div className="side-block actions">

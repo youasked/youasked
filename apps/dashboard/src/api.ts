@@ -3,6 +3,9 @@ import { mockFetch, mockEnabled } from "./mock";
 
 export const API_URL: string = (import.meta.env.VITE_API_URL as string | undefined) ?? "https://api.youasked.dev";
 
+/** What the person was using when they asked (set by the server from the SDK; team-only). */
+export type ClientInfo = { platform?: "ios" | "android" | "web" | "macos" | "windows"; app?: string; build?: string; os?: string; device?: string; browser?: string; sdk?: string };
+
 export type Status = "open" | "planned" | "in_progress" | "shipped" | "declined" | "pending" | "merged";
 
 export type Req = {
@@ -15,7 +18,7 @@ export type Req = {
   comments: number;
   shipNote: string | null;
   shippedAt: number | null;
-  context: { topic?: string; page?: string; url?: string; via?: "email"; from?: string; subject?: string; meta?: Record<string, string> } | null;
+  context: { topic?: string; page?: string; url?: string; via?: "email"; from?: string; subject?: string; meta?: Record<string, string>; path?: string; client?: ClientInfo } | null;
   creditName: string | null;
   createdAt: number;
   updatedAt?: number;

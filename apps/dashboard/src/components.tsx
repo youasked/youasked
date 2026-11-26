@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { appApi, uploadReplyImage, type Attachment, type Req, type Status } from "./api";
+import { appApi, uploadReplyImage, type Attachment, type ClientInfo, type Req, type Status } from "./api";
 import { Button, CopyButton, Dialog, Icon, STATUS_LABEL, StatusChip, useFail, useKeepInView, useNarrow } from "./ui";
 
 export const PICKABLE: Status[] = ["open", "planned", "in_progress", "shipped", "declined"];
@@ -237,6 +237,27 @@ export function Pictures({ files }: { files?: Attachment[] }) {
         </a>
       ))}
     </span>
+  );
+}
+
+const PLATFORM_NAMES: Record<string, string> = { ios: "iOS app", android: "Android app", web: "Web", macos: "Mac app", windows: "Windows app" };
+
+/**
+ * What the person was using when they asked: the app and its version, then the phone or browser.
+ * Sent automatically by the SDKs (browsers: from the User-Agent). Nothing shows for older requests.
+ */
+export function ClientFacts({ client }: { client?: ClientInfo | null }) {
+  if (!client) return null;
+  const name = client.platform ? PLATFORM_NAMES[client.platform] : client.app ? "App" : null;
+  const app = name ? `${name}${client.app ? ` ${client.app}` : ""}${client.build ? ` (${client.build})` : ""}` : null;
+  const device = client.browser
+    ? [client.browser, client.os && `on ${client.os}`].filter(Boolean).join(" ") + (client.device ? ` · ${client.device}` : "")
+    : [client.device, client.os].filter(Boolean).join(" · ");
+  return (
+    <>
+      {app && <div><dt>App</dt><dd>{app}</dd></div>}
+      {device && <div><dt>Device</dt><dd>{device}{client.sdk && <small>{client.sdk}</small>}</dd></div>}
+    </>
   );
 }
 

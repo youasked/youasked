@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { appApi, type ApiError, type Comment, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
 import { AgentLogo } from "../agent-logos";
-import { AppUserIdFact, AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
+import { AppUserIdFact, AttachButton, ClientFacts, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, CopyButton, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useLoad, useToast } from "../ui";
@@ -295,7 +295,8 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
             <AppUserIdFact id={asker && "appUserId" in asker ? asker.appUserId : null} />
             <div><dt>Asked</dt><dd>{shortDate(r.createdAt)}<small>{timeAgo(r.createdAt)}</small></dd></div>
             {r.context?.topic && <div><dt>Topic</dt><dd>{r.context.topic}</dd></div>}
-            {(r.context?.page || r.context?.url) && <div><dt>Page</dt><dd className="mono">{r.context.page ?? r.context.url}</dd></div>}
+            {(r.context?.page || r.context?.url || r.context?.path) && <div><dt>Page</dt><dd className="mono">{r.context.page ?? r.context.url ?? r.context.path}</dd></div>}
+            <ClientFacts client={r.context?.client} />
             {(r.earlyAccess ?? 0) > 0 && <div><dt>Early access</dt><dd>{r.earlyAccess} want to try it first</dd></div>}
           </dl>
 

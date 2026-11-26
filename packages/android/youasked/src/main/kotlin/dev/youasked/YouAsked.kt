@@ -78,6 +78,13 @@ internal class Controller(
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
+    private val clientInfo: String = runCatching {
+        @Suppress("DEPRECATION")
+        val pkg = context.packageManager.getPackageInfo(context.packageName, 0)
+        val build = if (android.os.Build.VERSION.SDK_INT >= 28) pkg.longVersionCode else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+        clientInfoHeader(pkg.versionName, build, android.os.Build.VERSION.RELEASE, android.os.Build.MANUFACTURER, android.os.Build.MODEL)
+    }.getOrDefault("")
+
     var user: YouAskedUser? = null
         private set
     var signature: String? = null
@@ -102,7 +109,7 @@ internal class Controller(
 
     private fun makeClient(): Client =
         if (demo) DemoClient("this app", scope) { n -> config = config?.let { it.copy(unseen = it.unseen + n) } }
-        else HttpClient(appKey, apiUrl, user, signature, { anonId }, debuggable)
+        else HttpClient(appKey, apiUrl, user, signature, { anonId }, debuggable, clientInfo)
 
     fun identify(user: YouAskedUser?, signature: String?) {
         this.user = user

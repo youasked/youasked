@@ -1,3 +1,4 @@
+import { clientInfoHeader } from "./platform";
 // Copied from packages/react/src/client.ts (types and endpoints are identical). The differences:
 // the anonymous id is async (AsyncStorage), headers say the caller is a native app, and a 402
 // `test_mode` answer becomes its own error code. To be unified with the web package later.
@@ -136,6 +137,8 @@ export function createClient({ appKey, apiUrl, user, signature, getAnon }: Clien
       // Native apps send no Origin header, so say who is calling (and whether it's a dev build).
       "x-youasked-platform": "react-native",
     };
+    const device = clientInfoHeader();
+    if (device) h["x-youasked-client"] = device;
     if (typeof __DEV__ !== "undefined" && __DEV__) h["x-youasked-dev"] = "1";
     if (user && user.id !== undefined && user.id !== null && user.id !== "") {
       h["x-youasked-user"] = base64Url(

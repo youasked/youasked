@@ -2,6 +2,7 @@
 // buttons to act on them) and in plain Slack/Discord/JSON webhooks.
 import { ref } from "./actions";
 import { appUserId } from "./lib";
+import { clientLine } from "./client-info";
 import { parseContext, type Env, type Integration, type RequestRow, type Status, type TelegramConfig, type WebhookConfig } from "./types";
 
 type Author = { name: string | null; email: string | null; is_anon: number; external_id?: string } | null;
@@ -86,7 +87,7 @@ export function contextLine(r: RequestRow): string | null {
   const ctx = parseContext(r.context);
   if (!ctx) return null;
   const meta = ctx.meta ? Object.entries(ctx.meta).map(([k, v]) => `${k}: ${v}`).join(", ") : null;
-  return [ctx.via === "email" ? `📧 via email${ctx.from ? ` from ${ctx.from}` : ""}` : null, ctx.path, ctx.topic && `about ${ctx.topic}`, meta].filter(Boolean).join(" · ") || null;
+  return [ctx.via === "email" ? `📧 via email${ctx.from ? ` from ${ctx.from}` : ""}` : null, ctx.path, ctx.topic && `about ${ctx.topic}`, meta, clientLine(ctx.client)].filter(Boolean).join(" · ") || null;
 }
 
 /** A forwarding-confirmation email reached an app's inbox address: tell the team the code. */

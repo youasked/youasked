@@ -68,6 +68,7 @@ final class LiveClient: YouAskedAPI, @unchecked Sendable {
             "x-youasked-platform": "ios",
         ]
         if isDebug { h["x-youasked-dev"] = "1" }
+        h["x-youasked-client"] = Self.clientInfo
         if let user, !user.id.isEmpty {
             h["x-youasked-user"] = Self.userHeader(user)
             if let signature, !signature.isEmpty { h["x-youasked-sig"] = signature }
@@ -75,6 +76,33 @@ final class LiveClient: YouAskedAPI, @unchecked Sendable {
         if json { h["content-type"] = "application/json" }
         return h
     }
+
+    /// Bump with each release.
+    static let sdkVersion = "0.4.0"
+
+    /// The app's version and build, iOS version and device model ("iPhone16,2"), for the app's team only.
+    static let clientInfo: String = {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        var machine = utsname()
+        uname(&machine)
+        let model = withUnsafeBytes(of: &machine.machine) { raw in
+            String(decoding: raw.prefix(while: { $0 != 0 }), as: UTF8.self)
+        }
+        // The simulator reports its Mac's CPU; it says which device it pretends to be here.
+        let device = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? model
+        var items = [
+            URLQueryItem(name: "platform", value: "ios"),
+            URLQueryItem(name: "os", value: "iOS \(os.majorVersion).\(os.minorVersion)"),
+            URLQueryItem(name: "device", value: device),
+            URLQueryItem(name: "sdk", value: "swift/\(sdkVersion)"),
+        ]
+        if let v = info["CFBundleShortVersionString"] as? String { items.append(URLQueryItem(name: "app", value: v)) }
+        if let b = info["CFBundleVersion"] as? String { items.append(URLQueryItem(name: "build", value: b)) }
+        var c = URLComponents()
+        c.queryItems = items
+        return c.percentEncodedQuery ?? ""
+    }()
 
     static func userHeader(_ user: YouAskedUser) -> String {
         struct Payload: Encodable { var id: String; var email: String?; var name: String? }

@@ -4,7 +4,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { LAST_MESSAGE_SQL, loadRequestById, loadRequestByNumber, needsReply, ref, type LastMessageCols } from "./actions";
 import { appUserId, cleanText, similarity } from "./lib";
-import type { AppRow, Env, RequestRow } from "./types";
+import { parseContext, type AppRow, type Env, type RequestRow } from "./types";
+import { clientLine } from "./client-info";
 
 const agent = new Hono<{ Bindings: Env; Variables: { app: AppRow } }>();
 
@@ -74,6 +75,8 @@ agent.get("/lookup", async (c) => {
     request: { ...summary(r), body: r.body, mergedInto: r.merged_into, shippedAt: r.shipped_at },
     // Who asked, with the app's own id for them (signed-in people only), for the team's lookups.
     author: who ? { name: who.name, email: who.email, anonymous: Boolean(who.is_anon), appUserId: appUserId(who.external_id) } : null,
+    // What they were using: "Android app 1.5.3 (109) · Android 15 · Pixel 8".
+    using: clientLine(parseContext(r.context)?.client),
     comments: comments.map((cm) => ({
       id: cm.id,
       body: cm.body,

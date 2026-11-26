@@ -18,6 +18,7 @@ import {
   type LastMessageCols,
 } from "./actions";
 import { adminPage } from "./admin-page";
+import { clientInfo } from "./client-info";
 import { adminMovedPage } from "./admin-moved";
 import agent from "./agent";
 import auth, { dashboardBase } from "./auth";
@@ -142,7 +143,17 @@ function creditName(r: RequestRow & { author_name?: string | null }): string | n
   return r.author_name.split(/\s+/)[0] || null;
 }
 
-function publicRequest(r: RequestRow & { voted?: number; author_name?: string | null }, me: UserRow | null) {
+/** What end users may see of the context: where it was asked. Labels, email headers and the device are the team's. */
+function publicContext(raw: string | null): RequestContext | null {
+  const ctx = parseContext(raw);
+  if (!ctx) return null;
+  const out: RequestContext = {};
+  if (ctx.path) out.path = ctx.path;
+  if (ctx.topic) out.topic = ctx.topic;
+  return Object.keys(out).length ? out : null;
+}
+
+function publicRequest(r: RequestRow & { voted?: number; author_name?: string | null }, me: UserRow | null, team = false) {
   return {
     id: r.id,
     number: r.number,
@@ -153,7 +164,7 @@ function publicRequest(r: RequestRow & { voted?: number; author_name?: string | 
     comments: r.comment_count,
     shipNote: r.ship_note,
     shippedAt: r.shipped_at,
-    context: parseContext(r.context),
+    context: team ? parseContext(r.context) : publicContext(r.context),
     ...(r.source ? { source: r.source, sourceUrl: r.source_url } : {}),
     ...(r.elsewhere_count ? { elsewhere: r.elsewhere_count } : {}),
     creditName: creditName(r),
@@ -562,7 +573,7 @@ admin.get("/requests", async (c) => {
   const files = await attachmentsFor(c.env.DB, results.map((r) => r.id), origin);
   return c.json({
     requests: results.map((r) => ({
-      ...publicRequest(r, null),
+      ...publicRequest(r, null, true),
       ...shareFields(c.env, c.get("app"), r),
       attachments: files.get(r.id) ?? [],
       earlyAccess: r.early_count,
@@ -605,7 +616,7 @@ admin.get("/requests/:id", async (c) => {
     .bind(r.author_id)
     .first<{ id: string; email: string | null; name: string | null; is_anon: number; external_id: string; conversations: number }>();
   return c.json({
-    request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r), ...conversationFields(conv) },
+    request: { ...publicRequest(r, null, true), ...shareFields(c.env, c.get("app"), r), ...conversationFields(conv) },
     attachments: files.get(r.id) ?? [],
     comments: comments.map((cm) => ({ ...cm, attachments: replyFiles.get(cm.id) ?? [] })),
     voters,
@@ -681,7 +692,7 @@ admin.patch("/requests/:id", async (c) => {
   const { notified } = await setStatus(c.env.DB, r, status, shipNote, mailOf(c));
   const after = await loadRequest(c, r.id);
   if (body.title !== undefined || body.body !== undefined || body.private === true) c.executionCtx.waitUntil(upsertRequests(c.env, [after]));
-  return c.json({ request: { ...publicRequest(after, null), ...shareFields(c.env, c.get("app"), after) }, notified: notified > 0, told: notified });
+  return c.json({ request: { ...publicRequest(after, null, true), ...shareFields(c.env, c.get("app"), after) }, notified: notified > 0, told: notified });
 });
 
 /**
@@ -1029,7 +1040,7 @@ pub.use(
   "*",
   cors({
     origin: (origin) => origin || "*",
-    allowHeaders: ["content-type", "x-youasked-key", "x-youasked-user", "x-youasked-sig", "x-youasked-anon", "x-youasked-dev", "x-youasked-platform"],
+    allowHeaders: ["content-type", "x-youasked-key", "x-youasked-user", "x-youasked-sig", "x-youasked-anon", "x-youasked-dev", "x-youasked-client", "x-youasked-platform"],
     allowMethods: ["GET", "POST", "DELETE"],
     maxAge: 86400,
   }),
@@ -1258,7 +1269,10 @@ pub.post("/requests", async (c) => {
   const priv = Boolean(a.private_mode) || body.private === true;
   const title = cleanText(body.title, 120);
   const inbound = c.req.header("x-youasked-inbound");
-  const context = cleanContext(body.context, Boolean(inbound) && safeEqual(inbound, await inboundProof(c.env)));
+  const fromInbox = Boolean(inbound) && safeEqual(inbound, await inboundProof(c.env));
+  const cleaned = cleanContext(body.context, fromInbox);
+  const client = fromInbox ? null : clientInfo(c.req.raw.headers);
+  const context = client ? { ...(cleaned ?? {}), client } : cleaned;
   const credit = body.credit === true && !me.is_anon && Boolean(me.name) && !priv ? 1 : 0;
   const uploadIds = (Array.isArray(body.attachments) ? body.attachments : [])
     .filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x))

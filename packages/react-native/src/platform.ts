@@ -118,3 +118,72 @@ export function loadSafeArea() {
   }
   return safeArea;
 }
+
+// ---------------------------------------------------------------- device and app version
+
+/** Bump with package.json. */
+export const SDK_VERSION = "0.4.0";
+
+let clientHeader: string | undefined;
+
+/** First optional module that loads, or null. */
+function optional(...ids: string[]): any {
+  for (const id of ids) {
+    try {
+      const m = require(id);
+      if (m) return m.default ?? m;
+    } catch {
+      /* not installed */
+    }
+  }
+  return null;
+}
+
+/**
+ * The app's version and the phone, for the app's team (never shown to other people): sent as
+ * `x-youasked-client`. Uses expo-application / expo-device or react-native-device-info when the app
+ * has them, and React Native's own constants otherwise.
+ */
+export function clientInfoHeader(): string {
+  if (clientHeader !== undefined) return clientHeader;
+  // Built by hand: React Native's URLSearchParams can't set values.
+  const parts: string[] = [];
+  const put = (k: string, v: unknown) => {
+    if (v !== undefined && v !== null && String(v).trim()) parts.push(`${k}=${encodeURIComponent(String(v).trim().slice(0, 60))}`);
+  };
+  try {
+    const c = (Platform.constants ?? {}) as Record<string, unknown>;
+    put("platform", Platform.OS);
+    const app = optional("expo-application");
+    const info = optional("react-native-device-info");
+    const dev = optional("expo-device");
+    put("app", app?.nativeApplicationVersion ?? safe(() => info?.getVersion()));
+    put("build", app?.nativeBuildVersion ?? safe(() => info?.getBuildNumber()));
+    if (Platform.OS === "android") {
+      put("os", `Android ${c.Release ?? Platform.Version}`);
+      const brand = String(dev?.manufacturer ?? c.Manufacturer ?? c.Brand ?? "");
+      const model = String(dev?.modelName ?? c.Model ?? safe(() => info?.getModel()) ?? "");
+      put("device", model && brand && !model.toLowerCase().startsWith(brand.toLowerCase()) ? `${capital(brand)} ${model}` : model);
+    } else if (Platform.OS === "ios") {
+      put("os", `${c.systemName === "iPadOS" ? "iPadOS" : "iOS"} ${c.osVersion ?? Platform.Version}`);
+      put("device", dev?.modelId ?? safe(() => info?.getDeviceId()) ?? dev?.modelName ?? (c.interfaceIdiom === "pad" ? "iPad" : "iPhone"));
+    } else {
+      put("os", `${Platform.OS} ${Platform.Version ?? ""}`);
+    }
+    put("sdk", `react-native/${SDK_VERSION}`);
+  } catch {
+    /* send what we have */
+  }
+  clientHeader = parts.join("&");
+  return clientHeader;
+}
+
+function safe<T>(f: () => T): T | undefined {
+  try {
+    return f();
+  } catch {
+    return undefined;
+  }
+}
+
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
