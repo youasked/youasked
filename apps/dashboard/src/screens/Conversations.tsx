@@ -164,6 +164,7 @@ export function Conversations({ app, selectedId }: { app: WorkspaceApp; selected
                   <span className="cv-row-main">
                     <span className="cv-row-top">
                       <b>{nameOf(r.author)}</b>
+                      {r.context?.via === "email" && <span className="via-email" title="Arrived by email"><Icon name="mail" size={11} /> Email</span>}
                       <span className="cv-row-when">
                         <time dateTime={new Date(last.at).toISOString()}>{timeAgo(last.at)}</time>
                         {r.needsReply && <span className="cv-dot" aria-label="Needs a reply" />}
@@ -354,7 +355,10 @@ function ThreadPane({
           <span className="avatar">{initials(person)}</span>
           <div className="cv-who">
             <b>{nameOf(person)}</b>
-            <span className="muted small">{person?.email ?? (person?.anonymous ? "Not signed in" : "No email")}</span>
+            <span className="muted small">
+              {person?.email ?? (person?.anonymous ? "Not signed in" : "No email")}
+              {r.context?.via === "email" && <> · <span className="via-email"><Icon name="mail" size={11} /> via email</span></>}
+            </span>
           </div>
           {r.closedAt ? (
             <Button size="sm" onClick={() => setDone(false)}>Open again</Button>
@@ -406,7 +410,13 @@ function ThreadPane({
             id="cv-reply"
             className="input"
             rows={3}
-            placeholder={group && everyone ? `Reply to all ${others}. Each person gets it in their own conversation.` : `Reply to ${first}. Only ${first} sees this.`}
+            placeholder={
+              group && everyone
+                ? `Reply to all ${others}. Each person gets it in their own conversation.`
+                : r.context?.via === "email"
+                  ? `Reply to ${first}. It goes to ${person?.email ?? "their inbox"} by email, and their answer comes back here.`
+                  : `Reply to ${first}. Only ${first} sees this.`
+            }
             value={reply}
             maxLength={2000}
             onChange={(e) => setReply(e.target.value)}
@@ -494,6 +504,8 @@ function ThreadPane({
             <div><dt>Page</dt><dd className="mono">{r.context?.page ?? r.context?.url ?? (r.context as { path?: string }).path}</dd></div>
           )}
           {r.context?.topic && <div><dt>Topic</dt><dd>{r.context.topic}</dd></div>}
+          {r.context?.via === "email" && <div><dt>Arrived by email</dt><dd>{r.context.subject || r.title}<small>from {r.context.from ?? person?.email}</small></dd></div>}
+          {r.context?.meta && Object.entries(r.context.meta).map(([k, v]) => <div key={k}><dt>{k[0].toUpperCase() + k.slice(1).replace(/_/g, " ")}</dt><dd>{v}</dd></div>)}
           {(person?.conversations ?? 0) > 1 && <div><dt>Conversations with {first}</dt><dd>{person!.conversations}</dd></div>}
         </dl>
 

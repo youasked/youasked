@@ -82,7 +82,31 @@ type Button = { text: string; callback_data: string };
 export function contextLine(r: RequestRow): string | null {
   const ctx = parseContext(r.context);
   if (!ctx) return null;
-  return [ctx.path, ctx.topic && `about ${ctx.topic}`].filter(Boolean).join(" · ") || null;
+  const meta = ctx.meta ? Object.entries(ctx.meta).map(([k, v]) => `${k}: ${v}`).join(", ") : null;
+  return [ctx.via === "email" ? `📧 via email${ctx.from ? ` from ${ctx.from}` : ""}` : null, ctx.path, ctx.topic && `about ${ctx.topic}`, meta].filter(Boolean).join(" · ") || null;
+}
+
+/** A forwarding-confirmation email reached an app's inbox address: tell the team the code. */
+export async function notifyInboxSetup(env: Env, appId: string, appName: string, s: { subject: string; code: string | null }) {
+  const base = (env.DASHBOARD_URL ?? "https://app.youasked.dev").replace(/\/$/, "");
+  const text = `📧 <b>${esc(appName)} email inbox</b>\nA confirmation email arrived: “${esc(clip(s.subject, 160))}”${s.code ? `\nCode: <code>${esc(s.code)}</code>` : ""}\nConfirm it from YouAsked settings.`;
+  const integrations = await loadIntegrations(env.DB, appId);
+  await Promise.all(
+    integrations
+      .filter((i) => i.kind === "telegram")
+      .map((i) => {
+        const cfg = i.config as TelegramConfig;
+        const token = botTokenFor(env, cfg);
+        if (!cfg.chatId || !token) return null;
+        return tg(env, token, "sendMessage", {
+          chat_id: cfg.chatId,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: { inline_keyboard: [[{ text: "Open settings", url: `${base}/a/${appId}/settings` }]] },
+        });
+      }),
+  ).catch((err) => console.error("notifyInboxSetup", err));
 }
 
 /** Telegram captions stop at 1024 characters, so a card with a screenshot keeps its details shorter. */

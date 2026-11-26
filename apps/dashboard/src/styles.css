@@ -840,3 +840,36 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
   .pair-name { display: inline-block; padding: 8px 0; }
   .note-line a, .hint a, .muted a { display: inline-block; padding: 10px 2px; }
 }
+
+/* ---------- email inbox (settings) */
+.ei-plan { margin: -6px 0 6px; }
+.ei { display: grid; gap: 14px; margin: 4px 0 10px; padding: 18px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); animation: ei-in 0.35s var(--ease); }
+@keyframes ei-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.ei-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ei-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.ei-status { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 500; color: var(--text-2); }
+.ei-status.wait .pulse { color: #e5a100; }
+.ei-status.ok .pulse { color: var(--ok); }
+.ei-status.ok .pulse::after { animation: none; opacity: 0; }
+.ei-address { font-size: 14px; }
+.ei-address code { font-size: 14px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.ei-inline { font-family: var(--mono); font-size: 12.5px; padding: 1px 6px; border-radius: 6px; background: var(--surface-2); color: var(--text); overflow-wrap: anywhere; }
+.ei-confirm { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--butter) 14%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--butter) 45%, transparent); color: var(--text); }
+.ei-confirm b { color: var(--text); }
+.ei-confirm .muted { color: var(--muted); margin: 2px 0 0; overflow-wrap: anywhere; }
+.ei-confirm-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--butter); color: #5c4a00; flex: none; }
+.ei-code { display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; padding: 5px 5px 5px 12px; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.ei-code span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.ei-code code { font: 700 17px var(--mono); letter-spacing: 0.08em; color: var(--text); background: none; padding: 0; }
+@media (max-width: 560px) { .ei-confirm { flex-wrap: wrap; } .ei-confirm .btn { margin-left: 42px; } }
+.ei-guide { display: grid; gap: 14px; padding-top: 4px; }
+.ei-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ei-seg::-webkit-scrollbar { display: none; }
+.ei-seg button { flex: none; }
+.ei-guide .steps { font-size: 14px; line-height: 1.55; }
+.ei-foot { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+.ei-foot svg { flex: none; margin-top: 2px; }
+
+/* ---------- email conversations */
+.via-email { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-text); white-space: nowrap; }
+.via-email svg { flex: none; }

@@ -15,7 +15,7 @@ export type Req = {
   comments: number;
   shipNote: string | null;
   shippedAt: number | null;
-  context: { topic?: string; page?: string; url?: string } | null;
+  context: { topic?: string; page?: string; url?: string; via?: "email"; from?: string; subject?: string; meta?: Record<string, string> } | null;
   creditName: string | null;
   createdAt: number;
   updatedAt?: number;
@@ -94,6 +94,17 @@ export type AppInfo = {
   privateMode?: boolean;
   /** Who the widget's messages come from. The photo is uploaded with uploadAvatar. */
   persona?: Persona | null;
+  /** Support email forwarded into YouAsked (paid plans). */
+  emailInbox?: EmailInbox;
+};
+
+export type EmailInbox = {
+  enabled: boolean;
+  address: string | null;
+  domain: string;
+  lastEmailAt: number | null;
+  /** The last "confirm this forwarding address" email that reached the address. */
+  setup: { from: string; subject: string; code: string | null; link: string | null; at: number } | null;
 };
 
 export type Persona = { name: string | null; role: string | null; avatar: string | null; intro: string | null };

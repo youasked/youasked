@@ -33,6 +33,7 @@ import { telegramConnect } from "./telegram-bot";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
 import { cleanText, decodeBase64Url, newId, safeEqual, similarity, verifySignature } from "./lib";
+import { handleEmail, inboundProof, inboxAddress, inboxDomain, newInboxToken, type SetupMessage } from "./inbox";
 import type { Mail } from "./mail";
 import quality, { findSimilar, purgeRequest, unsubscribe } from "./quality";
 import { removeRequests, upsertRequests } from "./semantic";
@@ -195,15 +196,33 @@ function sniffImage(b: Uint8Array): string | null {
 const uploadUrl = (origin: string, id: string) => `${origin}/v1/uploads/${id}`;
 
 /** Where the request came from. The path never carries a query string or hash. */
-function cleanContext(raw: unknown): RequestContext | null {
+function cleanContext(raw: unknown, trusted = false): RequestContext | null {
   if (!raw || typeof raw !== "object") return null;
-  const { path, topic } = raw as { path?: unknown; topic?: unknown };
+  const { path, topic, meta, via, from, subject } = raw as { path?: unknown; topic?: unknown; meta?: unknown; via?: unknown; from?: unknown; subject?: unknown };
   const out: RequestContext = {};
   const p = cleanText(path, 200).split(/[?#]/)[0];
   if (p.startsWith("/")) out.path = p;
   const t = cleanText(topic, 60);
   if (t) out.topic = t;
-  return out.path || out.topic ? out : null;
+  // Short labels from the app's own server, e.g. which wedding or which assistant it came through.
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const m: Record<string, string> = {};
+    for (const [k, v] of Object.entries(meta as Record<string, unknown>).slice(0, 6)) {
+      const key = cleanText(k, 40).replace(/[^\w .-]/g, "");
+      const val = typeof v === "string" || typeof v === "number" ? cleanText(String(v), 120) : "";
+      if (key && val) m[key] = val;
+    }
+    if (Object.keys(m).length) out.meta = m;
+  }
+  // Only the email inbox handler may say a message arrived by email, and from whom.
+  if (trusted && via === "email") {
+    out.via = "email";
+    const f = cleanText(from, 200).toLowerCase();
+    if (f) out.from = f;
+    const sub = cleanText(subject, 200);
+    if (sub) out.subject = sub;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 async function attachmentsFor(db: D1Database, requestIds: string[], origin: string): Promise<Map<string, { id: string; url: string }[]>> {
@@ -398,8 +417,25 @@ admin.get("/app", (c) => {
     nudge: readNudge(a.nudge),
     persona: readPersona(a.persona),
     privateMode: Boolean(a.private_mode),
+    emailInbox: emailInboxInfo(c.env, a),
   });
 });
+
+function emailInboxInfo(env: Env, a: AppRow) {
+  let setup: SetupMessage | null = null;
+  try {
+    setup = a.email_setup ? (JSON.parse(a.email_setup) as SetupMessage) : null;
+  } catch {
+    setup = null;
+  }
+  return {
+    enabled: Boolean(a.email_inbox),
+    address: inboxAddress(env, a),
+    domain: inboxDomain(env),
+    lastEmailAt: a.email_last_at ?? null,
+    setup,
+  };
+}
 
 admin.patch("/app", async (c) => {
   const body = await c.req.json<{
@@ -415,6 +451,8 @@ admin.patch("/app", async (c) => {
     nudge?: Partial<Nudge> | null;
     /** Each person sees only their own conversations with the team. */
     privateMode?: boolean;
+    /** Forwarded support email becomes private conversations (paid plans). */
+    emailInbox?: boolean;
     /** Who the widget's messages come from, or null to clear it. The photo is set with POST /app/avatar. */
     persona?: Partial<Persona> | null;
   }>();
@@ -465,6 +503,16 @@ admin.patch("/app", async (c) => {
     await c.env.DB.prepare("UPDATE apps SET slug = ?, public_board = ?, description = ? WHERE id = ?")
       .bind(pubSettings.slug, pubSettings.public_board, pubSettings.description, a.id)
       .run();
+  }
+  if (body.emailInbox !== undefined) {
+    if (body.emailInbox) {
+      const live = a.always_live ? true : (await entitlements(c.env, a)).live;
+      if (!live) fail(402, "plan_required", { message: "The email inbox is part of the paid plans." });
+    }
+    // The address stays the same when it's switched off and on again, so forwarding rules keep working.
+    const token = a.email_token ?? newInboxToken();
+    await c.env.DB.prepare("UPDATE apps SET email_inbox = ?, email_token = ? WHERE id = ?").bind(body.emailInbox ? 1 : 0, token, a.id).run();
+    return c.json({ ok: true, emailInbox: emailInboxInfo(c.env, { ...a, email_inbox: body.emailInbox ? 1 : 0, email_token: token }) });
   }
   return c.json({ ok: true });
 });
@@ -1209,7 +1257,8 @@ pub.post("/requests", async (c) => {
   // request one; otherwise a "message the team" entry point (open({ private: true })) asks for it.
   const priv = Boolean(a.private_mode) || body.private === true;
   const title = cleanText(body.title, 120);
-  const context = cleanContext(body.context);
+  const inbound = c.req.header("x-youasked-inbound");
+  const context = cleanContext(body.context, Boolean(inbound) && safeEqual(inbound, await inboundProof(c.env)));
   const credit = body.credit === true && !me.is_anon && Boolean(me.name) && !priv ? 1 : 0;
   const uploadIds = (Array.isArray(body.attachments) ? body.attachments : [])
     .filter((x): x is string => typeof x === "string" && /^upl_[a-z0-9]{24}$/.test(x))
@@ -1411,6 +1460,17 @@ async function tick(env: Env, at: Date) {
 
 export default {
   fetch: app.fetch,
+  // Support email forwarded to <app>-<token>@in.youasked.dev (Cloudflare Email Routing → this Worker).
+  async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
+    try {
+      await handleEmail(message, env, (req) => Promise.resolve(app.fetch(req, env, ctx)));
+    } catch (err) {
+      console.error("[inbox]", err instanceof Error ? err.message : err);
+      await alert(env, "inbox:error", `An email to the inbox failed: ${err instanceof Error ? err.message : String(err)}`, 30 * 60_000);
+      // Let the sender's server retry rather than lose the email.
+      throw err;
+    }
+  },
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
     // Two triggers (see wrangler.jsonc): the 10-minute tick (webhook retries, plus the daily Heard
     // elsewhere scan and upload sweep at 02:30 UTC), and the weekly digest.

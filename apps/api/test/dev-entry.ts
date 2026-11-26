@@ -36,4 +36,5 @@ const withAI = (env: Env): Env => ({ ...env, AI: fakeAI as unknown as Ai });
 export default {
   fetch: (req: Request, env: Env, ctx: ExecutionContext) => worker.fetch(req, withAI(env), ctx),
   scheduled: (event: ScheduledController, env: Env, ctx: ExecutionContext) => worker.scheduled(event, withAI(env), ctx),
+  email: (message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) => worker.email(message, withAI(env), ctx),
 };

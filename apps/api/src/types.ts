@@ -31,6 +31,8 @@ export type Env = {
 
   /** Encrypts stored third-party tokens (GitHub, Linear, own Telegram bots). 32 random bytes, base64. */
   TOKEN_ENC_KEY?: string;
+  /** Domain that receives forwarded support email (default in.youasked.dev). */
+  INBOX_DOMAIN?: string;
 
   /** Cloudflare bindings for AI features and email. Optional so local tests run without them. */
   AI?: Ai;
@@ -81,6 +83,11 @@ export type AppRow = {
   description: string | null;
   /** 1 when each person sees only their own conversations with the team (no public board, no votes). */
   private_mode?: number;
+  /** Email inbox: 1 when forwarded email becomes conversations; the address token; last confirmation email (JSON); last email time. */
+  email_inbox?: number;
+  email_token?: string | null;
+  email_setup?: string | null;
+  email_last_at?: number | null;
   /** JSON: who the widget's messages come from (name, role, photo, welcome note). NULL means not set. */
   persona?: string | null;
 };
@@ -137,7 +144,16 @@ export type RequestRow = {
   updated_at: number;
 };
 
-export type RequestContext = { path?: string; topic?: string };
+export type RequestContext = {
+  path?: string;
+  topic?: string;
+  /** Set only by the email inbox handler (never by clients): how it arrived, from whom, the subject. */
+  via?: "email";
+  from?: string;
+  subject?: string;
+  /** Up to 6 short labels the app's server attaches (wedding: maya-and-daniel, source: chatgpt). */
+  meta?: Record<string, string>;
+};
 
 export function parseContext(raw: string | null): RequestContext | null {
   if (!raw) return null;

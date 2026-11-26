@@ -4,6 +4,7 @@ import { Link } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, CopyButton, Dialog, ErrorState, Icon, PageHead, Skeleton, Switch, useFail, useLoad, useToast } from "../ui";
 import { secretStore } from "./FirstRun";
+import { EmailInboxSettings } from "./EmailInbox";
 
 function Row({ title, hint, children, stack }: { title: string; hint?: ReactNode; children: ReactNode; stack?: boolean }) {
   return (
@@ -98,6 +99,9 @@ export function Settings({ app }: { app: WorkspaceApp }) {
           >
             <Link to={appUrl(app.id, "/message")} className="btn btn-default btn-sm">{d.nudge ? "Edit" : "Set it up"}</Link>
           </Row>
+
+          <h2 className="group">Email</h2>
+          <EmailInboxSettings app={app} info={d} entitled={Boolean(app.live) || Boolean(d.emailInbox?.enabled)} onChange={(next) => info.set((x) => ({ ...x, emailInbox: next }))} />
 
           <h2 className="group">Who can ask</h2>
           <Row title="Require signed users" hint="Only people your app signs in can ask and vote. Your server signs each user with the secret key.">

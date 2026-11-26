@@ -2,12 +2,13 @@
 // Only people with a known email who aren't anonymous and haven't unsubscribed. Each person gets
 // each event once (email_log), whichever of the dashboard, Telegram or GitHub triggered it.
 import { sendEmail } from "./email";
-import { requestEmail } from "./email-kit";
+import { esc, requestEmail } from "./email-kit";
+import { replyAddress } from "./inbox";
 import { siteUrl } from "./public";
 import { alert } from "./alert";
 import { entitlements } from "./plans";
 import { hmacHex } from "./lib";
-import type { Env, RequestRow } from "./types";
+import { parseContext, type AppRow, type Env, type RequestRow } from "./types";
 
 /** What actions.ts needs to send mail after a change without blocking the response. */
 export type Mail = { env: Env; waitUntil: (p: Promise<unknown>) => void };
@@ -126,6 +127,8 @@ export async function emailShipped(env: Env, r: RequestRow): Promise<void> {
 }
 
 export async function emailReply(env: Env, r: RequestRow, body: string, commentId: string, images: string[] = []): Promise<void> {
+  const ctx = parseContext(r.context);
+  if (ctx?.via === "email") return emailReplyAsEmail(env, r, { subject: ctx.subject ?? r.title }, body, commentId, images);
   const { results } = await env.DB.prepare(
     `SELECT DISTINCT u.id, u.email, u.name FROM users u
      WHERE ${REACHABLE} AND (u.id = ?1 OR u.id IN (SELECT user_id FROM comments WHERE request_id = ?2 AND is_team = 0 AND user_id IS NOT NULL))`,
@@ -156,4 +159,36 @@ export async function emailReply(env: Env, r: RequestRow, body: string, commentI
       }),
     };
   });
+}
+
+/**
+ * A conversation that started as an email gets its replies the way email people expect: a plain,
+ * personal message "from <App> via YouAsked", subject "Re: <their subject>", and a Reply-To that
+ * brings their answer straight back into the same conversation.
+ */
+async function emailReplyAsEmail(env: Env, r: RequestRow, o: { subject: string }, body: string, commentId: string, images: string[]): Promise<void> {
+  const person = await env.DB.prepare(`SELECT u.id, u.email, u.name FROM users u WHERE u.id = ? AND ${REACHABLE}`).bind(r.author_id).first<Person>();
+  if (!person) return;
+  const a = await env.DB.prepare("SELECT name, email_token FROM apps WHERE id = ?").bind(r.app_id).first<Pick<AppRow, "name" | "email_token">>();
+  if (!a) return;
+  const logged = await env.DB.prepare("INSERT OR IGNORE INTO email_log (request_id, user_id, kind, created_at) VALUES (?, ?, ?, ?)")
+    .bind(r.id, person.id, `reply:${commentId}`, Date.now())
+    .run();
+  if (!logged.meta.changes) return; // already sent
+  const links = images.map((id) => `${apiOrigin(env)}/v1/uploads/${id}`);
+  const first = person.name ? person.name.split(/\s+/)[0] : null;
+  const subject = /^re:/i.test(o.subject) ? o.subject : `Re: ${o.subject}`;
+  const replyTo = replyAddress(env, a, r.number) ?? undefined;
+  const sign = `${a.name} team`;
+  const text = `${first ? `Hi ${first},\n\n` : ""}${body}${links.length ? `\n\n${links.join("\n")}` : ""}\n\n${sign}\n\n${replyTo ? "Just reply to this email to answer." : ""}`;
+  const paras = body.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>").replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#2563eb">$1</a>')}</p>`).join("");
+  const pics = links.map((u) => `<p style="margin:0 0 14px"><a href="${esc(u)}"><img src="${esc(u)}" alt="" style="max-width:100%;border-radius:10px;border:1px solid #e5e7eb"></a></p>`).join("");
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff">
+<div style="max-width:560px;margin:0 auto;padding:28px 22px;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827">
+${first ? `<p style="margin:0 0 14px">Hi ${esc(first)},</p>` : ""}${paras}${pics}
+<p style="margin:18px 0 0;color:#374151">${esc(sign)}</p>
+<div style="margin-top:28px;padding-top:14px;border-top:1px solid #eef0f3;font-size:13px;color:#9ca3af">${replyTo ? "Just reply to this email to answer. " : ""}You wrote about “${esc(o.subject.replace(/^re:\s*/i, ""))}”.</div>
+</div></body></html>`;
+  const sent = await sendEmail(env, { to: person.email, subject, text, html, fromName: `${a.name} via YouAsked`, replyTo });
+  if (!sent) await env.DB.prepare("DELETE FROM email_log WHERE request_id = ? AND user_id = ? AND kind = ?").bind(r.id, person.id, `reply:${commentId}`).run();
 }

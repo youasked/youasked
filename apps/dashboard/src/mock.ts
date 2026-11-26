@@ -129,6 +129,7 @@ function seed() {
     app: {
       id: "app_acme", name: "Acme", publicKey: "ya_pub_8fKq2mXc4vNd7sLw", secretKey: "ya_sec_p3R9tZb6YhJe1uQa5oVx", secretShown: false,
       watermark: true, requireSignature: false, allowedOrigins: ["https://acme.app"] as string[] | null, moderation: "off", slug: "acme", publicBoard: true, description: "What we're building next at Acme, and what just shipped.",
+      emailInbox: { enabled: false, address: null as string | null, domain: "in.youasked.dev", lastEmailAt: null as number | null, setup: null as null | { from: string; subject: string; code: string | null; link: string | null; at: number } },
     },
     integrations: { telegram: null as null | { botUsername: string; shared: boolean; mode: string; chatTitle: string | null; pendingUntil?: number; code?: string }, github: null as null | { id: string; secret: string; repo?: string; hasToken?: boolean }, webhook: null as null | { url: string; format: string }, events: null as null | { url: string; events: string[]; secret: string } },
     members: [
@@ -306,6 +307,14 @@ export async function mockFetch(method: string, path: string, body?: unknown): P
   }
   if (r === "/app" && method === "PATCH") {
     for (const k of ["name", "watermark", "requireSignature", "allowedOrigins", "moderation", "slug", "publicBoard", "description", "nudge", "privateMode"]) if (k in b) (s.app as any)[k] = b[k];
+    if ("emailInbox" in b) {
+      const ei = s.app.emailInbox;
+      ei.enabled = Boolean(b.emailInbox);
+      ei.address = ei.address ?? "acme-8f3k2m9q@in.youasked.dev";
+      // The mock pretends Gmail's confirmation arrives a moment after the inbox is turned on.
+      if (ei.enabled && !ei.setup) setTimeout(() => { ei.setup = { from: "forwarding-noreply@google.com", subject: "(#482913570) Gmail Forwarding Confirmation - Receive Mail from support@acme.app", code: "482913570", link: "https://mail-settings.google.com/mail/vf-demo", at: Date.now() }; }, 2500);
+      return json({ ok: true, emailInbox: { ...ei } });
+    }
     if ("persona" in b) (s.app as any).persona = b.persona === null ? null : { name: null, role: null, avatar: null, intro: null, ...((s.app as any).persona ?? {}), ...b.persona };
     return json({ ok: true });
   }

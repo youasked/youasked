@@ -6,9 +6,21 @@ import { AwsClient } from "aws4fetch";
 import { accountEmail } from "./email-kit";
 import type { Env } from "./types";
 
-export type Email = { to: string; subject: string; text: string; html?: string };
+export type Email = {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  /** Shown as the sender's name, e.g. "Keep This Day via YouAsked". The address is always hello@youasked.dev. */
+  fromName?: string;
+  /** Where the person's reply goes, e.g. an app's inbox address for that conversation. */
+  replyTo?: string;
+};
 
 export const FROM = { email: "hello@youasked.dev", name: "YouAsked" };
+
+/** A display name safe inside an address header. */
+const quoteName = (n: string) => (/[^\w .-]/.test(n) ? `"${n.replace(/["\\\r\n]/g, "")}"` : n);
 
 async function sendWithSes(env: Env, email: Email): Promise<boolean> {
   const region = env.SES_REGION ?? "ap-southeast-1";
@@ -17,8 +29,9 @@ async function sendWithSes(env: Env, email: Email): Promise<boolean> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      FromEmailAddress: `${FROM.name} <${FROM.email}>`,
+      FromEmailAddress: `${quoteName(email.fromName ?? FROM.name)} <${FROM.email}>`,
       Destination: { ToAddresses: [email.to] },
+      ...(email.replyTo ? { ReplyToAddresses: [email.replyTo] } : {}),
       Content: {
         Simple: {
           Subject: { Data: email.subject, Charset: "UTF-8" },
@@ -50,7 +63,14 @@ export async function sendEmail(env: Env, email: Email): Promise<boolean> {
     return false;
   }
   try {
-    await env.EMAIL.send({ from: FROM, to: email.to, subject: email.subject, text: email.text, ...(email.html ? { html: email.html } : {}) });
+    await env.EMAIL.send({
+      from: { ...FROM, name: email.fromName ?? FROM.name },
+      to: email.to,
+      subject: email.subject,
+      text: email.text,
+      ...(email.html ? { html: email.html } : {}),
+      ...(email.replyTo ? { replyTo: email.replyTo } : {}),
+    } as Parameters<NonNullable<Env["EMAIL"]>["send"]>[0]);
     return true;
   } catch (err) {
     console.error(`[email] send to ${email.to} failed:`, err instanceof Error ? err.message : err);
