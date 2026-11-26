@@ -33,6 +33,8 @@ export type Env = {
   TOKEN_ENC_KEY?: string;
   /** Domain that receives forwarded support email (default in.youasked.dev). */
   INBOX_DOMAIN?: string;
+  /** Where mail for other youasked.dev addresses goes once the catch-all points at this Worker. */
+  CATCHALL_FORWARD?: string;
 
   /** Cloudflare bindings for AI features and email. Optional so local tests run without them. */
   AI?: Ai;

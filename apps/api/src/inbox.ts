@@ -130,6 +130,10 @@ async function log(env: Env, appId: string, row: { requestId?: string | null; me
 const b64url = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 export async function handleEmail(message: ForwardableEmailMessage, env: Env, dispatch: Dispatch): Promise<void> {
+  // The zone's catch-all points here, so mail for any other youasked.dev address keeps going where it
+  // always went (the team's inbox), untouched.
+  const domain = message.to.toLowerCase().split("@")[1] ?? "";
+  if (domain !== inboxDomain(env)) return message.forward(env.CATCHALL_FORWARD ?? "adenteo@gmail.com");
   const rcpt = parseRecipient(message.to, env);
   if (!rcpt) return message.setReject("Unknown address");
   const a = await env.DB.prepare("SELECT * FROM apps WHERE email_token = ?").bind(rcpt.token).first<AppRow & { email_inbox: number; email_token: string }>();
