@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { appApi, uploadReplyImage, type Attachment, type Req, type Status } from "./api";
-import { Button, Dialog, Icon, STATUS_LABEL, StatusChip, useFail, useKeepInView, useNarrow } from "./ui";
+import { Button, CopyButton, Dialog, Icon, STATUS_LABEL, StatusChip, useFail, useKeepInView, useNarrow } from "./ui";
 
 export const PICKABLE: Status[] = ["open", "planned", "in_progress", "shipped", "declined"];
 
@@ -237,5 +237,22 @@ export function Pictures({ files }: { files?: Attachment[] }) {
         </a>
       ))}
     </span>
+  );
+}
+
+/**
+ * The id the app passed for this person (its own user id), so the team can find them in their own
+ * database or analytics. Only signed-in people have one; nothing shows for anonymous visitors.
+ */
+export function AppUserIdFact({ id }: { id?: string | null }) {
+  if (!id) return null;
+  return (
+    <div>
+      <dt>User ID</dt>
+      <dd className="app-user-id">
+        <span className="mono" title={id}>{id}</span>
+        <CopyButton text={id} label="Copy" />
+      </dd>
+    </div>
   );
 }

@@ -58,7 +58,7 @@ export function Inbox({ app }: { app: WorkspaceApp }) {
     const term = q.trim().toLowerCase();
     return reqs
       .filter(f.match)
-      .filter((r) => !term || `${r.title} ${r.body} ya-${r.number} ${r.author?.name ?? ""} ${r.author?.email ?? ""}`.toLowerCase().includes(term))
+      .filter((r) => !term || `${r.title} ${r.body} ya-${r.number} ${r.author?.name ?? ""} ${r.author?.email ?? ""} ${r.author?.appUserId ?? ""}`.toLowerCase().includes(term))
       .sort((a, b) => (sort === "votes" ? b.votes - a.votes || b.createdAt - a.createdAt : b.createdAt - a.createdAt));
   }, [reqs, filter, q, sort]);
 

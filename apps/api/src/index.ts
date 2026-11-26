@@ -32,7 +32,7 @@ import listening, { runListening } from "./listening";
 import { telegramConnect } from "./telegram-bot";
 import signup from "./signup";
 import hooks, { sendDigests } from "./hooks";
-import { cleanText, decodeBase64Url, newId, safeEqual, similarity, verifySignature } from "./lib";
+import { appUserId, cleanText, decodeBase64Url, newId, safeEqual, similarity, verifySignature } from "./lib";
 import { handleEmail, inboundProof, inboxAddress, inboxDomain, newInboxToken, type SetupMessage } from "./inbox";
 import type { Mail } from "./mail";
 import quality, { findSimilar, purgeRequest, unsubscribe } from "./quality";
@@ -546,7 +546,7 @@ admin.get("/requests", async (c) => {
   const status = c.req.query("status");
   const where = status && status !== "all" ? "AND r.status = ?" : "AND r.status != 'merged'";
   const stmt = c.env.DB.prepare(
-    `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon,
+    `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon, u.external_id AS author_ext,
             (SELECT COUNT(*) FROM early_access e WHERE e.request_id = r.id) AS early_count, ${LAST_MESSAGE_SQL}
      FROM requests r LEFT JOIN users u ON u.id = r.author_id
      WHERE r.app_id = ? ${where}
@@ -557,7 +557,7 @@ admin.get("/requests", async (c) => {
   const { results } = await (status && status !== "all"
     ? stmt.bind(c.get("app").id, status)
     : stmt.bind(c.get("app").id)
-  ).all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number; early_count: number }>();
+  ).all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number; author_ext: string | null; early_count: number }>();
   const origin = new URL(c.req.url).origin;
   const files = await attachmentsFor(c.env.DB, results.map((r) => r.id), origin);
   return c.json({
@@ -567,7 +567,7 @@ admin.get("/requests", async (c) => {
       attachments: files.get(r.id) ?? [],
       earlyAccess: r.early_count,
       credit: Boolean(r.credit),
-      author: { id: r.author_id, email: r.author_email, name: r.author_name, anonymous: Boolean(r.author_anon) },
+      author: { id: r.author_id, email: r.author_email, name: r.author_name, anonymous: Boolean(r.author_anon), appUserId: appUserId(r.author_ext) },
       updatedAt: r.updated_at,
       ...conversationFields(r),
     })),
@@ -598,19 +598,19 @@ admin.get("/requests/:id", async (c) => {
   const files = await attachmentsFor(c.env.DB, [r.id], new URL(c.req.url).origin);
   const conv = (await c.env.DB.prepare(`SELECT r.*, ${LAST_MESSAGE_SQL} FROM requests r WHERE r.id = ?`).bind(r.id).first<RequestRow & LastMessageCols>())!;
   const author = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.is_anon,
+    `SELECT u.id, u.email, u.name, u.is_anon, u.external_id,
             (SELECT COUNT(*) FROM requests x WHERE x.author_id = u.id AND x.status != 'merged') AS conversations
      FROM users u WHERE u.id = ?`,
   )
     .bind(r.author_id)
-    .first<{ id: string; email: string | null; name: string | null; is_anon: number; conversations: number }>();
+    .first<{ id: string; email: string | null; name: string | null; is_anon: number; external_id: string; conversations: number }>();
   return c.json({
     request: { ...publicRequest(r, null), ...shareFields(c.env, c.get("app"), r), ...conversationFields(conv) },
     attachments: files.get(r.id) ?? [],
     comments: comments.map((cm) => ({ ...cm, attachments: replyFiles.get(cm.id) ?? [] })),
     voters,
     earlyAccess: early,
-    author: author ? { id: author.id, email: author.email, name: author.name, anonymous: Boolean(author.is_anon), conversations: author.conversations } : null,
+    author: author ? { id: author.id, email: author.email, name: author.name, anonymous: Boolean(author.is_anon), appUserId: appUserId(author.external_id), conversations: author.conversations } : null,
     linked: await linkedFor(c.env.DB, c.get("app").id, r),
   });
 });
@@ -634,12 +634,12 @@ async function linkedFor(db: D1Database, appId: string, r: RequestRow) {
   const root = await rootOf(db, r);
   const { results } = await db
     .prepare(
-      `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon, ${LAST_MESSAGE_SQL}
+      `SELECT r.*, u.email AS author_email, u.name AS author_name, u.is_anon AS author_anon, u.external_id AS author_ext, ${LAST_MESSAGE_SQL}
        FROM requests r LEFT JOIN users u ON u.id = r.author_id
        WHERE r.app_id = ?1 AND (r.id = ?2 OR r.linked_to = ?2) ORDER BY r.created_at`,
     )
     .bind(appId, root.id)
-    .all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number }>();
+    .all<RequestRow & LastMessageCols & { author_email: string | null; author_name: string | null; author_anon: number; author_ext: string | null }>();
   if (results.length < 2) return null;
   return {
     root: { id: root.id, number: root.number, title: root.title, status: root.status, votes: root.vote_count },
@@ -650,7 +650,7 @@ async function linkedFor(db: D1Database, appId: string, r: RequestRow) {
       body: x.body,
       status: x.status,
       createdAt: x.created_at,
-      author: { id: x.author_id, email: x.author_email, name: x.author_name, anonymous: Boolean(x.author_anon) },
+      author: { id: x.author_id, email: x.author_email, name: x.author_name, anonymous: Boolean(x.author_anon), appUserId: appUserId(x.author_ext) },
       ...conversationFields(x),
     })),
   };

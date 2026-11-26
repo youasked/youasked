@@ -83,3 +83,11 @@ export function safeEqual(a: string | null | undefined, b: string | null | undef
   if (x.byteLength !== y.byteLength) return false;
   return crypto.subtle.timingSafeEqual(x, y);
 }
+
+/**
+ * The app's own id for a signed-in person (what the app passed as user.id), for the team only.
+ * users.external_id is "u:<id>" for them and "a:<device>" for anonymous visitors, who have none.
+ */
+export function appUserId(externalId: string | null | undefined): string | null {
+  return externalId?.startsWith("u:") ? externalId.slice(2) : null;
+}

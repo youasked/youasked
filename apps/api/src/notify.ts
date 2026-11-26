@@ -1,9 +1,10 @@
 // Tells the team about new requests, comments and automatic status changes, in Telegram (with
 // buttons to act on them) and in plain Slack/Discord/JSON webhooks.
 import { ref } from "./actions";
+import { appUserId } from "./lib";
 import { parseContext, type Env, type Integration, type RequestRow, type Status, type TelegramConfig, type WebhookConfig } from "./types";
 
-type Author = { name: string | null; email: string | null; is_anon: number } | null;
+type Author = { name: string | null; email: string | null; is_anon: number; external_id?: string } | null;
 type Attachment = { id: string; url: string };
 
 export type TeamEvent =
@@ -45,7 +46,9 @@ export function esc(s: string): string {
 function who(a: Author): string {
   if (!a) return "Someone";
   if (a.is_anon) return "Anonymous";
-  return a.name || a.email || "A user";
+  // No name or email from the app: its own id for them is the only way to find who it was.
+  const id = appUserId(a.external_id);
+  return a.name || a.email || (id ? `A user (${id})` : "A user");
 }
 
 function clip(s: string, n: number) {

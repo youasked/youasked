@@ -21,7 +21,8 @@ export type Req = {
   updatedAt?: number;
   attachments?: { id: string; url: string }[];
   earlyAccess?: number;
-  author?: { id?: string; email: string | null; name: string | null; anonymous: boolean };
+  /** appUserId: the id the app itself passed for this person (signed-in only), for looking them up. */
+  author?: { id?: string; email: string | null; name: string | null; anonymous: boolean; appUserId?: string | null };
   shareUrl?: string | null;
   shareImage?: string | null;
   /** Private mode: only the person who wrote it and the team see it. */
@@ -38,7 +39,7 @@ export type Req = {
 
 /** A private conversation filed with others under one request. */
 export type LinkedConversation = Pick<Req, "id" | "number" | "title" | "body" | "status" | "createdAt" | "last" | "needsReply" | "linkedTo"> & {
-  author: { id: string; email: string | null; name: string | null; anonymous: boolean };
+  author: { id: string; email: string | null; name: string | null; anonymous: boolean; appUserId?: string | null };
 };
 export type Linked = { root: { id: string; number: number; title: string; status: Status; votes: number }; conversations: LinkedConversation[] } | null;
 

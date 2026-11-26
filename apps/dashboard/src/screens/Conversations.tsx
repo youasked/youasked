@@ -3,13 +3,13 @@
 // The URL holds the selection (/a/:app/r/:id), so Telegram and email links land on the right one.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, type Comment, type Linked, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
-import { AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
+import { AppUserIdFact, AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useInterval, useLoad, useMedia, useToast } from "../ui";
 import { BuildDialog, DeleteDialog } from "./Detail";
 
-type Person = { id?: string; email: string | null; name: string | null; anonymous: boolean; conversations?: number };
+type Person = { id?: string; email: string | null; name: string | null; anonymous: boolean; appUserId?: string | null; conversations?: number };
 type Thread = {
   request: Req;
   attachments: { id: string; url: string }[];
@@ -60,7 +60,7 @@ export function Conversations({ app, selectedId }: { app: WorkspaceApp; selected
     const term = q.trim().toLowerCase();
     return all
       .filter((r) => r.id === selectedId || f.match(r))
-      .filter((r) => !term || `${r.title} ${r.body} ${r.last?.body ?? ""} ya-${r.number} ${r.author?.name ?? ""} ${r.author?.email ?? ""}`.toLowerCase().includes(term))
+      .filter((r) => !term || `${r.title} ${r.body} ${r.last?.body ?? ""} ya-${r.number} ${r.author?.name ?? ""} ${r.author?.email ?? ""} ${r.author?.appUserId ?? ""}`.toLowerCase().includes(term))
       .sort((a, b) => lastOf(b).at - lastOf(a).at);
   }, [all, filter, q, selectedId]);
 
@@ -507,6 +507,7 @@ function ThreadPane({
           {r.context?.via === "email" && <div><dt>Arrived by email</dt><dd>{r.context.subject || r.title}<small>from {r.context.from ?? person?.email}</small></dd></div>}
           {r.context?.meta && Object.entries(r.context.meta).map(([k, v]) => <div key={k}><dt>{k[0].toUpperCase() + k.slice(1).replace(/_/g, " ")}</dt><dd>{v}</dd></div>)}
           {(person?.conversations ?? 0) > 1 && <div><dt>Conversations with {first}</dt><dd>{person!.conversations}</dd></div>}
+          <AppUserIdFact id={person?.appUserId} />
         </dl>
 
         <div className="side-block actions">

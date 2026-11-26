@@ -434,6 +434,9 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 .facts dt { font-size: 12.5px; color: var(--muted); }
 .facts dd { font-weight: 500; overflow-wrap: anywhere; }
 .facts dd small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.facts dd.app-user-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.facts dd.app-user-id .mono { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.facts dd.app-user-id .btn { flex-shrink: 0; }
 .voters { display: grid; gap: 4px; font-size: 14px; }
 .pending-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: var(--butter-soft); color: var(--butter-text); margin-bottom: 22px; }
 .pending-bar > span:first-child { display: inline-flex; gap: 8px; align-items: center; }

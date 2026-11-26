@@ -125,11 +125,12 @@ server.registerTool(
   },
   ({ request }) =>
     run(async () => {
-      const { request: r, comments } = await api.lookup(request.trim());
+      const { request: r, comments, author } = await api.lookup(request.trim());
       const out = [
         `${ref(r.number)}: ${r.title}`,
         `Status: ${r.status}${r.mergedInto ? ` (merged into another request, id ${r.mergedInto})` : ""}`,
         `Votes: ${r.votes}  ·  Asked ${day(r.createdAt)}${r.shippedAt ? `  ·  Shipped ${day(r.shippedAt)}` : ""}`,
+        author ? `Asked by: ${author.anonymous ? "someone not signed in" : (author.name ?? author.email ?? "a signed-in user")}${author.appUserId ? ` (user id in the app: ${author.appUserId})` : ""}` : "",
         r.shipNote ? `Ship note: ${r.shipNote}` : "",
         "",
         r.body || "(no description, just the title)",

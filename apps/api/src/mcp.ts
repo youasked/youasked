@@ -59,7 +59,7 @@ type Summary = {
   needsReply?: boolean;
   linkedTo?: string | null;
   linkedCount?: number;
-  author?: { name: string | null; anonymous: boolean };
+  author?: { name: string | null; anonymous: boolean; appUserId?: string | null };
   last?: { body: string; team: boolean; at: number };
 };
 type Run = {
@@ -151,6 +151,7 @@ function makeApi(c: Context<{ Bindings: Env }>, app: AppRow, dispatch: Dispatch)
         needsReply: boolean;
         linkedTo: { ref: string; title: string; status: string } | null;
         linkedCount: number;
+        author: { name: string | null; email: string | null; anonymous: boolean; appUserId: string | null } | null;
       }>("GET", `/lookup?ref=${encodeURIComponent(r)}`),
     search: (q: string) => call<{ requests: (Summary & { score: number })[] }>("GET", `/search?q=${encodeURIComponent(q)}`),
     digest: (days: number) =>
@@ -266,7 +267,7 @@ const TOOLS: Tool[] = [
     annotations: READ,
     run: async (x, a) => {
       const api = await x.api(a.app);
-      const { request: r, comments, needsReply, linkedTo, linkedCount } = await api.lookup(str(a.request, "request", 1, 80).trim());
+      const { request: r, comments, needsReply, linkedTo, linkedCount, author } = await api.lookup(str(a.request, "request", 1, 80).trim());
       const out = [
         `${ref(r.number)}: ${r.title}`,
         `Status: ${r.status}${r.mergedInto ? ` (merged into another request, id ${r.mergedInto})` : ""}`,
@@ -276,6 +277,7 @@ const TOOLS: Tool[] = [
         linkedTo ? `Linked to ${linkedTo.ref} "${linkedTo.title}" (${linkedTo.status}): it follows that request's status.` : "",
         linkedCount ? `${plural(linkedCount, "other private conversation is", "other private conversations are")} linked to this one. reply with all_linked to answer everyone at once.` : "",
         `Votes: ${r.votes}  ·  Asked ${day(r.createdAt)}${r.shippedAt ? `  ·  Shipped ${day(r.shippedAt)}` : ""}`,
+        author ? `Asked by: ${author.anonymous ? "someone not signed in" : (author.name ?? author.email ?? "a signed-in user")}${author.appUserId ? ` (user id in the app: ${author.appUserId})` : ""}` : "",
         r.shipNote ? `Ship note: ${r.shipNote}` : "",
         "",
         r.body || "(no description, just the title)",

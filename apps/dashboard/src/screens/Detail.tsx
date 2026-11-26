@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { appApi, type ApiError, type Comment, type Req, type Status, type Voter, type WorkspaceApp } from "../api";
 import { AgentLogo } from "../agent-logos";
-import { AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
+import { AppUserIdFact, AttachButton, Pictures, ReplyImageTray, RequestPicker, ShipDialog, StatusPopover, useReplyImages } from "../components";
 import { Link, navigate } from "../router";
 import { appUrl, useSession } from "../session";
 import { Button, CopyButton, Dialog, Empty, ErrorState, Icon, Skeleton, StatusChip, shortDate, timeAgo, useFail, useLoad, useToast } from "../ui";
 
 
-type Detail = { request: Req; attachments: { id: string; url: string }[]; comments: Comment[]; voters: Voter[]; earlyAccess: Voter[] };
+type Detail = { request: Req; attachments: { id: string; url: string }[]; comments: Comment[]; voters: Voter[]; earlyAccess: Voter[]; author?: Req["author"] | null };
 
 export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId: string }) {
   const { bump } = useSession();
@@ -62,8 +62,9 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
   }
 
   const { request: r, comments, voters, attachments } = d.data;
-  const asker = r.author ?? (voters[0] ? { email: voters[0].email, name: voters[0].name, anonymous: Boolean(voters[0].is_anon) } : undefined);
-  const askerName = asker && !(asker.anonymous && !asker.name && !asker.email) ? asker.name ?? asker.email : null;
+  const asker = d.data.author ?? r.author ?? (voters[0] ? { email: voters[0].email, name: voters[0].name, anonymous: Boolean(voters[0].is_anon) } : undefined);
+  // Signed in but the app sent no name or email: still a known person (see User ID below).
+  const askerName = asker && !(asker.anonymous && !asker.name && !asker.email) ? asker.name ?? asker.email ?? (asker.anonymous ? null : "A signed-in user") : null;
 
   const update = (fn: (x: Req) => Req) => d.set((x) => ({ ...x, request: fn(x.request) }));
 
@@ -291,6 +292,7 @@ export function RequestDetail({ app, requestId }: { app: WorkspaceApp; requestId
                 {asker?.email && asker.name && <small>{asker.email}</small>}
               </dd>
             </div>
+            <AppUserIdFact id={asker && "appUserId" in asker ? asker.appUserId : null} />
             <div><dt>Asked</dt><dd>{shortDate(r.createdAt)}<small>{timeAgo(r.createdAt)}</small></dd></div>
             {r.context?.topic && <div><dt>Topic</dt><dd>{r.context.topic}</dd></div>}
             {(r.context?.page || r.context?.url) && <div><dt>Page</dt><dd className="mono">{r.context.page ?? r.context.url}</dd></div>}
