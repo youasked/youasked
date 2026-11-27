@@ -12,6 +12,7 @@ import {
 } from "./auth";
 import { billing, foundingLeft } from "./billing";
 import { cleanText, newId } from "./lib";
+import { adminOnly, forwardPath, proxiedPath } from "./dash-guard";
 import { connections } from "./mcp-oauth";
 import { PLANS, TEST_MODE_APPS, isLive, type WorkspaceRow } from "./plans";
 import type { AppRow, Env } from "./types";
@@ -310,28 +311,24 @@ export function createDash(dispatch: (req: Request, env: Env, ctx: any) => Respo
   // Registered last, so the app-level routes above (rotate-secret) win. Everything else under
   // /apps/:appId/ is handed to the admin router with the app's own secret key, which is never
   // sent to the browser. Feature streams add admin routes and they appear here with no extra work.
-  // Members triage (reply, set status, merge, approve, build). Settings, integrations (which hold
-  // tokens and webhook secrets), imports, exports and deleting requests are for owners and admins.
-  const ADMIN_ONLY: [RegExp, string[]][] = [
-    [/^\/app(\/avatar)?\/?$/, ["PATCH", "PUT", "POST", "DELETE"]],
-    [/^\/integrations(\/|$)/, ["GET", "PUT", "POST", "PATCH", "DELETE"]],
-    [/^\/(import|export|embeddings)(\/|$)/, ["GET", "POST", "PUT"]],
-    [/^\/requests\/[^/]+\/?$/, ["DELETE"]],
-    // Handing off starts a paid agent run in the owner's repo.
-    [/^\/requests\/[^/]+\/handoff$/, ["POST"]],
-  ];
+  // Who may call what lives in dash-guard.ts (ADMIN_ONLY), with the one decoded path both the check and the
+  // admin router read.
 
   dash.all("/apps/:appId/*", async (c) => {
     const { app, role } = await appFor(c, c.req.param("appId"));
     c.set("app", app);
     const url = new URL(c.req.url);
-    const rest = url.pathname.slice(`/v1/dash/apps/${app.id}`.length);
-    if (!canManage(role) && ADMIN_ONLY.some(([re, methods]) => re.test(rest) && methods.includes(c.req.method))) fail(403, "forbidden");
+    // decoded once: the check below and the admin router must read the very same path (dash-guard.ts)
+    const full = proxiedPath(url.pathname);
+    const prefix = `/v1/dash/apps/${app.id}`;
+    if (full === null || !(full === prefix || full.startsWith(`${prefix}/`))) fail(400, "bad_path");
+    const rest = full.slice(prefix.length);
+    if (!canManage(role) && adminOnly(rest, c.req.method)) fail(403, "forbidden");
     const headers = new Headers(c.req.raw.headers);
     for (const h of ["cookie", "origin", "referer", "authorization"]) headers.delete(h);
     headers.set("authorization", `Bearer ${app.secret_key}`);
     const hasBody = !["GET", "HEAD"].includes(c.req.method);
-    const forwarded = new Request(`${url.origin}/v1/admin${rest}${url.search}`, {
+    const forwarded = new Request(`${url.origin}/v1/admin${forwardPath(rest)}${url.search}`, {
       method: c.req.method,
       headers,
       body: hasBody ? c.req.raw.body : undefined,
